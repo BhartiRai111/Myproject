@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react';
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ApiErrorResponse } from '../types/user';
+import { parseApiError } from '../utils/apiError';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -11,6 +11,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   if (user) {
@@ -20,13 +21,15 @@ export default function Login() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setSubmitting(true);
     try {
       await login({ email, password });
       navigate('/dashboard');
     } catch (err: any) {
-      const apiError: ApiErrorResponse | undefined = err.response?.data;
-      setError(apiError?.message || 'Login failed. Please try again.');
+      const parsed = parseApiError(err, 'Login failed. Please try again.');
+      setError(parsed.message);
+      setFieldErrors(parsed.fieldErrors);
     } finally {
       setSubmitting(false);
     }
@@ -50,7 +53,9 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                isInvalid={!!fieldErrors.email}
               />
+              <Form.Control.Feedback type="invalid">{fieldErrors.email}</Form.Control.Feedback>
             </Form.Group>
 
             <Form.Group className="mb-4" controlId="loginPassword">
@@ -61,7 +66,9 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
+                isInvalid={!!fieldErrors.password}
               />
+              <Form.Control.Feedback type="invalid">{fieldErrors.password}</Form.Control.Feedback>
             </Form.Group>
 
             <Button type="submit" variant="success" className="w-100" disabled={submitting}>

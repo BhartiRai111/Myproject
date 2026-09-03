@@ -2,7 +2,8 @@ import { FormEvent, useState } from 'react';
 import { Alert, Button, Card, Form, Spinner } from 'react-bootstrap';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ApiErrorResponse, Role } from '../types/user';
+import { parseApiError } from '../utils/apiError';
+import { Role } from '../types/user';
 
 const REGISTERABLE_ROLES: { value: Role; label: string }[] = [
   { value: 'STORE_MANAGER', label: 'Store Manager' },
@@ -53,13 +54,9 @@ export default function Register() {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 1500);
     } catch (err: any) {
-      const apiError: ApiErrorResponse | undefined = err.response?.data;
-      setFieldErrors(apiError?.fieldErrors || {});
-      if (apiError?.fieldErrors && Object.keys(apiError.fieldErrors).length > 0) {
-        setError('Please fix the highlighted fields below.');
-      } else {
-        setError(apiError?.message || 'Registration failed. Please try again.');
-      }
+      const parsed = parseApiError(err, 'Registration failed. Please try again.');
+      setError(parsed.message);
+      setFieldErrors(parsed.fieldErrors);
     } finally {
       setSubmitting(false);
     }

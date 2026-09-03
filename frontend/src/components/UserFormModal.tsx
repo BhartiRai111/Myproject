@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Form, Modal } from 'react-bootstrap';
-import { ApiErrorResponse, Role, User, UserStatus } from '../types/user';
+import { parseApiError } from '../utils/apiError';
+import { Role, User, UserStatus } from '../types/user';
 
 export interface UserFormValues {
   firstName: string;
@@ -70,13 +71,9 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
     try {
       await onSubmit(form);
     } catch (err: any) {
-      const apiError: ApiErrorResponse | undefined = err.response?.data;
-      setFieldErrors(apiError?.fieldErrors || {});
-      if (apiError?.fieldErrors && Object.keys(apiError.fieldErrors).length > 0) {
-        setError('Please fix the highlighted fields below.');
-      } else {
-        setError(apiError?.message || 'Something went wrong. Please try again.');
-      }
+      const parsed = parseApiError(err, 'Something went wrong. Please try again.');
+      setError(parsed.message);
+      setFieldErrors(parsed.fieldErrors);
     } finally {
       setSubmitting(false);
     }
