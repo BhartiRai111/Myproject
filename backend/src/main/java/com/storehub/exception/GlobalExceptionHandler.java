@@ -35,6 +35,21 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(ProductNotFoundException.class)
+    public ResponseEntity<ApiError> handleProductNotFound(ProductNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(SupplierNotFoundException.class)
+    public ResponseEntity<ApiError> handleSupplierNotFound(SupplierNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(PurchaseNotFoundException.class)
+    public ResponseEntity<ApiError> handlePurchaseNotFound(PurchaseNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, null);

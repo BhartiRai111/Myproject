@@ -1,21 +1,22 @@
 import { Nav } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Role } from '../../types/user';
 
 interface NavItem {
   label: string;
   path: string;
   enabled: boolean;
-  adminOnly?: boolean;
+  allowedRoles?: Role[];
 }
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', enabled: true },
-  { label: 'Users', path: '/users', enabled: true, adminOnly: true },
+  { label: 'Users', path: '/users', enabled: true, allowedRoles: ['ADMIN'] },
   { label: 'Products', path: '/products', enabled: false },
   { label: 'Inventory', path: '/inventory', enabled: false },
   { label: 'Suppliers', path: '/suppliers', enabled: false },
-  { label: 'Purchases', path: '/purchases', enabled: false },
+  { label: 'Purchases', path: '/purchases', enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Sales', path: '/sales', enabled: false },
   { label: 'Customers', path: '/customers', enabled: false },
   { label: 'Payments', path: '/payments', enabled: false },
@@ -25,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function Sidebar() {
   const { user } = useAuth();
 
-  const items = NAV_ITEMS.filter((item) => !item.adminOnly || user?.role === 'ADMIN');
+  const items = NAV_ITEMS.filter((item) => !item.allowedRoles || (user && item.allowedRoles.includes(user.role)));
 
   return (
     <div className="sh-sidebar p-3" style={{ width: 220 }}>
