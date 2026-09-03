@@ -17,7 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Inventory', path: '/inventory', enabled: false },
   { label: 'Suppliers', path: '/suppliers', enabled: false },
   { label: 'Purchases', path: '/purchases', enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
-  { label: 'Sales', path: '/sales', enabled: false },
+  { label: 'Sales', path: '/sales', enabled: true },
   { label: 'Customers', path: '/customers', enabled: false },
   { label: 'Payments', path: '/payments', enabled: false },
   { label: 'Reports', path: '/reports', enabled: false },

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -15,6 +16,8 @@ public class ProductResponse {
     private Long id;
     private String name;
     private String unit;
+    private BigDecimal sellingPrice;
+    private Integer stockQuantity;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -23,6 +26,8 @@ public class ProductResponse {
                 .id(product.getId())
                 .name(product.getName())
                 .unit(product.getUnit())
+                .sellingPrice(product.getSellingPrice())
+                .stockQuantity(product.getStockQuantity())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();

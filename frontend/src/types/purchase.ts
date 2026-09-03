@@ -2,6 +2,8 @@ export interface Product {
   id: number;
   name: string;
   unit: string;
+  sellingPrice: number;
+  stockQuantity: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -9,6 +11,8 @@ export interface Product {
 export interface ProductCreatePayload {
   name: string;
   unit?: string;
+  sellingPrice?: number;
+  stockQuantity?: number;
 }
 
 export interface Supplier {

@@ -34,6 +34,8 @@ public class ProductService {
         Product product = Product.builder()
                 .name(request.getName())
                 .unit(request.getUnit())
+                .sellingPrice(request.getSellingPrice())
+                .stockQuantity(request.getStockQuantity())
                 .build();
 
         return ProductResponse.fromEntity(productRepository.save(product));
@@ -42,5 +44,16 @@ public class ProductService {
     public Product findProductOrThrow(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    @Transactional
+    public void adjustStock(Long productId, int delta) {
+        Product product = findProductOrThrow(productId);
+        int newStock = product.getStockQuantity() + delta;
+        if (newStock < 0) {
+            throw new BadRequestException("Insufficient stock for product '" + product.getName() + "'");
+        }
+        product.setStockQuantity(newStock);
+        productRepository.save(product);
     }
 }
