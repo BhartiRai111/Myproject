@@ -33,11 +33,13 @@ const EMPTY_FORM: UserFormValues = {
 export default function UserFormModal({ show, mode, initialUser, onClose, onSubmit }: Props) {
   const [form, setForm] = useState<UserFormValues>(EMPTY_FORM);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (show) {
       setError('');
+      setFieldErrors({});
       if (mode === 'edit' && initialUser) {
         setForm({
           firstName: initialUser.firstName,
@@ -63,12 +65,18 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setSubmitting(true);
     try {
       await onSubmit(form);
     } catch (err: any) {
       const apiError: ApiErrorResponse | undefined = err.response?.data;
-      setError(apiError?.message || 'Something went wrong. Please try again.');
+      setFieldErrors(apiError?.fieldErrors || {});
+      if (apiError?.fieldErrors && Object.keys(apiError.fieldErrors).length > 0) {
+        setError('Please fix the highlighted fields below.');
+      } else {
+        setError(apiError?.message || 'Something went wrong. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -86,22 +94,47 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
           <div className="d-flex gap-3">
             <Form.Group className="mb-3 flex-fill">
               <Form.Label>First Name</Form.Label>
-              <Form.Control required value={form.firstName} onChange={handleChange('firstName')} />
+              <Form.Control
+                required
+                value={form.firstName}
+                onChange={handleChange('firstName')}
+                isInvalid={!!fieldErrors.firstName}
+              />
+              <Form.Control.Feedback type="invalid">{fieldErrors.firstName}</Form.Control.Feedback>
             </Form.Group>
             <Form.Group className="mb-3 flex-fill">
               <Form.Label>Last Name</Form.Label>
-              <Form.Control required value={form.lastName} onChange={handleChange('lastName')} />
+              <Form.Control
+                required
+                value={form.lastName}
+                onChange={handleChange('lastName')}
+                isInvalid={!!fieldErrors.lastName}
+              />
+              <Form.Control.Feedback type="invalid">{fieldErrors.lastName}</Form.Control.Feedback>
             </Form.Group>
           </div>
 
           <Form.Group className="mb-3">
             <Form.Label>Email</Form.Label>
-            <Form.Control type="email" required value={form.email} onChange={handleChange('email')} />
+            <Form.Control
+              type="email"
+              required
+              value={form.email}
+              onChange={handleChange('email')}
+              isInvalid={!!fieldErrors.email}
+            />
+            <Form.Control.Feedback type="invalid">{fieldErrors.email}</Form.Control.Feedback>
           </Form.Group>
 
           <Form.Group className="mb-3">
             <Form.Label>Mobile</Form.Label>
-            <Form.Control required value={form.mobile} onChange={handleChange('mobile')} />
+            <Form.Control
+              required
+              value={form.mobile}
+              onChange={handleChange('mobile')}
+              isInvalid={!!fieldErrors.mobile}
+            />
+            <Form.Control.Feedback type="invalid">{fieldErrors.mobile}</Form.Control.Feedback>
           </Form.Group>
 
           {mode === 'add' && (
@@ -113,7 +146,9 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
                 minLength={6}
                 value={form.password}
                 onChange={handleChange('password')}
+                isInvalid={!!fieldErrors.password}
               />
+              <Form.Control.Feedback type="invalid">{fieldErrors.password}</Form.Control.Feedback>
             </Form.Group>
           )}
 
