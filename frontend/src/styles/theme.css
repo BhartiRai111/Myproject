@@ -1,0 +1,78 @@
+:root {
+  --sh-green: #3fae57;
+  --sh-green-dark: #2f8a43;
+  --sh-green-light: #eaf7ee;
+  --sh-text: #1f2a24;
+  --sh-border: #e1e8e3;
+}
+
+body {
+  background-color: #f6f9f7;
+  color: var(--sh-text);
+}
+
+.sh-navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--sh-border);
+}
+
+.sh-brand {
+  color: var(--sh-green-dark);
+  font-weight: 700;
+}
+
+.sh-sidebar {
+  background-color: #ffffff;
+  border-right: 1px solid var(--sh-border);
+  min-height: calc(100vh - 56px);
+}
+
+.sh-sidebar .nav-link {
+  color: var(--sh-text);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.sh-sidebar .nav-link.active {
+  background-color: var(--sh-green-light);
+  color: var(--sh-green-dark);
+}
+
+.sh-sidebar .nav-link.disabled {
+  color: #a7b0ab;
+}
+
+.sh-card {
+  border: 1px solid var(--sh-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.sh-auth-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--sh-green-light) 0%, #f6f9f7 60%);
+}
+
+.sh-auth-card {
+  width: 100%;
+  max-width: 460px;
+}
+
+.btn-success {
+  background-color: var(--sh-green);
+  border-color: var(--sh-green);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+  background-color: var(--sh-green-dark);
+  border-color: var(--sh-green-dark);
+}
+
+.text-brand {
+  color: var(--sh-green-dark);
+}
