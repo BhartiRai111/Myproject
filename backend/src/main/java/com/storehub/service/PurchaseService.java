@@ -7,6 +7,7 @@ import com.storehub.dto.PurchaseResponse;
 import com.storehub.dto.PurchaseUpdateRequest;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Product;
+import com.storehub.entity.ProductStatus;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseItem;
 import com.storehub.entity.PurchaseStatus;
@@ -24,9 +25,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,7 +66,7 @@ public class PurchaseService {
                 .notes(request.getNotes())
                 .build();
 
-        applyItems(purchase, request.getItems());
+        applyItems(purchase, request.getItems(), Collections.emptySet());
 
         Purchase saved = purchaseRepository.save(purchase);
         saved.setPurchaseNumber(String.format("PUR-%06d", saved.getId()));
@@ -83,16 +87,29 @@ public class PurchaseService {
             throw new BadRequestException("Use the cancel action to cancel a purchase");
         }
 
+        List<PurchaseItem> oldItems = new ArrayList<>(purchase.getItems());
+        Set<Long> allowedInactiveProductIds = oldItems.stream()
+                .map(item -> item.getProduct().getId())
+                .collect(Collectors.toSet());
+        boolean oldWasCompleted = purchase.getStatus() == PurchaseStatus.COMPLETED;
+        if (oldWasCompleted) {
+            restoreStock(oldItems);
+        }
+
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
 
         purchase.setSupplier(supplier);
         purchase.setPurchaseDate(request.getPurchaseDate());
         purchase.setPaymentStatus(request.getPaymentStatus());
-        purchase.setStatus(request.getStatus());
         purchase.setNotes(request.getNotes());
 
         purchase.clearItems();
-        applyItems(purchase, request.getItems());
+        applyItems(purchase, request.getItems(), allowedInactiveProductIds);
+
+        if (request.getStatus() == PurchaseStatus.COMPLETED) {
+            addStock(purchase.getItems());
+        }
+        purchase.setStatus(request.getStatus());
 
         Purchase saved = purchaseRepository.save(purchase);
         return PurchaseResponse.fromEntity(saved);
@@ -104,6 +121,10 @@ public class PurchaseService {
 
         if (purchase.getStatus() == PurchaseStatus.CANCELLED) {
             throw new BadRequestException("This purchase is already cancelled");
+        }
+
+        if (purchase.getStatus() == PurchaseStatus.COMPLETED) {
+            restoreStock(purchase.getItems());
         }
 
         purchase.setStatus(PurchaseStatus.CANCELLED);
@@ -121,7 +142,8 @@ public class PurchaseService {
         purchaseRepository.delete(purchase);
     }
 
-    private void applyItems(Purchase purchase, List<PurchaseItemRequest> itemRequests) {
+    private void applyItems(Purchase purchase, List<PurchaseItemRequest> itemRequests,
+                             Set<Long> allowedInactiveProductIds) {
         Set<Long> seenProductIds = new HashSet<>();
         BigDecimal total = BigDecimal.ZERO;
 
@@ -131,6 +153,11 @@ public class PurchaseService {
             }
 
             Product product = productService.findProductOrThrow(itemRequest.getProductId());
+
+            if (product.getStatus() == ProductStatus.INACTIVE
+                    && !allowedInactiveProductIds.contains(product.getId())) {
+                throw new BadRequestException("Product '" + product.getName() + "' is inactive and cannot be used in new purchases");
+            }
 
             BigDecimal quantity = BigDecimal.valueOf(itemRequest.getQuantity());
             BigDecimal subtotal = quantity.multiply(itemRequest.getPurchasePrice())
@@ -151,6 +178,18 @@ public class PurchaseService {
         }
 
         purchase.setTotalAmount(total);
+    }
+
+    private void addStock(List<PurchaseItem> items) {
+        for (PurchaseItem item : items) {
+            productService.adjustStock(item.getProduct().getId(), item.getQuantity());
+        }
+    }
+
+    private void restoreStock(List<PurchaseItem> items) {
+        for (PurchaseItem item : items) {
+            productService.adjustStock(item.getProduct().getId(), -item.getQuantity());
+        }
     }
 
     private Purchase findPurchaseOrThrow(Long id) {

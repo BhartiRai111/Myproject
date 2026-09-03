@@ -26,14 +26,43 @@ public class Product {
     @Column(nullable = false, unique = true, length = 150)
     private String name;
 
+    @Column(length = 50, unique = true)
+    private String sku;
+
+    @Column(length = 50, unique = true)
+    private String barcode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @Column(length = 100)
+    private String brand;
+
     @Column(length = 20)
     private String unit;
+
+    @Column(name = "purchase_price", precision = 12, scale = 2)
+    private BigDecimal purchasePrice;
 
     @Column(name = "selling_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal sellingPrice;
 
+    @Column(precision = 5, scale = 2)
+    private BigDecimal tax;
+
+    @Column(name = "min_stock_level")
+    private Integer minStockLevel;
+
     @Column(name = "stock_quantity", nullable = false)
     private Integer stockQuantity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ProductStatus status;
+
+    @Column(length = 500)
+    private String description;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,11 +78,23 @@ public class Product {
         if (this.unit == null || this.unit.isBlank()) {
             this.unit = "pcs";
         }
+        if (this.purchasePrice == null) {
+            this.purchasePrice = BigDecimal.ZERO;
+        }
         if (this.sellingPrice == null) {
             this.sellingPrice = BigDecimal.ZERO;
         }
+        if (this.tax == null) {
+            this.tax = BigDecimal.ZERO;
+        }
+        if (this.minStockLevel == null) {
+            this.minStockLevel = 0;
+        }
         if (this.stockQuantity == null) {
             this.stockQuantity = 0;
+        }
+        if (this.status == null) {
+            this.status = ProductStatus.ACTIVE;
         }
     }
 

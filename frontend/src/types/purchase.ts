@@ -1,19 +1,6 @@
-export interface Product {
-  id: number;
-  name: string;
-  unit: string;
-  sellingPrice: number;
-  stockQuantity: number;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Product } from './product';
 
-export interface ProductCreatePayload {
-  name: string;
-  unit?: string;
-  sellingPrice?: number;
-  stockQuantity?: number;
-}
+export type { Product };
 
 export interface Supplier {
   id: number;

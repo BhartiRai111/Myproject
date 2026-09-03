@@ -25,15 +25,15 @@ import { customerApi } from '@/api/customerApi';
 import { supplierApi } from '@/api/supplierApi';
 import { saleApi } from '@/api/saleApi';
 import { purchaseApi } from '@/api/purchaseApi';
-import { Product } from '@/types/purchase';
+import { Product } from '@/types/product';
 import { Sale } from '@/types/sale';
+import { getStockStatus } from '@/utils/stockStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-const LOW_STOCK_THRESHOLD = 10;
 const CHART_DAYS = 7;
 
 function todayISO() {
@@ -112,6 +112,7 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [totalSuppliers, setTotalSuppliers] = useState(0);
   const [todaysSalesTotal, setTodaysSalesTotal] = useState(0);
@@ -130,7 +131,7 @@ export default function Dashboard() {
 
       const [productsRes, customersRes, suppliersRes, todaysSalesRes, recentSalesRes, chartSalesRes] =
         await Promise.allSettled([
-          productApi.list(),
+          productApi.list({ size: 200 }),
           customerApi.list(),
           supplierApi.list(),
           saleApi.list({ fromDate: today, toDate: today, size: 200 }),
@@ -147,7 +148,10 @@ export default function Dashboard() {
 
       if (cancelled) return;
 
-      if (productsRes.status === 'fulfilled') setProducts(productsRes.value.data);
+      if (productsRes.status === 'fulfilled') {
+        setProducts(productsRes.value.data.content);
+        setTotalProducts(productsRes.value.data.totalElements);
+      }
       if (customersRes.status === 'fulfilled') setTotalCustomers(customersRes.value.data.length);
       if (suppliersRes.status === 'fulfilled') setTotalSuppliers(suppliersRes.value.data.length);
 
@@ -191,7 +195,10 @@ export default function Dashboard() {
   }, [canSeePurchases]);
 
   const lowStockProducts = useMemo(
-    () => products.filter((p) => p.stockQuantity < LOW_STOCK_THRESHOLD).sort((a, b) => a.stockQuantity - b.stockQuantity),
+    () =>
+      products
+        .filter((p) => getStockStatus(p) !== 'IN_STOCK')
+        .sort((a, b) => a.stockQuantity - b.stockQuantity),
     [products]
   );
 
@@ -211,7 +218,7 @@ export default function Dashboard() {
     {
       key: 'products',
       label: 'Total Products',
-      value: String(products.length),
+      value: String(totalProducts),
       hint: 'In catalog',
       icon: Package,
     },
@@ -241,7 +248,7 @@ export default function Dashboard() {
       key: 'lowStock',
       label: 'Low Stock Products',
       value: String(lowStockProducts.length),
-      hint: `Below ${LOW_STOCK_THRESHOLD} units`,
+      hint: 'At or below minimum level',
       icon: AlertTriangle,
     },
     {

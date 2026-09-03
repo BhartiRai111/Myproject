@@ -8,7 +8,8 @@ import { productApi } from '../api/productApi';
 import { purchaseApi } from '../api/purchaseApi';
 import { supplierApi } from '../api/supplierApi';
 import { parseApiError } from '../utils/apiError';
-import { PaymentStatus, Product, Purchase, PurchaseStatus, Supplier } from '../types/purchase';
+import { PaymentStatus, Purchase, PurchaseStatus, Supplier } from '../types/purchase';
+import { Product } from '../types/product';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,9 +65,9 @@ export default function PurchaseForm() {
 
   useEffect(() => {
     const loadReferenceData = async () => {
-      const [supplierRes, productRes] = await Promise.all([supplierApi.list(), productApi.list()]);
+      const [supplierRes, productRes] = await Promise.all([supplierApi.list(), productApi.list({ size: 200 })]);
       setSuppliers(supplierRes.data);
-      setProducts(productRes.data);
+      setProducts(productRes.data.content);
     };
 
     const loadPurchase = async () => {
@@ -93,8 +94,20 @@ export default function PurchaseForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const getProduct = (productId: string) => products.find((p) => String(p.id) === productId);
+
   const updateItem = (index: number, field: keyof ItemRow, value: string) => {
-    setItems((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+    setItems((prev) =>
+      prev.map((row, i) => {
+        if (i !== index) return row;
+        const updated = { ...row, [field]: value };
+        if (field === 'productId') {
+          const product = getProduct(value);
+          updated.purchasePrice = product ? String(product.purchasePrice) : '';
+        }
+        return updated;
+      })
+    );
   };
 
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
@@ -303,8 +316,8 @@ export default function PurchaseForm() {
                           </SelectTrigger>
                           <SelectContent>
                             {products.map((p) => (
-                              <SelectItem key={p.id} value={String(p.id)}>
-                                {p.name} ({p.unit})
+                              <SelectItem key={p.id} value={String(p.id)} disabled={p.status === 'INACTIVE'}>
+                                {p.name} ({p.unit}){p.status === 'INACTIVE' ? ' (Inactive)' : ''}
                               </SelectItem>
                             ))}
                           </SelectContent>

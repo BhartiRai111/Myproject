@@ -1,28 +1,46 @@
 package com.storehub.service;
 
+import com.storehub.dto.PagedResponse;
 import com.storehub.dto.ProductCreateRequest;
 import com.storehub.dto.ProductResponse;
+import com.storehub.dto.ProductUpdateRequest;
+import com.storehub.entity.Category;
 import com.storehub.entity.Product;
+import com.storehub.entity.ProductStatus;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ProductNotFoundException;
 import com.storehub.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class ProductService {
 
-    private final ProductRepository productRepository;
+    private static final Set<String> SORTABLE_FIELDS = Set.of(
+            "name", "sku", "purchasePrice", "sellingPrice", "stockQuantity", "createdAt");
 
-    public List<ProductResponse> getAllProducts() {
-        return productRepository.findAll(Sort.by("name").ascending()).stream()
-                .map(ProductResponse::fromEntity)
-                .toList();
+    private final ProductRepository productRepository;
+    private final CategoryService categoryService;
+
+    public PagedResponse<ProductResponse> searchProducts(String search, Long categoryId, ProductStatus status,
+                                                           int page, int size, String sortBy, String sortDir) {
+        String field = SORTABLE_FIELDS.contains(sortBy) ? sortBy : "name";
+        Sort sort = "desc".equalsIgnoreCase(sortDir) ? Sort.by(field).descending() : Sort.by(field).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Product> result = productRepository.search(search, categoryId, status, pageable);
+        return PagedResponse.fromPage(result.map(ProductResponse::fromEntity));
+    }
+
+    public ProductResponse getProductById(Long id) {
+        return ProductResponse.fromEntity(findProductOrThrow(id));
     }
 
     @Transactional
@@ -30,14 +48,73 @@ public class ProductService {
         if (productRepository.existsByNameIgnoreCase(request.getName())) {
             throw new BadRequestException("A product named '" + request.getName() + "' already exists");
         }
+        if (productRepository.existsBySkuIgnoreCase(request.getSku())) {
+            throw new BadRequestException("A product with SKU '" + request.getSku() + "' already exists");
+        }
+        if (request.getBarcode() != null && !request.getBarcode().isBlank()
+                && productRepository.existsByBarcodeIgnoreCase(request.getBarcode())) {
+            throw new BadRequestException("A product with barcode '" + request.getBarcode() + "' already exists");
+        }
+
+        Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
 
         Product product = Product.builder()
                 .name(request.getName())
+                .sku(request.getSku())
+                .barcode(blankToNull(request.getBarcode()))
+                .category(category)
+                .brand(request.getBrand())
                 .unit(request.getUnit())
+                .purchasePrice(request.getPurchasePrice())
                 .sellingPrice(request.getSellingPrice())
-                .stockQuantity(request.getStockQuantity())
+                .tax(request.getTax())
+                .minStockLevel(request.getMinStockLevel())
+                .stockQuantity(0)
+                .description(request.getDescription())
                 .build();
 
+        return ProductResponse.fromEntity(productRepository.save(product));
+    }
+
+    @Transactional
+    public ProductResponse updateProduct(Long id, ProductUpdateRequest request) {
+        Product product = findProductOrThrow(id);
+
+        if (!product.getName().equalsIgnoreCase(request.getName())
+                && productRepository.existsByNameIgnoreCase(request.getName())) {
+            throw new BadRequestException("A product named '" + request.getName() + "' already exists");
+        }
+        if (!product.getSku().equalsIgnoreCase(request.getSku())
+                && productRepository.existsBySkuIgnoreCaseAndIdNot(request.getSku(), id)) {
+            throw new BadRequestException("A product with SKU '" + request.getSku() + "' already exists");
+        }
+        String newBarcode = blankToNull(request.getBarcode());
+        if (newBarcode != null && !newBarcode.equalsIgnoreCase(product.getBarcode())
+                && productRepository.existsByBarcodeIgnoreCaseAndIdNot(newBarcode, id)) {
+            throw new BadRequestException("A product with barcode '" + newBarcode + "' already exists");
+        }
+
+        Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
+
+        product.setName(request.getName());
+        product.setSku(request.getSku());
+        product.setBarcode(newBarcode);
+        product.setCategory(category);
+        product.setBrand(request.getBrand());
+        product.setUnit(request.getUnit());
+        product.setPurchasePrice(request.getPurchasePrice());
+        product.setSellingPrice(request.getSellingPrice());
+        product.setTax(request.getTax());
+        product.setMinStockLevel(request.getMinStockLevel());
+        product.setDescription(request.getDescription());
+
+        return ProductResponse.fromEntity(productRepository.save(product));
+    }
+
+    @Transactional
+    public ProductResponse setStatus(Long id, ProductStatus status) {
+        Product product = findProductOrThrow(id);
+        product.setStatus(status);
         return ProductResponse.fromEntity(productRepository.save(product));
     }
 
@@ -55,5 +132,9 @@ public class ProductService {
         }
         product.setStockQuantity(newStock);
         productRepository.save(product);
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 }

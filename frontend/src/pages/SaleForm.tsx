@@ -8,8 +8,10 @@ import { customerApi } from '../api/customerApi';
 import { productApi } from '../api/productApi';
 import { saleApi } from '../api/saleApi';
 import { parseApiError } from '../utils/apiError';
-import { PaymentStatus, Product } from '../types/purchase';
+import { PaymentStatus } from '../types/purchase';
+import { Product } from '../types/product';
 import { Customer, Sale, SaleStatus } from '../types/sale';
+import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +49,8 @@ export default function SaleForm() {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManageProducts = user?.role === 'ADMIN' || user?.role === 'STORE_MANAGER';
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -72,9 +76,9 @@ export default function SaleForm() {
 
   useEffect(() => {
     const loadReferenceData = async () => {
-      const [customerRes, productRes] = await Promise.all([customerApi.list(), productApi.list()]);
+      const [customerRes, productRes] = await Promise.all([customerApi.list(), productApi.list({ size: 200 })]);
       setCustomers(customerRes.data);
-      setProducts(productRes.data);
+      setProducts(productRes.data.content);
     };
 
     const loadSale = async () => {
@@ -314,9 +318,11 @@ export default function SaleForm() {
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Sale Items</CardTitle>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowProductModal(true)}>
-                <Plus className="h-4 w-4" /> New Product
-              </Button>
+              {canManageProducts && (
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowProductModal(true)}>
+                  <Plus className="h-4 w-4" /> New Product
+                </Button>
+              )}
               <Button type="button" size="sm" onClick={addItemRow}>
                 <Plus className="h-4 w-4" /> Add Item
               </Button>
@@ -348,8 +354,8 @@ export default function SaleForm() {
                             </SelectTrigger>
                             <SelectContent>
                               {products.map((p) => (
-                                <SelectItem key={p.id} value={String(p.id)}>
-                                  {p.name} ({p.unit})
+                                <SelectItem key={p.id} value={String(p.id)} disabled={p.status === 'INACTIVE'}>
+                                  {p.name} ({p.unit}){p.status === 'INACTIVE' ? ' (Inactive)' : ''}
                                 </SelectItem>
                               ))}
                             </SelectContent>

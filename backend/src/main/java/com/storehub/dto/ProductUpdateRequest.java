@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class ProductCreateRequest {
+public class ProductUpdateRequest {
 
     @NotBlank(message = "Product name is required")
     private String name;

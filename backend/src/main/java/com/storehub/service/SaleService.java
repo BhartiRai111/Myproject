@@ -8,6 +8,7 @@ import com.storehub.dto.SaleUpdateRequest;
 import com.storehub.entity.Customer;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Product;
+import com.storehub.entity.ProductStatus;
 import com.storehub.entity.Sale;
 import com.storehub.entity.SaleItem;
 import com.storehub.entity.SaleStatus;
@@ -25,9 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -65,7 +68,7 @@ public class SaleService {
                 .notes(request.getNotes())
                 .build();
 
-        applyItems(sale, request.getItems());
+        applyItems(sale, request.getItems(), Collections.emptySet());
         deductStock(sale.getItems());
 
         Sale saved = saleRepository.save(sale);
@@ -88,6 +91,9 @@ public class SaleService {
         }
 
         List<SaleItem> oldItems = new ArrayList<>(sale.getItems());
+        Set<Long> allowedInactiveProductIds = oldItems.stream()
+                .map(item -> item.getProduct().getId())
+                .collect(Collectors.toSet());
         boolean oldWasCompleted = sale.getStatus() == SaleStatus.COMPLETED;
         if (oldWasCompleted) {
             restoreStock(oldItems);
@@ -103,7 +109,7 @@ public class SaleService {
         sale.setNotes(request.getNotes());
 
         sale.clearItems();
-        applyItems(sale, request.getItems());
+        applyItems(sale, request.getItems(), allowedInactiveProductIds);
 
         if (request.getStatus() == SaleStatus.COMPLETED) {
             deductStock(sale.getItems());
@@ -130,7 +136,7 @@ public class SaleService {
         return SaleResponse.fromEntity(saleRepository.save(sale));
     }
 
-    private void applyItems(Sale sale, List<SaleItemRequest> itemRequests) {
+    private void applyItems(Sale sale, List<SaleItemRequest> itemRequests, Set<Long> allowedInactiveProductIds) {
         Set<Long> seenProductIds = new HashSet<>();
         BigDecimal total = BigDecimal.ZERO;
 
@@ -140,6 +146,11 @@ public class SaleService {
             }
 
             Product product = productService.findProductOrThrow(itemRequest.getProductId());
+
+            if (product.getStatus() == ProductStatus.INACTIVE
+                    && !allowedInactiveProductIds.contains(product.getId())) {
+                throw new BadRequestException("Product '" + product.getName() + "' is inactive and cannot be sold in new sales");
+            }
 
             if (itemRequest.getQuantity() > product.getStockQuantity()) {
                 throw new BadRequestException("Insufficient stock for product '" + product.getName() + "': available "

@@ -7,6 +7,8 @@ import { AuthProvider } from './context/AuthContext';
 import ComingSoon from './pages/ComingSoon';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import ProductForm from './pages/ProductForm';
+import Products from './pages/Products';
 import PurchaseForm from './pages/PurchaseForm';
 import Purchases from './pages/Purchases';
 import Register from './pages/Register';
@@ -14,7 +16,7 @@ import SaleForm from './pages/SaleForm';
 import Sales from './pages/Sales';
 import Users from './pages/Users';
 
-const DISABLED_MODULES = ['products', 'inventory', 'suppliers', 'customers', 'payments', 'reports'];
+const DISABLED_MODULES = ['inventory', 'suppliers', 'customers', 'payments', 'reports'];
 
 export default function App() {
   return (
@@ -41,6 +43,12 @@ export default function App() {
             <Route path="/sales/new" element={<SaleForm />} />
             <Route element={<ManagerRoute />}>
               <Route path="/sales/:id/edit" element={<SaleForm />} />
+            </Route>
+
+            <Route path="/products" element={<Products />} />
+            <Route element={<ManagerRoute />}>
+              <Route path="/products/new" element={<ProductForm />} />
+              <Route path="/products/:id/edit" element={<ProductForm />} />
             </Route>
 
             {DISABLED_MODULES.map((path) => (
