@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { Spinner } from 'react-bootstrap';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function ProtectedRoute() {
@@ -7,8 +7,8 @@ export default function ProtectedRoute() {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
-        <Spinner animation="border" variant="success" />
+      <div className="flex min-h-svh items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }

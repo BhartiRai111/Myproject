@@ -1,5 +1,8 @@
-import { Badge, Modal, Table } from 'react-bootstrap';
 import { Purchase } from '../types/purchase';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Props {
   show: boolean;
@@ -16,117 +19,112 @@ function formatMoney(value: number) {
 }
 
 function paymentStatusVariant(status: Purchase['paymentStatus']) {
-  if (status === 'PAID') return 'success';
-  if (status === 'PARTIAL') return 'warning';
-  return 'danger';
+  if (status === 'PAID') return 'success' as const;
+  if (status === 'PARTIAL') return 'warning' as const;
+  return 'destructive' as const;
 }
 
 function purchaseStatusVariant(status: Purchase['status']) {
-  if (status === 'COMPLETED') return 'success';
-  if (status === 'CANCELLED') return 'danger';
-  return 'secondary';
+  if (status === 'COMPLETED') return 'success' as const;
+  if (status === 'CANCELLED') return 'destructive' as const;
+  return 'muted' as const;
+}
+
+function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-sm font-medium">{children}</p>
+    </div>
+  );
 }
 
 export default function PurchaseViewModal({ show, purchase, onClose }: Props) {
   return (
-    <Modal show={show} onHide={onClose} centered size="lg">
-      <Modal.Header closeButton>
-        <Modal.Title>Purchase Details</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
+    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Purchase Details</DialogTitle>
+        </DialogHeader>
+
         {purchase && (
-          <>
-            <Table borderless size="sm" className="mb-4">
-              <tbody>
-                <tr>
-                  <td className="text-muted" style={{ width: 180 }}>
-                    Purchase Number
-                  </td>
-                  <td className="fw-semibold">{purchase.purchaseNumber}</td>
-                  <td className="text-muted" style={{ width: 140 }}>
-                    Supplier
-                  </td>
-                  <td>{purchase.supplier.name}</td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Purchase Date</td>
-                  <td>{purchase.purchaseDate}</td>
-                  <td className="text-muted">Payment Status</td>
-                  <td>
-                    <Badge bg={paymentStatusVariant(purchase.paymentStatus)}>{purchase.paymentStatus}</Badge>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="text-muted">Purchase Status</td>
-                  <td>
-                    <Badge bg={purchaseStatusVariant(purchase.status)}>{purchase.status}</Badge>
-                  </td>
-                  <td className="text-muted">Notes</td>
-                  <td>{purchase.notes || '-'}</td>
-                </tr>
-              </tbody>
-            </Table>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <InfoField label="Purchase Number">{purchase.purchaseNumber}</InfoField>
+              <InfoField label="Supplier">{purchase.supplier.name}</InfoField>
+              <InfoField label="Purchase Date">{purchase.purchaseDate}</InfoField>
+              <InfoField label="Payment Status">
+                <Badge variant={paymentStatusVariant(purchase.paymentStatus)}>{purchase.paymentStatus}</Badge>
+              </InfoField>
+              <InfoField label="Purchase Status">
+                <Badge variant={purchaseStatusVariant(purchase.status)}>{purchase.status}</Badge>
+              </InfoField>
+              <InfoField label="Notes">{purchase.notes || '—'}</InfoField>
+            </div>
 
-            <Table responsive size="sm" bordered>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th className="text-end">Quantity</th>
-                  <th className="text-end">Purchase Price</th>
-                  <th className="text-end">Discount</th>
-                  <th className="text-end">Tax</th>
-                  <th className="text-end">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {purchase.items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      {item.product.name}
-                      {item.product.unit ? <span className="text-muted"> ({item.product.unit})</span> : null}
-                    </td>
-                    <td className="text-end">{item.quantity}</td>
-                    <td className="text-end">{formatMoney(item.purchasePrice)}</td>
-                    <td className="text-end">{formatMoney(item.discount)}</td>
-                    <td className="text-end">{formatMoney(item.tax)}</td>
-                    <td className="text-end">{formatMoney(item.subtotal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            <Separator />
 
-            <div className="d-flex justify-content-end">
-              <Table borderless size="sm" className="mb-0" style={{ width: 280 }}>
-                <tbody>
-                  <tr>
-                    <td className="text-muted">Subtotal</td>
-                    <td className="text-end">{formatMoney(purchase.subtotalAmount)}</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted">Total Discount</td>
-                    <td className="text-end">-{formatMoney(purchase.totalDiscount)}</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted">Total Tax</td>
-                    <td className="text-end">+{formatMoney(purchase.totalTax)}</td>
-                  </tr>
-                  <tr>
-                    <td className="fw-semibold">Grand Total</td>
-                    <td className="text-end fw-semibold">{formatMoney(purchase.totalAmount)}</td>
-                  </tr>
-                </tbody>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Discount</TableHead>
+                    <TableHead className="text-right">Tax</TableHead>
+                    <TableHead className="text-right">Subtotal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {purchase.items.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        {item.product.name}
+                        {item.product.unit && <span className="text-muted-foreground"> ({item.product.unit})</span>}
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right">{formatMoney(item.purchasePrice)}</TableCell>
+                      <TableCell className="text-right">{formatMoney(item.discount)}</TableCell>
+                      <TableCell className="text-right">{formatMoney(item.tax)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMoney(item.subtotal)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
               </Table>
             </div>
 
-            <hr />
-
-            <div className="d-flex justify-content-between text-muted small">
-              <span>Created At: {formatDate(purchase.createdAt)}</span>
-              <span>Updated At: {formatDate(purchase.updatedAt)}</span>
+            <div className="flex justify-end">
+              <div className="w-full max-w-xs space-y-1.5 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{formatMoney(purchase.subtotalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Total Discount</span>
+                  <span>-{formatMoney(purchase.totalDiscount)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Total Tax</span>
+                  <span>+{formatMoney(purchase.totalTax)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-base font-semibold">
+                  <span>Grand Total</span>
+                  <span>{formatMoney(purchase.totalAmount)}</span>
+                </div>
+              </div>
             </div>
-          </>
+
+            <Separator />
+
+            <div className="flex flex-col justify-between gap-1 text-xs text-muted-foreground sm:flex-row">
+              <span>Created: {formatDate(purchase.createdAt)}</span>
+              <span>Updated: {formatDate(purchase.updatedAt)}</span>
+            </div>
+          </div>
         )}
-      </Modal.Body>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

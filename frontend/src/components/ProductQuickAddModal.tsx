@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap';
 import { productApi } from '../api/productApi';
+import { parseApiError } from '../utils/apiError';
 import { Product } from '../types/purchase';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface Props {
   show: boolean;
@@ -39,60 +51,67 @@ export default function ProductQuickAddModal({ show, onClose, onCreated }: Props
         stockQuantity: Number(stockQuantity) || 0,
       });
       onCreated(res.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add product');
+    } catch (err) {
+      setError(parseApiError(err, 'Failed to add product').message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal show={show} onHide={onClose} centered>
-      <Form onSubmit={handleSubmit}>
-        <Modal.Header closeButton>
-          <Modal.Title>Add Product</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
-          <Form.Group className="mb-3">
-            <Form.Label>Name</Form.Label>
-            <Form.Control required value={name} onChange={(e) => setName(e.target.value)} />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label>Unit</Form.Label>
-            <Form.Control value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pcs, kg, box..." />
-          </Form.Group>
-          <div className="d-flex gap-3">
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>Selling Price</Form.Label>
-              <Form.Control
+    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Add Product</DialogTitle>
+          <DialogDescription>Add a new product to your catalog.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <div className="space-y-1.5">
+            <Label htmlFor="pqName">Name</Label>
+            <Input id="pqName" required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pqUnit">Unit</Label>
+            <Input id="pqUnit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pcs, kg, box..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="pqPrice">Selling Price</Label>
+              <Input
+                id="pqPrice"
                 type="number"
                 min={0}
                 step="0.01"
                 value={sellingPrice}
                 onChange={(e) => setSellingPrice(e.target.value)}
               />
-            </Form.Group>
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>Opening Stock</Form.Label>
-              <Form.Control
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pqStock">Opening Stock</Label>
+              <Input
+                id="pqStock"
                 type="number"
                 min={0}
                 value={stockQuantity}
                 onChange={(e) => setStockQuantity(e.target.value)}
               />
-            </Form.Group>
+            </div>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button variant="success" type="submit" disabled={submitting}>
-            {submitting ? <Spinner size="sm" animation="border" /> : 'Add Product'}
-          </Button>
-        </Modal.Footer>
-      </Form>
-    </Modal>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting}>
+              Add Product
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

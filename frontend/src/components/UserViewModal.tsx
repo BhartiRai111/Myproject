@@ -1,5 +1,7 @@
-import { Badge, Modal, Table } from 'react-bootstrap';
 import { User } from '../types/user';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Props {
   show: boolean;
@@ -11,52 +13,60 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString();
 }
 
+function formatRole(role: string) {
+  return role
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-border py-2.5 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium">{children}</span>
+    </div>
+  );
+}
+
 export default function UserViewModal({ show, user, onClose }: Props) {
   return (
-    <Modal show={show} onHide={onClose} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>User Details</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
+    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>User Details</DialogTitle>
+        </DialogHeader>
+
         {user && (
-          <Table borderless size="sm" className="mb-0">
-            <tbody>
-              <tr>
-                <td className="text-muted">Full Name</td>
-                <td className="fw-semibold">
+          <div>
+            <div className="mb-4 flex items-center gap-3">
+              <Avatar className="h-12 w-12">
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {(user.firstName[0] ?? '') + (user.lastName[0] ?? '')}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold">
                   {user.firstName} {user.lastName}
-                </td>
-              </tr>
-              <tr>
-                <td className="text-muted">Email</td>
-                <td>{user.email}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">Mobile</td>
-                <td>{user.mobile}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">Role</td>
-                <td>{user.role}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">Status</td>
-                <td>
-                  <Badge bg={user.status === 'ACTIVE' ? 'success' : 'secondary'}>{user.status}</Badge>
-                </td>
-              </tr>
-              <tr>
-                <td className="text-muted">Created At</td>
-                <td>{formatDate(user.createdAt)}</td>
-              </tr>
-              <tr>
-                <td className="text-muted">Updated At</td>
-                <td>{formatDate(user.updatedAt)}</td>
-              </tr>
-            </tbody>
-          </Table>
+                </p>
+                <p className="text-sm text-muted-foreground">{user.email}</p>
+              </div>
+            </div>
+
+            <div>
+              <Row label="Mobile">{user.mobile}</Row>
+              <Row label="Role">
+                <Badge variant="secondary">{formatRole(user.role)}</Badge>
+              </Row>
+              <Row label="Status">
+                <Badge variant={user.status === 'ACTIVE' ? 'success' : 'muted'}>{user.status}</Badge>
+              </Row>
+              <Row label="Created At">{formatDate(user.createdAt)}</Row>
+              <Row label="Updated At">{formatDate(user.updatedAt)}</Row>
+            </div>
+          </div>
         )}
-      </Modal.Body>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

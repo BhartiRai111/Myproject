@@ -1,24 +1,51 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Pagination, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Eye, MoreHorizontal, Pencil, Plus, Receipt, Search, XCircle } from 'lucide-react';
 import { saleApi } from '../api/saleApi';
 import SaleViewModal from '../components/SaleViewModal';
 import { useAuth } from '../context/AuthContext';
+import { parseApiError } from '../utils/apiError';
 import { PaymentStatus } from '../types/purchase';
 import { Sale, SaleStatus } from '../types/sale';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { TableSkeleton } from '@/components/TableSkeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const PAGE_SIZE = 10;
+const ALL = '__all__';
 
 function paymentStatusVariant(status: PaymentStatus) {
-  if (status === 'PAID') return 'success';
-  if (status === 'PARTIAL') return 'warning';
-  return 'danger';
+  if (status === 'PAID') return 'success' as const;
+  if (status === 'PARTIAL') return 'warning' as const;
+  return 'destructive' as const;
 }
 
 function saleStatusVariant(status: SaleStatus) {
-  if (status === 'COMPLETED') return 'success';
-  if (status === 'CANCELLED') return 'danger';
-  return 'secondary';
+  if (status === 'COMPLETED') return 'success' as const;
+  if (status === 'CANCELLED') return 'destructive' as const;
+  return 'muted' as const;
 }
 
 export default function Sales() {
@@ -39,7 +66,6 @@ export default function Sales() {
   const [viewSale, setViewSale] = useState<Sale | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Sale | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [error, setError] = useState('');
 
   const loadSales = async () => {
     setLoading(true);
@@ -55,6 +81,8 @@ export default function Sales() {
       });
       setSales(res.data.content);
       setTotalPages(res.data.totalPages);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to load sales').message);
     } finally {
       setLoading(false);
     }
@@ -74,199 +102,204 @@ export default function Sales() {
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
-    setError('');
     try {
       await saleApi.cancel(cancelTarget.id);
+      toast.success('Sale cancelled successfully');
       setCancelTarget(null);
       loadSales();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to cancel sale');
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to cancel sale').message);
     } finally {
       setCancelling(false);
     }
   };
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Sales</h3>
-        <Button variant="success" onClick={() => navigate('/sales/new')}>
-          Add Sale
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Sales"
+        description="Record and track customer sales."
+        actions={
+          <Button onClick={() => navigate('/sales/new')}>
+            <Plus className="h-4 w-4" />
+            Add Sale
+          </Button>
+        }
+      />
 
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      <Card className="sh-card mb-3">
-        <Card.Body>
-          <Form onSubmit={handleSearchSubmit}>
-            <Row className="g-3 align-items-end">
-              <Col md={3}>
-                <Form.Label>Search</Form.Label>
-                <Form.Control
-                  placeholder="Invoice number or customer"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Label>Payment Status</Form.Label>
-                <Form.Select
-                  value={paymentStatusFilter}
-                  onChange={(e) => {
-                    setPage(0);
-                    setPaymentStatusFilter(e.target.value as PaymentStatus | '');
-                  }}
-                >
-                  <option value="">All</option>
-                  <option value="PAID">Paid</option>
-                  <option value="PARTIAL">Partial</option>
-                  <option value="UNPAID">Unpaid</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>Sale Status</Form.Label>
-                <Form.Select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setPage(0);
-                    setStatusFilter(e.target.value as SaleStatus | '');
-                  }}
-                >
-                  <option value="">All</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>From Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => {
-                    setPage(0);
-                    setFromDate(e.target.value);
-                  }}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Label>To Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => {
-                    setPage(0);
-                    setToDate(e.target.value);
-                  }}
-                />
-              </Col>
-              <Col md={1}>
-                <Button type="submit" variant="outline-success" className="w-100">
-                  Go
-                </Button>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
+          <form onSubmit={handleSearchSubmit} className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by invoice number or customer"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </form>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:shrink-0">
+            <Select
+              value={paymentStatusFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setPaymentStatusFilter(v === ALL ? '' : (v as PaymentStatus));
+              }}
+            >
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Payments</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="PARTIAL">Partial</SelectItem>
+                <SelectItem value="UNPAID">Unpaid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setStatusFilter(v === ALL ? '' : (v as SaleStatus));
+              }}
+            >
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setPage(0);
+                setFromDate(e.target.value);
+              }}
+              className="w-full lg:w-40"
+            />
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setPage(0);
+                setToDate(e.target.value);
+              }}
+              className="w-full lg:w-40"
+            />
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className="sh-card">
-        <Card.Body>
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="success" />
-            </div>
-          ) : sales.length === 0 ? (
-            <div className="text-center text-muted py-5">No sales found.</div>
-          ) : (
-            <>
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Invoice Number</th>
-                    <th>Customer</th>
-                    <th>Sale Date</th>
-                    <th className="text-end">Total Amount</th>
-                    <th>Payment Status</th>
-                    <th>Sale Status</th>
-                    <th className="text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sales.map((s) => (
-                    <tr key={s.id}>
-                      <td>{s.id}</td>
-                      <td>{s.invoiceNumber}</td>
-                      <td>{s.customer ? `${s.customer.firstName} ${s.customer.lastName || ''}` : 'Walk-in'}</td>
-                      <td>{s.saleDate}</td>
-                      <td className="text-end">{s.totalAmount.toFixed(2)}</td>
-                      <td>
-                        <Badge bg={paymentStatusVariant(s.paymentStatus)}>{s.paymentStatus}</Badge>
-                      </td>
-                      <td>
-                        <Badge bg={saleStatusVariant(s.status)}>{s.status}</Badge>
-                      </td>
-                      <td className="text-end">
-                        <Button size="sm" variant="outline-secondary" className="me-2" onClick={() => setViewSale(s)}>
-                          View
-                        </Button>
-                        {canManage && s.status !== 'CANCELLED' && (
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            className="me-2"
-                            onClick={() => navigate(`/sales/${s.id}/edit`)}
-                          >
-                            Edit
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            {loading ? (
+              <TableSkeleton columns={7} />
+            ) : (
+              <TableBody>
+                {sales.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.invoiceNumber}</TableCell>
+                    <TableCell>
+                      {s.customer ? `${s.customer.firstName} ${s.customer.lastName || ''}` : 'Walk-in'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{s.saleDate}</TableCell>
+                    <TableCell className="text-right font-medium">{s.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge variant={paymentStatusVariant(s.paymentStatus)}>{s.paymentStatus}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={saleStatusVariant(s.status)}>{s.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        )}
-                        {canManage && s.status !== 'CANCELLED' && (
-                          <Button size="sm" variant="outline-danger" onClick={() => setCancelTarget(s)}>
-                            Cancel
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewSale(s)}>
+                            <Eye className="h-4 w-4" /> View
+                          </DropdownMenuItem>
+                          {canManage && s.status !== 'CANCELLED' && (
+                            <DropdownMenuItem onClick={() => navigate(`/sales/${s.id}/edit`)}>
+                              <Pencil className="h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canManage && s.status !== 'CANCELLED' && (
+                            <DropdownMenuItem variant="destructive" onClick={() => setCancelTarget(s)}>
+                              <XCircle className="h-4 w-4" /> Cancel
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            )}
+          </Table>
 
-              {totalPages > 1 && (
-                <Pagination className="justify-content-end mb-0">
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <Pagination.Item key={idx} active={idx === page} onClick={() => setPage(idx)}>
-                      {idx + 1}
-                    </Pagination.Item>
-                  ))}
-                </Pagination>
-              )}
-            </>
+          {!loading && sales.length === 0 && (
+            <EmptyState
+              icon={Receipt}
+              title="No sales found"
+              description="Try adjusting your search or filters, or record a new sale."
+              action={
+                <Button size="sm" onClick={() => navigate('/sales/new')}>
+                  <Plus className="h-4 w-4" /> Add Sale
+                </Button>
+              }
+            />
           )}
-        </Card.Body>
+
+          {!loading && sales.length > 0 && (
+            <div className="border-t border-border p-4">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <SaleViewModal show={!!viewSale} sale={viewSale} onClose={() => setViewSale(null)} />
 
-      <Modal show={!!cancelTarget} onHide={() => setCancelTarget(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Cancel Sale</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to cancel sale <strong>{cancelTarget?.invoiceNumber}</strong>? This cannot be undone.
-          If this sale was completed, its sold quantities will be restored to stock, and it will remain in sales
-          history with a Cancelled status.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-            Keep Sale
-          </Button>
-          <Button variant="danger" onClick={handleCancelConfirm} disabled={cancelling}>
-            {cancelling ? <Spinner size="sm" animation="border" /> : 'Cancel Sale'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <Dialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel Sale</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel sale <strong>{cancelTarget?.invoiceNumber}</strong>? This cannot be
+              undone. If this sale was completed, its sold quantities will be restored to stock, and it will remain
+              in sales history with a Cancelled status.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
+              Keep Sale
+            </Button>
+            <Button variant="destructive" loading={cancelling} onClick={handleCancelConfirm}>
+              Cancel Sale
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,11 +1,37 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Card, Col, Form, Pagination, Row, Spinner, Table } from 'react-bootstrap';
+import { toast } from 'sonner';
+import { MoreHorizontal, Plus, Search, ShieldCheck, UserRoundX, Users as UsersIcon } from 'lucide-react';
 import { userApi } from '../api/userApi';
+import { parseApiError } from '../utils/apiError';
 import UserFormModal, { UserFormValues } from '../components/UserFormModal';
 import UserViewModal from '../components/UserViewModal';
 import { Role, User, UserStatus } from '../types/user';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { TableSkeleton } from '@/components/TableSkeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const PAGE_SIZE = 10;
+const ALL = '__all__';
+
+function formatRole(role: string) {
+  return role
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -29,6 +55,8 @@ export default function Users() {
       const res = await userApi.list({ search, role: roleFilter, status: statusFilter, page, size: PAGE_SIZE });
       setUsers(res.data.content);
       setTotalPages(res.data.totalPages);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to load users').message);
     } finally {
       setLoading(false);
     }
@@ -60,6 +88,7 @@ export default function Users() {
         role: values.role,
         status: values.status,
       });
+      toast.success('User created successfully');
     } else if (formModal.user) {
       await userApi.update(formModal.user.id, {
         firstName: values.firstName,
@@ -69,6 +98,7 @@ export default function Users() {
         role: values.role,
         status: values.status,
       });
+      toast.success('User updated successfully');
     }
     closeFormModal();
     loadUsers();
@@ -76,125 +106,157 @@ export default function Users() {
 
   const toggleStatus = async (user: User) => {
     const newStatus: UserStatus = user.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    await userApi.updateStatus(user.id, newStatus);
-    loadUsers();
+    try {
+      await userApi.updateStatus(user.id, newStatus);
+      toast.success(`User ${newStatus === 'ACTIVE' ? 'activated' : 'deactivated'} successfully`);
+      loadUsers();
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to update user status').message);
+    }
   };
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">User Management</h3>
-        <Button variant="success" onClick={openAddModal}>
-          Add User
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="User Management"
+        description="Manage who can access StoreHub and what they can do."
+        actions={
+          <Button onClick={openAddModal}>
+            <Plus className="h-4 w-4" />
+            Add User
+          </Button>
+        }
+      />
 
-      <Card className="sh-card mb-3">
-        <Card.Body>
-          <Form onSubmit={handleSearchSubmit}>
-            <Row className="g-3 align-items-end">
-              <Col md={5}>
-                <Form.Label>Search</Form.Label>
-                <Form.Control
-                  placeholder="Search by name or email"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </Col>
-              <Col md={3}>
-                <Form.Label>Role</Form.Label>
-                <Form.Select value={roleFilter} onChange={(e) => { setPage(0); setRoleFilter(e.target.value as Role | ''); }}>
-                  <option value="">All Roles</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="STORE_MANAGER">Store Manager</option>
-                  <option value="STAFF">Staff</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>Status</Form.Label>
-                <Form.Select value={statusFilter} onChange={(e) => { setPage(0); setStatusFilter(e.target.value as UserStatus | ''); }}>
-                  <option value="">All</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Button type="submit" variant="outline-success" className="w-100">
-                  Search
-                </Button>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
+      <Card>
+        <CardContent className="p-4">
+          <form onSubmit={handleSearchSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={roleFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setRoleFilter(v === ALL ? '' : (v as Role));
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="All Roles" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Roles</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="STORE_MANAGER">Store Manager</SelectItem>
+                <SelectItem value="STAFF">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setStatusFilter(v === ALL ? '' : (v as UserStatus));
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-36">
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Status</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="INACTIVE">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="submit" variant="secondary" className="sm:w-auto">
+              Search
+            </Button>
+          </form>
+        </CardContent>
       </Card>
 
-      <Card className="sh-card">
-        <Card.Body>
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="success" />
-            </div>
-          ) : users.length === 0 ? (
-            <div className="text-center text-muted py-5">No users found.</div>
-          ) : (
-            <>
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Mobile</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Created At</th>
-                    <th className="text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id}>
-                      <td>
-                        {u.firstName} {u.lastName}
-                      </td>
-                      <td>{u.email}</td>
-                      <td>{u.mobile}</td>
-                      <td>{u.role}</td>
-                      <td>
-                        <Badge bg={u.status === 'ACTIVE' ? 'success' : 'secondary'}>{u.status}</Badge>
-                      </td>
-                      <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                      <td className="text-end">
-                        <Button size="sm" variant="outline-secondary" className="me-2" onClick={() => setViewUser(u)}>
-                          View
-                        </Button>
-                        <Button size="sm" variant="outline-primary" className="me-2" onClick={() => openEditModal(u)}>
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={u.status === 'ACTIVE' ? 'outline-danger' : 'outline-success'}
-                          onClick={() => toggleStatus(u)}
-                        >
-                          {u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Mobile</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            {loading ? (
+              <TableSkeleton columns={7} />
+            ) : (
+              <TableBody>
+                {users.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">
+                      {u.firstName} {u.lastName}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                    <TableCell className="text-muted-foreground">{u.mobile}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{formatRole(u.role)}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={u.status === 'ACTIVE' ? 'success' : 'muted'}>{u.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(u.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewUser(u)}>View</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditModal(u)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => toggleStatus(u)}
+                            variant={u.status === 'ACTIVE' ? 'destructive' : 'default'}
+                          >
+                            {u.status === 'ACTIVE' ? (
+                              <>
+                                <UserRoundX className="h-4 w-4" /> Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="h-4 w-4" /> Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            )}
+          </Table>
 
-              {totalPages > 1 && (
-                <Pagination className="justify-content-end mb-0">
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <Pagination.Item key={idx} active={idx === page} onClick={() => setPage(idx)}>
-                      {idx + 1}
-                    </Pagination.Item>
-                  ))}
-                </Pagination>
-              )}
-            </>
+          {!loading && users.length === 0 && (
+            <EmptyState icon={UsersIcon} title="No users found" description="Try adjusting your search or filters." />
           )}
-        </Card.Body>
+
+          {!loading && users.length > 0 && (
+            <div className="border-t border-border p-4">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <UserFormModal

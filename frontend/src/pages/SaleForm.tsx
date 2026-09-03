@@ -1,14 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Col, Form, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Plus, Trash2 } from 'lucide-react';
 import CustomerQuickAddModal from '../components/CustomerQuickAddModal';
 import ProductQuickAddModal from '../components/ProductQuickAddModal';
 import { customerApi } from '../api/customerApi';
 import { productApi } from '../api/productApi';
 import { saleApi } from '../api/saleApi';
+import { parseApiError } from '../utils/apiError';
 import { PaymentStatus, Product } from '../types/purchase';
 import { Customer, Sale, SaleStatus } from '../types/sale';
-import { ApiErrorResponse } from '../types/user';
+import { PageHeader } from '@/components/PageHeader';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface ItemRow {
   productId: string;
@@ -19,6 +32,7 @@ interface ItemRow {
 }
 
 const EMPTY_ROW: ItemRow = { productId: '', quantity: '1', sellingPrice: '', discount: '0', tax: '0' };
+const WALK_IN = '__walk_in__';
 
 function toNumber(value: string): number {
   const parsed = Number(value);
@@ -119,10 +133,7 @@ export default function SaleForm() {
   };
 
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
-
-  const removeItemRow = (index: number) => {
-    setItems((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removeItemRow = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
 
   const subtotalAmount = items.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.sellingPrice), 0);
   const totalDiscount = items.reduce((sum, row) => sum + toNumber(row.discount), 0);
@@ -185,14 +196,16 @@ export default function SaleForm() {
     try {
       if (isEdit) {
         await saleApi.update(Number(id), { ...payload, status });
+        toast.success('Sale updated successfully');
       } else {
         await saleApi.create(payload);
+        toast.success('Sale created successfully');
       }
       navigate('/sales');
-    } catch (err: any) {
-      const apiError: ApiErrorResponse | undefined = err.response?.data;
-      setError(apiError?.message || 'Failed to save sale');
-      setFieldErrors(apiError?.fieldErrors || {});
+    } catch (err) {
+      const parsed = parseApiError(err, 'Failed to save sale');
+      setError(parsed.message);
+      setFieldErrors(parsed.fieldErrors);
     } finally {
       setSubmitting(false);
     }
@@ -200,206 +213,241 @@ export default function SaleForm() {
 
   if (loading) {
     return (
-      <div className="text-center py-5">
-        <Spinner animation="border" variant="success" />
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   return (
-    <div>
-      <h3 className="mb-4">{isEdit ? 'Edit Sale' : 'Create Sale'}</h3>
+    <div className="space-y-6">
+      <PageHeader title={isEdit ? 'Edit Sale' : 'Create Sale'} description="Record a sale to a customer or walk-in buyer." />
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-      <Form onSubmit={handleSubmit}>
-        <Card className="sh-card mb-3">
-          <Card.Body>
-            <Row className="g-3">
-              <Col md={4}>
-                <Form.Label>Customer</Form.Label>
-                <div className="d-flex gap-2">
-                  <Form.Select
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
-                    isInvalid={!!fieldErrors.customerId}
-                  >
-                    <option value="">Walk-in / no customer</option>
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <Card>
+          <CardHeader>
+            <CardTitle>Sale Information</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label>Customer</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={customerId || WALK_IN}
+                  onValueChange={(v) => setCustomerId(v === WALK_IN ? '' : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={WALK_IN}>Walk-in / no customer</SelectItem>
                     {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
+                      <SelectItem key={c.id} value={String(c.id)}>
                         {c.firstName} {c.lastName} ({c.mobile})
-                      </option>
+                      </SelectItem>
                     ))}
-                  </Form.Select>
-                  <Button variant="outline-success" onClick={() => setShowCustomerModal(true)}>
-                    +
-                  </Button>
-                </div>
-              </Col>
-              <Col md={3}>
-                <Form.Label>Sale Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={saleDate}
-                  onChange={(e) => setSaleDate(e.target.value)}
-                  isInvalid={!!fieldErrors.saleDate}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Label>Payment Status</Form.Label>
-                <Form.Select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}>
-                  <option value="UNPAID">Unpaid</option>
-                  <option value="PARTIAL">Partial</option>
-                  <option value="PAID">Paid</option>
-                </Form.Select>
-              </Col>
-              {isEdit && (
-                <Col md={3}>
-                  <Form.Label>Sale Status</Form.Label>
-                  <Form.Select value={status} onChange={(e) => setStatus(e.target.value as SaleStatus)}>
-                    <option value="PENDING">Pending</option>
-                    <option value="COMPLETED">Completed</option>
-                  </Form.Select>
-                </Col>
-              )}
-              <Col md={12}>
-                <Form.Label>Notes</Form.Label>
-                <Form.Control as="textarea" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
-
-        <Card className="sh-card mb-3">
-          <Card.Body>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <Card.Title className="fs-6 mb-0">Sale Items</Card.Title>
-              <div className="d-flex gap-2">
-                <Button size="sm" variant="outline-success" onClick={() => setShowProductModal(true)}>
-                  + New Product
-                </Button>
-                <Button size="sm" variant="success" onClick={addItemRow}>
-                  + Add Item
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="icon" onClick={() => setShowCustomerModal(true)}>
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            <Table responsive size="sm">
-              <thead>
-                <tr>
-                  <th style={{ minWidth: 220 }}>Product</th>
-                  <th style={{ width: 100 }}>Quantity</th>
-                  <th style={{ width: 130 }}>Selling Price</th>
-                  <th style={{ width: 110 }}>Discount</th>
-                  <th style={{ width: 110 }}>Tax</th>
-                  <th className="text-end" style={{ width: 120 }}>
-                    Subtotal
-                  </th>
-                  <th style={{ width: 50 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row, index) => {
-                  const stock = availableStock(row.productId);
-                  return (
-                    <tr key={index}>
-                      <td>
-                        <Form.Select value={row.productId} onChange={(e) => updateItem(index, 'productId', e.target.value)}>
-                          <option value="">Select product</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name} ({p.unit})
-                            </option>
-                          ))}
-                        </Form.Select>
-                        {stock !== null && <div className="text-muted small mt-1">Available stock: {stock}</div>}
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min={1}
-                          value={row.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.sellingPrice}
-                          onChange={(e) => updateItem(index, 'sellingPrice', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.discount}
-                          onChange={(e) => updateItem(index, 'discount', e.target.value)}
-                        />
-                      </td>
-                      <td>
-                        <Form.Control
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.tax}
-                          onChange={(e) => updateItem(index, 'tax', e.target.value)}
-                        />
-                      </td>
-                      <td className="text-end align-middle">{rowSubtotal(row).toFixed(2)}</td>
-                      <td className="text-end align-middle">
-                        <Button
-                          size="sm"
-                          variant="outline-danger"
-                          onClick={() => removeItemRow(index)}
-                          disabled={items.length === 1}
-                        >
-                          &times;
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </Table>
-
-            <div className="d-flex justify-content-end">
-              <Table borderless size="sm" className="mb-0" style={{ width: 280 }}>
-                <tbody>
-                  <tr>
-                    <td className="text-muted">Subtotal</td>
-                    <td className="text-end">{subtotalAmount.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted">Discount</td>
-                    <td className="text-end">-{totalDiscount.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="text-muted">Tax</td>
-                    <td className="text-end">+{totalTax.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td className="fw-semibold">Grand Total</td>
-                    <td className="text-end fw-semibold">{grandTotal.toFixed(2)}</td>
-                  </tr>
-                </tbody>
-              </Table>
+            <div className="space-y-1.5">
+              <Label htmlFor="saleDate">Sale Date</Label>
+              <Input
+                id="saleDate"
+                type="date"
+                value={saleDate}
+                onChange={(e) => setSaleDate(e.target.value)}
+                invalid={!!fieldErrors.saleDate}
+              />
+              {fieldErrors.saleDate && <p className="text-xs text-destructive">{fieldErrors.saleDate}</p>}
             </div>
-          </Card.Body>
+
+            <div className="space-y-1.5">
+              <Label>Payment Status</Label>
+              <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UNPAID">Unpaid</SelectItem>
+                  <SelectItem value="PARTIAL">Partial</SelectItem>
+                  <SelectItem value="PAID">Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isEdit && (
+              <div className="space-y-1.5">
+                <Label>Sale Status</Label>
+                <Select value={status} onValueChange={(v) => setStatus(v as SaleStatus)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          </CardContent>
         </Card>
 
-        <div className="d-flex gap-2">
-          <Button type="submit" variant="success" disabled={submitting}>
-            {submitting ? <Spinner size="sm" animation="border" /> : isEdit ? 'Save Changes' : 'Create Sale'}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle>Sale Items</CardTitle>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowProductModal(true)}>
+                <Plus className="h-4 w-4" /> New Product
+              </Button>
+              <Button type="button" size="sm" onClick={addItemRow}>
+                <Plus className="h-4 w-4" /> Add Item
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[220px]">Product</TableHead>
+                    <TableHead className="w-24">Qty</TableHead>
+                    <TableHead className="w-32">Price</TableHead>
+                    <TableHead className="w-28">Discount</TableHead>
+                    <TableHead className="w-28">Tax</TableHead>
+                    <TableHead className="w-28 text-right">Subtotal</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((row, index) => {
+                    const stock = availableStock(row.productId);
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <Select value={row.productId} onValueChange={(v) => updateItem(index, 'productId', v)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {products.map((p) => (
+                                <SelectItem key={p.id} value={String(p.id)}>
+                                  {p.name} ({p.unit})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {stock !== null && (
+                            <Badge variant={stock === 0 ? 'destructive' : 'muted'} className="mt-1.5">
+                              Stock: {stock}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={row.quantity}
+                            onChange={(e) => updateItem(index, 'quantity', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={row.sellingPrice}
+                            onChange={(e) => updateItem(index, 'sellingPrice', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={row.discount}
+                            onChange={(e) => updateItem(index, 'discount', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={row.tax}
+                            onChange={(e) => updateItem(index, 'tax', e.target.value)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{rowSubtotal(row).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => removeItemRow(index)}
+                            disabled={items.length === 1}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <div className="w-full max-w-xs space-y-1.5 text-sm">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{subtotalAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Discount</span>
+                  <span>-{totalDiscount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Tax</span>
+                  <span>+{totalTax.toFixed(2)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-base font-semibold">
+                  <span>Grand Total</span>
+                  <span>{grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-2">
+          <Button type="submit" loading={submitting}>
+            {isEdit ? 'Save Changes' : 'Create Sale'}
           </Button>
-          <Button type="button" variant="outline-secondary" onClick={() => navigate('/sales')}>
+          <Button type="button" variant="outline" onClick={() => navigate('/sales')}>
             Cancel
           </Button>
         </div>
-      </Form>
+      </form>
 
       <CustomerQuickAddModal
         show={showCustomerModal}
@@ -408,6 +456,7 @@ export default function SaleForm() {
           setCustomers((prev) => [...prev, customer]);
           setCustomerId(String(customer.id));
           setShowCustomerModal(false);
+          toast.success('Customer added');
         }}
       />
 
@@ -417,6 +466,7 @@ export default function SaleForm() {
         onCreated={(product) => {
           setProducts((prev) => [...prev, product]);
           setShowProductModal(false);
+          toast.success('Product added');
         }}
       />
     </div>

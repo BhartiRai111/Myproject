@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Form, Modal } from 'react-bootstrap';
 import { parseApiError } from '../utils/apiError';
 import { Role, User, UserStatus } from '../types/user';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface UserFormValues {
   firstName: string;
@@ -57,9 +69,7 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
     }
   }, [show, mode, initialUser]);
 
-  const handleChange = (field: keyof UserFormValues) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  const setField = (field: keyof UserFormValues) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
@@ -80,103 +90,101 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
   };
 
   return (
-    <Modal show={show} onHide={onClose} centered>
-      <Form onSubmit={handleSubmit}>
-        <Modal.Header closeButton>
-          <Modal.Title>{mode === 'add' ? 'Add User' : 'Edit User'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {error && <Alert variant="danger">{error}</Alert>}
+    <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{mode === 'add' ? 'Add User' : 'Edit User'}</DialogTitle>
+          <DialogDescription>
+            {mode === 'add' ? 'Create a new user account for your store.' : 'Update this user’s details.'}
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="d-flex gap-3">
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>First Name</Form.Label>
-              <Form.Control
-                required
-                value={form.firstName}
-                onChange={handleChange('firstName')}
-                isInvalid={!!fieldErrors.firstName}
-              />
-              <Form.Control.Feedback type="invalid">{fieldErrors.firstName}</Form.Control.Feedback>
-            </Form.Group>
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>Last Name</Form.Label>
-              <Form.Control
-                required
-                value={form.lastName}
-                onChange={handleChange('lastName')}
-                isInvalid={!!fieldErrors.lastName}
-              />
-              <Form.Control.Feedback type="invalid">{fieldErrors.lastName}</Form.Control.Feedback>
-            </Form.Group>
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ufFirstName">First Name</Label>
+              <Input id="ufFirstName" required value={form.firstName} onChange={setField('firstName')} invalid={!!fieldErrors.firstName} />
+              {fieldErrors.firstName && <p className="text-xs text-destructive">{fieldErrors.firstName}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ufLastName">Last Name</Label>
+              <Input id="ufLastName" required value={form.lastName} onChange={setField('lastName')} invalid={!!fieldErrors.lastName} />
+              {fieldErrors.lastName && <p className="text-xs text-destructive">{fieldErrors.lastName}</p>}
+            </div>
           </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Email</Form.Label>
-            <Form.Control
-              type="email"
-              required
-              value={form.email}
-              onChange={handleChange('email')}
-              isInvalid={!!fieldErrors.email}
-            />
-            <Form.Control.Feedback type="invalid">{fieldErrors.email}</Form.Control.Feedback>
-          </Form.Group>
+          <div className="space-y-1.5">
+            <Label htmlFor="ufEmail">Email</Label>
+            <Input id="ufEmail" type="email" required value={form.email} onChange={setField('email')} invalid={!!fieldErrors.email} />
+            {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
+          </div>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Mobile</Form.Label>
-            <Form.Control
-              required
-              value={form.mobile}
-              onChange={handleChange('mobile')}
-              isInvalid={!!fieldErrors.mobile}
-            />
-            <Form.Control.Feedback type="invalid">{fieldErrors.mobile}</Form.Control.Feedback>
-          </Form.Group>
+          <div className="space-y-1.5">
+            <Label htmlFor="ufMobile">Mobile</Label>
+            <Input id="ufMobile" required value={form.mobile} onChange={setField('mobile')} invalid={!!fieldErrors.mobile} />
+            {fieldErrors.mobile && <p className="text-xs text-destructive">{fieldErrors.mobile}</p>}
+          </div>
 
           {mode === 'add' && (
-            <Form.Group className="mb-3">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
+            <div className="space-y-1.5">
+              <Label htmlFor="ufPassword">Password</Label>
+              <Input
+                id="ufPassword"
                 type="password"
                 required
                 minLength={6}
                 value={form.password}
-                onChange={handleChange('password')}
-                isInvalid={!!fieldErrors.password}
+                onChange={setField('password')}
+                invalid={!!fieldErrors.password}
               />
-              <Form.Control.Feedback type="invalid">{fieldErrors.password}</Form.Control.Feedback>
-            </Form.Group>
+              {fieldErrors.password && <p className="text-xs text-destructive">{fieldErrors.password}</p>}
+            </div>
           )}
 
-          <div className="d-flex gap-3">
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>Role</Form.Label>
-              <Form.Select value={form.role} onChange={handleChange('role')}>
-                <option value="ADMIN">Admin</option>
-                <option value="STORE_MANAGER">Store Manager</option>
-                <option value="STAFF">Staff</option>
-              </Form.Select>
-            </Form.Group>
-
-            <Form.Group className="mb-3 flex-fill">
-              <Form.Label>Status</Form.Label>
-              <Form.Select value={form.status} onChange={handleChange('status')}>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </Form.Select>
-            </Form.Group>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ufRole">Role</Label>
+              <Select value={form.role} onValueChange={(v) => setForm((p) => ({ ...p, role: v as Role }))}>
+                <SelectTrigger id="ufRole">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="STORE_MANAGER">Store Manager</SelectItem>
+                  <SelectItem value="STAFF">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ufStatus">Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v as UserStatus }))}>
+                <SelectTrigger id="ufStatus">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button variant="success" type="submit" disabled={submitting}>
-            {mode === 'add' ? 'Create User' : 'Save Changes'}
-          </Button>
-        </Modal.Footer>
-      </Form>
-    </Modal>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting}>
+              {mode === 'add' ? 'Create User' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

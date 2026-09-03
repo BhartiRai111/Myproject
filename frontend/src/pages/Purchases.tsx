@@ -1,22 +1,49 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Card, Col, Form, Modal, Pagination, Row, Spinner, Table } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Eye, MoreHorizontal, Pencil, Plus, Search, ShoppingCart, XCircle } from 'lucide-react';
 import { purchaseApi } from '../api/purchaseApi';
 import PurchaseViewModal from '../components/PurchaseViewModal';
+import { parseApiError } from '../utils/apiError';
 import { PaymentStatus, Purchase, PurchaseStatus } from '../types/purchase';
+import { PageHeader } from '@/components/PageHeader';
+import { EmptyState } from '@/components/EmptyState';
+import { TableSkeleton } from '@/components/TableSkeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const PAGE_SIZE = 10;
+const ALL = '__all__';
 
 function paymentStatusVariant(status: PaymentStatus) {
-  if (status === 'PAID') return 'success';
-  if (status === 'PARTIAL') return 'warning';
-  return 'danger';
+  if (status === 'PAID') return 'success' as const;
+  if (status === 'PARTIAL') return 'warning' as const;
+  return 'destructive' as const;
 }
 
 function purchaseStatusVariant(status: PurchaseStatus) {
-  if (status === 'COMPLETED') return 'success';
-  if (status === 'CANCELLED') return 'danger';
-  return 'secondary';
+  if (status === 'COMPLETED') return 'success' as const;
+  if (status === 'CANCELLED') return 'destructive' as const;
+  return 'muted' as const;
 }
 
 export default function Purchases() {
@@ -35,7 +62,6 @@ export default function Purchases() {
   const [viewPurchase, setViewPurchase] = useState<Purchase | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Purchase | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [error, setError] = useState('');
 
   const loadPurchases = async () => {
     setLoading(true);
@@ -51,6 +77,8 @@ export default function Purchases() {
       });
       setPurchases(res.data.content);
       setTotalPages(res.data.totalPages);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to load purchases').message);
     } finally {
       setLoading(false);
     }
@@ -70,199 +98,201 @@ export default function Purchases() {
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
-    setError('');
     try {
       await purchaseApi.cancel(cancelTarget.id);
+      toast.success('Purchase cancelled successfully');
       setCancelTarget(null);
       loadPurchases();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to cancel purchase');
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to cancel purchase').message);
     } finally {
       setCancelling(false);
     }
   };
 
   return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Purchases</h3>
-        <Button variant="success" onClick={() => navigate('/purchases/new')}>
-          Add Purchase
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Purchases"
+        description="Track stock ordered from your suppliers."
+        actions={
+          <Button onClick={() => navigate('/purchases/new')}>
+            <Plus className="h-4 w-4" />
+            Add Purchase
+          </Button>
+        }
+      />
 
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      <Card className="sh-card mb-3">
-        <Card.Body>
-          <Form onSubmit={handleSearchSubmit}>
-            <Row className="g-3 align-items-end">
-              <Col md={3}>
-                <Form.Label>Search</Form.Label>
-                <Form.Control
-                  placeholder="Purchase number or supplier"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Label>Payment Status</Form.Label>
-                <Form.Select
-                  value={paymentStatusFilter}
-                  onChange={(e) => {
-                    setPage(0);
-                    setPaymentStatusFilter(e.target.value as PaymentStatus | '');
-                  }}
-                >
-                  <option value="">All</option>
-                  <option value="PAID">Paid</option>
-                  <option value="PARTIAL">Partial</option>
-                  <option value="UNPAID">Unpaid</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>Purchase Status</Form.Label>
-                <Form.Select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setPage(0);
-                    setStatusFilter(e.target.value as PurchaseStatus | '');
-                  }}
-                >
-                  <option value="">All</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="CANCELLED">Cancelled</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Label>From Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => {
-                    setPage(0);
-                    setFromDate(e.target.value);
-                  }}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Label>To Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => {
-                    setPage(0);
-                    setToDate(e.target.value);
-                  }}
-                />
-              </Col>
-              <Col md={1}>
-                <Button type="submit" variant="outline-success" className="w-100">
-                  Go
-                </Button>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center">
+          <form onSubmit={handleSearchSubmit} className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by purchase number or supplier"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </form>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:shrink-0">
+            <Select
+              value={paymentStatusFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setPaymentStatusFilter(v === ALL ? '' : (v as PaymentStatus));
+              }}
+            >
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Payment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Payments</SelectItem>
+                <SelectItem value="PAID">Paid</SelectItem>
+                <SelectItem value="PARTIAL">Partial</SelectItem>
+                <SelectItem value="UNPAID">Unpaid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setStatusFilter(v === ALL ? '' : (v as PurchaseStatus));
+              }}
+            >
+              <SelectTrigger className="w-full lg:w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setPage(0);
+                setFromDate(e.target.value);
+              }}
+              className="w-full lg:w-40"
+            />
+            <Input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setPage(0);
+                setToDate(e.target.value);
+              }}
+              className="w-full lg:w-40"
+            />
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className="sh-card">
-        <Card.Body>
-          {loading ? (
-            <div className="text-center py-5">
-              <Spinner animation="border" variant="success" />
-            </div>
-          ) : purchases.length === 0 ? (
-            <div className="text-center text-muted py-5">No purchases found.</div>
-          ) : (
-            <>
-              <Table hover responsive>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Purchase Number</th>
-                    <th>Supplier</th>
-                    <th>Purchase Date</th>
-                    <th className="text-end">Total Amount</th>
-                    <th>Payment Status</th>
-                    <th>Purchase Status</th>
-                    <th className="text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchases.map((p) => (
-                    <tr key={p.id}>
-                      <td>{p.id}</td>
-                      <td>{p.purchaseNumber}</td>
-                      <td>{p.supplier.name}</td>
-                      <td>{p.purchaseDate}</td>
-                      <td className="text-end">{p.totalAmount.toFixed(2)}</td>
-                      <td>
-                        <Badge bg={paymentStatusVariant(p.paymentStatus)}>{p.paymentStatus}</Badge>
-                      </td>
-                      <td>
-                        <Badge bg={purchaseStatusVariant(p.status)}>{p.status}</Badge>
-                      </td>
-                      <td className="text-end">
-                        <Button size="sm" variant="outline-secondary" className="me-2" onClick={() => setViewPurchase(p)}>
-                          View
-                        </Button>
-                        {p.status !== 'CANCELLED' && (
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            className="me-2"
-                            onClick={() => navigate(`/purchases/${p.id}/edit`)}
-                          >
-                            Edit
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Purchase #</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            {loading ? (
+              <TableSkeleton columns={7} />
+            ) : (
+              <TableBody>
+                {purchases.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.purchaseNumber}</TableCell>
+                    <TableCell>{p.supplier.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{p.purchaseDate}</TableCell>
+                    <TableCell className="text-right font-medium">{p.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge variant={paymentStatusVariant(p.paymentStatus)}>{p.paymentStatus}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={purchaseStatusVariant(p.status)}>{p.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
-                        )}
-                        {p.status !== 'CANCELLED' && (
-                          <Button size="sm" variant="outline-danger" onClick={() => setCancelTarget(p)}>
-                            Cancel
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewPurchase(p)}>
+                            <Eye className="h-4 w-4" /> View
+                          </DropdownMenuItem>
+                          {p.status !== 'CANCELLED' && (
+                            <DropdownMenuItem onClick={() => navigate(`/purchases/${p.id}/edit`)}>
+                              <Pencil className="h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                          )}
+                          {p.status !== 'CANCELLED' && (
+                            <DropdownMenuItem variant="destructive" onClick={() => setCancelTarget(p)}>
+                              <XCircle className="h-4 w-4" /> Cancel
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            )}
+          </Table>
 
-              {totalPages > 1 && (
-                <Pagination className="justify-content-end mb-0">
-                  {Array.from({ length: totalPages }).map((_, idx) => (
-                    <Pagination.Item key={idx} active={idx === page} onClick={() => setPage(idx)}>
-                      {idx + 1}
-                    </Pagination.Item>
-                  ))}
-                </Pagination>
-              )}
-            </>
+          {!loading && purchases.length === 0 && (
+            <EmptyState
+              icon={ShoppingCart}
+              title="No purchases found"
+              description="Try adjusting your search or filters, or create a new purchase."
+              action={
+                <Button size="sm" onClick={() => navigate('/purchases/new')}>
+                  <Plus className="h-4 w-4" /> Add Purchase
+                </Button>
+              }
+            />
           )}
-        </Card.Body>
+
+          {!loading && purchases.length > 0 && (
+            <div className="border-t border-border p-4">
+              <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <PurchaseViewModal show={!!viewPurchase} purchase={viewPurchase} onClose={() => setViewPurchase(null)} />
 
-      <Modal show={!!cancelTarget} onHide={() => setCancelTarget(null)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Cancel Purchase</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to cancel purchase{' '}
-          <strong>{cancelTarget?.purchaseNumber}</strong>? This cannot be undone, and the purchase will remain in
-          history with a Cancelled status.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline-secondary" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-            Keep Purchase
-          </Button>
-          <Button variant="danger" onClick={handleCancelConfirm} disabled={cancelling}>
-            {cancelling ? <Spinner size="sm" animation="border" /> : 'Cancel Purchase'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <Dialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Cancel Purchase</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel purchase <strong>{cancelTarget?.purchaseNumber}</strong>? This cannot
+              be undone, and the purchase will remain in history with a Cancelled status.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
+              Keep Purchase
+            </Button>
+            <Button variant="destructive" loading={cancelling} onClick={handleCancelConfirm}>
+              Cancel Purchase
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

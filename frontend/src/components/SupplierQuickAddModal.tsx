@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { customerApi } from '../api/customerApi';
+import { supplierApi } from '../api/supplierApi';
 import { parseApiError } from '../utils/apiError';
-import { Customer } from '../types/sale';
+import { Supplier } from '../types/purchase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,23 +18,23 @@ import {
 interface Props {
   show: boolean;
   onClose: () => void;
-  onCreated: (customer: Customer) => void;
+  onCreated: (supplier: Supplier) => void;
 }
 
-export default function CustomerQuickAddModal({ show, onClose, onCreated }: Props) {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [mobile, setMobile] = useState('');
+export default function SupplierQuickAddModal({ show, onClose, onCreated }: Props) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (show) {
-      setFirstName('');
-      setLastName('');
-      setMobile('');
+      setName('');
+      setPhone('');
       setEmail('');
+      setAddress('');
       setError('');
     }
   }, [show]);
@@ -44,10 +44,10 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
     setSubmitting(true);
     setError('');
     try {
-      const res = await customerApi.create({ firstName, lastName, mobile, email });
+      const res = await supplierApi.create({ name, phone, email, address });
       onCreated(res.data);
     } catch (err) {
-      setError(parseApiError(err, 'Failed to add customer').message);
+      setError(parseApiError(err, 'Failed to add supplier').message);
     } finally {
       setSubmitting(false);
     }
@@ -57,8 +57,8 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
     <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Add Customer</DialogTitle>
-          <DialogDescription>Register a new customer for this sale.</DialogDescription>
+          <DialogTitle>Add Supplier</DialogTitle>
+          <DialogDescription>Add a new supplier for this purchase.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {error && (
@@ -66,30 +66,28 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="cqFirstName">First Name</Label>
-              <Input id="cqFirstName" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cqLastName">Last Name</Label>
-              <Input id="cqLastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="sqName">Name</Label>
+            <Input id="sqName" required value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cqMobile">Mobile</Label>
-            <Input id="cqMobile" required value={mobile} onChange={(e) => setMobile(e.target.value)} />
+            <Label htmlFor="sqPhone">Phone</Label>
+            <Input id="sqPhone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="cqEmail">Email</Label>
-            <Input id="cqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Label htmlFor="sqEmail">Email</Label>
+            <Input id="sqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="sqAddress">Address</Label>
+            <Input id="sqAddress" value={address} onChange={(e) => setAddress(e.target.value)} />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
             <Button type="submit" loading={submitting}>
-              Add Customer
+              Add Supplier
             </Button>
           </DialogFooter>
         </form>
