@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class SupplierCreateRequest {
+public class SupplierUpdateRequest {
 
     @NotBlank(message = "Supplier name is required")
     private String name;

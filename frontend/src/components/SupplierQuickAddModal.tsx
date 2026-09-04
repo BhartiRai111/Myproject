@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supplierApi } from '../api/supplierApi';
 import { parseApiError } from '../utils/apiError';
-import { Supplier } from '../types/purchase';
+import { Supplier } from '../types/supplier';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,19 +23,21 @@ interface Props {
 
 export default function SupplierQuickAddModal({ show, onClose, onCreated }: Props) {
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (show) {
       setName('');
-      setPhone('');
+      setMobile('');
       setEmail('');
       setAddress('');
       setError('');
+      setFieldErrors({});
     }
   }, [show]);
 
@@ -43,11 +45,19 @@ export default function SupplierQuickAddModal({ show, onClose, onCreated }: Prop
     e.preventDefault();
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     try {
-      const res = await supplierApi.create({ name, phone, email, address });
+      const res = await supplierApi.create({
+        name,
+        mobile,
+        email: email || undefined,
+        address: address || undefined,
+      });
       onCreated(res.data);
     } catch (err) {
-      setError(parseApiError(err, 'Failed to add supplier').message);
+      const parsed = parseApiError(err, 'Failed to add supplier');
+      setError(parsed.message);
+      setFieldErrors(parsed.fieldErrors);
     } finally {
       setSubmitting(false);
     }
@@ -68,15 +78,36 @@ export default function SupplierQuickAddModal({ show, onClose, onCreated }: Prop
           )}
           <div className="space-y-1.5">
             <Label htmlFor="sqName">Name</Label>
-            <Input id="sqName" required value={name} onChange={(e) => setName(e.target.value)} />
+            <Input
+              id="sqName"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              invalid={!!fieldErrors.name}
+            />
+            {fieldErrors.name && <p className="text-xs text-destructive">{fieldErrors.name}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="sqPhone">Phone</Label>
-            <Input id="sqPhone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Label htmlFor="sqMobile">Mobile</Label>
+            <Input
+              id="sqMobile"
+              required
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
+              invalid={!!fieldErrors.mobile}
+            />
+            {fieldErrors.mobile && <p className="text-xs text-destructive">{fieldErrors.mobile}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sqEmail">Email</Label>
-            <Input id="sqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="sqEmail"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              invalid={!!fieldErrors.email}
+            />
+            {fieldErrors.email && <p className="text-xs text-destructive">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sqAddress">Address</Label>

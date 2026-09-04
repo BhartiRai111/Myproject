@@ -12,6 +12,7 @@ import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseItem;
 import com.storehub.entity.PurchaseStatus;
 import com.storehub.entity.Supplier;
+import com.storehub.entity.SupplierStatus;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.PurchaseNotFoundException;
 import com.storehub.repository.PurchaseRepository;
@@ -58,6 +59,10 @@ public class PurchaseService {
     public PurchaseResponse createPurchase(PurchaseCreateRequest request) {
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
 
+        if (supplier.getStatus() == SupplierStatus.INACTIVE) {
+            throw new BadRequestException("Supplier '" + supplier.getName() + "' is inactive and cannot be used for new purchases");
+        }
+
         Purchase purchase = Purchase.builder()
                 .supplier(supplier)
                 .purchaseDate(request.getPurchaseDate())
@@ -96,7 +101,12 @@ public class PurchaseService {
             restoreStock(oldItems);
         }
 
+        Long oldSupplierId = purchase.getSupplier().getId();
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
+
+        if (supplier.getStatus() == SupplierStatus.INACTIVE && !supplier.getId().equals(oldSupplierId)) {
+            throw new BadRequestException("Supplier '" + supplier.getName() + "' is inactive and cannot be used for new purchases");
+        }
 
         purchase.setSupplier(supplier);
         purchase.setPurchaseDate(request.getPurchaseDate());

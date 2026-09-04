@@ -34,7 +34,7 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-0.5 text-sm font-medium">{children}</p>
+      <div className="mt-0.5 text-sm font-medium">{children}</div>
     </div>
   );
 }
@@ -52,6 +52,8 @@ export default function PurchaseViewModal({ show, purchase, onClose }: Props) {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <InfoField label="Purchase Number">{purchase.purchaseNumber}</InfoField>
               <InfoField label="Supplier">{purchase.supplier.name}</InfoField>
+              <InfoField label="Supplier Mobile">{purchase.supplier.mobile || '—'}</InfoField>
+              <InfoField label="Supplier Email">{purchase.supplier.email || '—'}</InfoField>
               <InfoField label="Purchase Date">{purchase.purchaseDate}</InfoField>
               <InfoField label="Payment Status">
                 <Badge variant={paymentStatusVariant(purchase.paymentStatus)}>{purchase.paymentStatus}</Badge>

@@ -14,9 +14,11 @@ import Purchases from './pages/Purchases';
 import Register from './pages/Register';
 import SaleForm from './pages/SaleForm';
 import Sales from './pages/Sales';
+import SupplierForm from './pages/SupplierForm';
+import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 
-const DISABLED_MODULES = ['inventory', 'suppliers', 'customers', 'payments', 'reports'];
+const DISABLED_MODULES = ['inventory', 'customers', 'payments', 'reports'];
 
 export default function App() {
   return (
@@ -49,6 +51,12 @@ export default function App() {
             <Route element={<ManagerRoute />}>
               <Route path="/products/new" element={<ProductForm />} />
               <Route path="/products/:id/edit" element={<ProductForm />} />
+            </Route>
+
+            <Route element={<ManagerRoute />}>
+              <Route path="/suppliers" element={<Suppliers />} />
+              <Route path="/suppliers/new" element={<SupplierForm />} />
+              <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
             </Route>
 
             {DISABLED_MODULES.map((path) => (

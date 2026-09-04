@@ -8,8 +8,9 @@ import { productApi } from '../api/productApi';
 import { purchaseApi } from '../api/purchaseApi';
 import { supplierApi } from '../api/supplierApi';
 import { parseApiError } from '../utils/apiError';
-import { PaymentStatus, Purchase, PurchaseStatus, Supplier } from '../types/purchase';
+import { PaymentStatus, Purchase, PurchaseStatus } from '../types/purchase';
 import { Product } from '../types/product';
+import { Supplier } from '../types/supplier';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,8 +66,11 @@ export default function PurchaseForm() {
 
   useEffect(() => {
     const loadReferenceData = async () => {
-      const [supplierRes, productRes] = await Promise.all([supplierApi.list(), productApi.list({ size: 200 })]);
-      setSuppliers(supplierRes.data);
+      const [supplierRes, productRes] = await Promise.all([
+        supplierApi.list({ size: 200 }),
+        productApi.list({ size: 200 }),
+      ]);
+      setSuppliers(supplierRes.data.content);
       setProducts(productRes.data.content);
     };
 
@@ -219,8 +223,9 @@ export default function PurchaseForm() {
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)}>
+                      <SelectItem key={s.id} value={String(s.id)} disabled={s.status === 'INACTIVE'}>
                         {s.name}
+                        {s.status === 'INACTIVE' ? ' (Inactive)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -416,8 +421,8 @@ export default function PurchaseForm() {
         onClose={() => setShowSupplierModal(false)}
         onCreated={(supplier) => {
           setSuppliers((prev) => [...prev, supplier]);
-          setSupplierId(String(supplier.id));
           setShowSupplierModal(false);
+          setTimeout(() => setSupplierId(String(supplier.id)), 0);
           toast.success('Supplier added');
         }}
       />

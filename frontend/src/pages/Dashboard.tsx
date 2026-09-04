@@ -133,7 +133,7 @@ export default function Dashboard() {
         await Promise.allSettled([
           productApi.list({ size: 200 }),
           customerApi.list(),
-          supplierApi.list(),
+          supplierApi.list({ size: 1, status: 'ACTIVE' }),
           saleApi.list({ fromDate: today, toDate: today, size: 200 }),
           saleApi.list({ size: 5 }),
           saleApi.list({ fromDate: from, toDate: today, size: 200 }),
@@ -153,7 +153,7 @@ export default function Dashboard() {
         setTotalProducts(productsRes.value.data.totalElements);
       }
       if (customersRes.status === 'fulfilled') setTotalCustomers(customersRes.value.data.length);
-      if (suppliersRes.status === 'fulfilled') setTotalSuppliers(suppliersRes.value.data.length);
+      if (suppliersRes.status === 'fulfilled') setTotalSuppliers(suppliersRes.value.data.totalElements);
 
       if (todaysSalesRes.status === 'fulfilled') {
         const sum = todaysSalesRes.value.data.content

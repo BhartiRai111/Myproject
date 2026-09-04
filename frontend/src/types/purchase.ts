@@ -1,23 +1,8 @@
 import type { Product } from './product';
+import type { Supplier } from './supplier';
 
 export type { Product };
-
-export interface Supplier {
-  id: number;
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface SupplierCreatePayload {
-  name: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-}
+export type { Supplier };
 
 export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
 

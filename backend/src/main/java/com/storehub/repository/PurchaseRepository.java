@@ -10,8 +10,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
+
+    List<Purchase> findBySupplierIdOrderByCreatedAtDesc(Long supplierId);
 
     @Query("SELECT p FROM Purchase p WHERE " +
             "(:search IS NULL OR :search = '' OR " +
