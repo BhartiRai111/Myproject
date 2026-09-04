@@ -19,6 +19,12 @@ public class SaleItemResponse {
     private BigDecimal discount;
     private BigDecimal tax;
     private BigDecimal subtotal;
+    private BigDecimal gstPercent;
+    private BigDecimal taxableAmount;
+    private BigDecimal cgstAmount;
+    private BigDecimal sgstAmount;
+    private BigDecimal igstAmount;
+    private Long salesOrderItemId;
 
     public static SaleItemResponse fromEntity(SaleItem item) {
         return SaleItemResponse.builder()
@@ -30,6 +36,12 @@ public class SaleItemResponse {
                 .discount(item.getDiscount())
                 .tax(item.getTax())
                 .subtotal(item.getSubtotal())
+                .gstPercent(item.getGstPercent())
+                .taxableAmount(item.getTaxableAmount())
+                .cgstAmount(item.getCgstAmount())
+                .sgstAmount(item.getSgstAmount())
+                .igstAmount(item.getIgstAmount())
+                .salesOrderItemId(item.getSalesOrderItem() != null ? item.getSalesOrderItem().getId() : null)
                 .build();
     }
 }

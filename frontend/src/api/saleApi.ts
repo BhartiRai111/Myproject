@@ -30,4 +30,5 @@ export const saleApi = {
   create: (payload: SaleCreatePayload) => api.post<Sale>('/sales', payload),
   update: (id: number, payload: SaleUpdatePayload) => api.put<Sale>(`/sales/${id}`, payload),
   cancel: (id: number) => api.patch<Sale>(`/sales/${id}/cancel`),
+  remove: (id: number) => api.delete(`/sales/${id}`),
 };

@@ -57,4 +57,11 @@ public class SaleController {
     public ResponseEntity<SaleResponse> cancelSale(@PathVariable Long id) {
         return ResponseEntity.ok(saleService.cancelSale(id));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
+        saleService.deleteSale(id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -13,8 +13,16 @@ import Products from './pages/Products';
 import PurchaseForm from './pages/PurchaseForm';
 import Purchases from './pages/Purchases';
 import Register from './pages/Register';
-import SaleForm from './pages/SaleForm';
-import Sales from './pages/Sales';
+import SalesHub from './pages/sales/SalesHub';
+import SalesOrders from './pages/sales/SalesOrders';
+import SalesOrderForm from './pages/sales/SalesOrderForm';
+import SalesOrderDetail from './pages/sales/SalesOrderDetail';
+import SalesBills from './pages/sales/SalesBills';
+import SalesBillForm from './pages/sales/SalesBillForm';
+import SalesBillDetail from './pages/sales/SalesBillDetail';
+import Receipts from './pages/sales/Receipts';
+import ReceiptForm from './pages/sales/ReceiptForm';
+import ReceiptDetail from './pages/sales/ReceiptDetail';
 import SupplierForm from './pages/SupplierForm';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
@@ -54,11 +62,25 @@ export default function App() {
               <Route path="/purchases/:id/edit" element={<PurchaseForm />} />
             </Route>
 
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/sales/new" element={<SaleForm />} />
+            <Route path="/sales" element={<SalesHub />} />
+
+            <Route path="/sales/orders" element={<SalesOrders />} />
+            <Route path="/sales/orders/new" element={<SalesOrderForm />} />
+            <Route path="/sales/orders/:id" element={<SalesOrderDetail />} />
             <Route element={<ManagerRoute />}>
-              <Route path="/sales/:id/edit" element={<SaleForm />} />
+              <Route path="/sales/orders/:id/edit" element={<SalesOrderForm />} />
             </Route>
+
+            <Route path="/sales/bills" element={<SalesBills />} />
+            <Route path="/sales/bills/new" element={<SalesBillForm />} />
+            <Route path="/sales/bills/:id" element={<SalesBillDetail />} />
+            <Route element={<ManagerRoute />}>
+              <Route path="/sales/bills/:id/edit" element={<SalesBillForm />} />
+            </Route>
+
+            <Route path="/sales/receipts" element={<Receipts />} />
+            <Route path="/sales/receipts/new" element={<ReceiptForm />} />
+            <Route path="/sales/receipts/:id" element={<ReceiptDetail />} />
 
             <Route path="/products" element={<Products />} />
             <Route element={<ManagerRoute />}>

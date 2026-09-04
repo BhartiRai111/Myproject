@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, MoreHorizontal, Pencil, Plus, Receipt, Search, XCircle } from 'lucide-react';
-import { saleApi } from '../api/saleApi';
-import SaleViewModal from '../components/SaleViewModal';
-import { useAuth } from '../context/AuthContext';
-import { parseApiError } from '../utils/apiError';
-import { PaymentStatus } from '../types/purchase';
-import { Sale, SaleStatus } from '../types/sale';
+import { ClipboardList, Eye, MoreHorizontal, Pencil, Plus, Search, FilePlus, XCircle } from 'lucide-react';
+import { salesOrderApi } from '../../api/salesOrderApi';
+import { customerApi } from '../../api/customerApi';
+import { parseApiError } from '../../utils/apiError';
+import { Customer } from '../../types/sale';
+import { SalesOrder, SalesOrderStatus } from '../../types/salesOrder';
+import { BackButton } from '@/components/BackButton';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { TableSkeleton } from '@/components/TableSkeleton';
@@ -36,79 +36,75 @@ import {
 const PAGE_SIZE = 10;
 const ALL = '__all__';
 
-function paymentStatusVariant(status: PaymentStatus) {
-  if (status === 'PAID') return 'success' as const;
-  if (status === 'PARTIAL') return 'warning' as const;
-  return 'destructive' as const;
-}
-
-function saleStatusVariant(status: SaleStatus) {
+function statusVariant(status: SalesOrderStatus) {
   if (status === 'COMPLETED') return 'success' as const;
   if (status === 'CANCELLED') return 'destructive' as const;
+  if (status === 'PARTIALLY_BILLED') return 'warning' as const;
   return 'muted' as const;
 }
 
-export default function Sales() {
+export default function SalesOrders() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const canManage = user?.role === 'ADMIN' || user?.role === 'STORE_MANAGER';
 
-  const [sales, setSales] = useState<Sale[]>([]);
+  const [orders, setOrders] = useState<SalesOrder[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | ''>('');
-  const [statusFilter, setStatusFilter] = useState<SaleStatus | ''>('');
+  const [customerFilter, setCustomerFilter] = useState<number | ''>('');
+  const [statusFilter, setStatusFilter] = useState<SalesOrderStatus | ''>('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  const [viewSale, setViewSale] = useState<Sale | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Sale | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<SalesOrder | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
-  const loadSales = async () => {
+  useEffect(() => {
+    customerApi.list().then((res) => setCustomers(res.data));
+  }, []);
+
+  const load = async () => {
     setLoading(true);
     try {
-      const res = await saleApi.list({
+      const res = await salesOrderApi.list({
         search,
-        paymentStatus: paymentStatusFilter,
+        customerId: customerFilter,
         status: statusFilter,
         fromDate,
         toDate,
         page,
         size: PAGE_SIZE,
       });
-      setSales(res.data.content);
+      setOrders(res.data.content);
       setTotalPages(res.data.totalPages);
     } catch (err) {
-      toast.error(parseApiError(err, 'Failed to load sales').message);
+      toast.error(parseApiError(err, 'Failed to load sales orders').message);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSales();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, paymentStatusFilter, statusFilter, fromDate, toDate]);
+  }, [page, customerFilter, statusFilter, fromDate, toDate]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
-    loadSales();
+    load();
   };
 
   const handleCancelConfirm = async () => {
     if (!cancelTarget) return;
     setCancelling(true);
     try {
-      await saleApi.cancel(cancelTarget.id);
-      toast.success('Sale cancelled successfully');
+      await salesOrderApi.cancel(cancelTarget.id);
+      toast.success('Sales order cancelled');
       setCancelTarget(null);
-      loadSales();
+      load();
     } catch (err) {
-      toast.error(parseApiError(err, 'Failed to cancel sale').message);
+      toast.error(parseApiError(err, 'Failed to cancel sales order').message);
     } finally {
       setCancelling(false);
     }
@@ -116,13 +112,15 @@ export default function Sales() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Sales" onClick={() => navigate('/sales')} />
+
       <PageHeader
-        title="Sales"
-        description="Record and track customer sales."
+        title="Sales Orders"
+        description="Orders placed by customers before they are billed."
         actions={
-          <Button onClick={() => navigate('/sales/new')}>
+          <Button onClick={() => navigate('/sales/orders/new')}>
             <Plus className="h-4 w-4" />
-            Add Sale
+            New Order
           </Button>
         }
       />
@@ -132,7 +130,7 @@ export default function Sales() {
           <form onSubmit={handleSearchSubmit} className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by invoice number or customer"
+              placeholder="Search by order number or customer"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -140,35 +138,39 @@ export default function Sales() {
           </form>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:flex lg:shrink-0">
             <Select
-              value={paymentStatusFilter || ALL}
+              value={customerFilter ? String(customerFilter) : ALL}
               onValueChange={(v) => {
                 setPage(0);
-                setPaymentStatusFilter(v === ALL ? '' : (v as PaymentStatus));
+                setCustomerFilter(v === ALL ? '' : Number(v));
               }}
             >
-              <SelectTrigger className="w-full lg:w-36">
-                <SelectValue placeholder="Payment" />
+              <SelectTrigger className="w-full lg:w-40">
+                <SelectValue placeholder="Customer" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All Payments</SelectItem>
-                <SelectItem value="PAID">Paid</SelectItem>
-                <SelectItem value="PARTIAL">Partial</SelectItem>
-                <SelectItem value="UNPAID">Unpaid</SelectItem>
+                <SelectItem value={ALL}>All Customers</SelectItem>
+                {customers.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.firstName} {c.lastName || ''}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select
               value={statusFilter || ALL}
               onValueChange={(v) => {
                 setPage(0);
-                setStatusFilter(v === ALL ? '' : (v as SaleStatus));
+                setStatusFilter(v === ALL ? '' : (v as SalesOrderStatus));
               }}
             >
-              <SelectTrigger className="w-full lg:w-36">
+              <SelectTrigger className="w-full lg:w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={ALL}>All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                <SelectItem value="PARTIALLY_BILLED">Partially Billed</SelectItem>
                 <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
@@ -200,32 +202,32 @@ export default function Sales() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Customer</TableHead>
+                <TableHead>Order No.</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Customer</TableHead>
                 <TableHead className="text-right">Total</TableHead>
-                <TableHead>Payment</TableHead>
+                <TableHead className="text-right">Billed</TableHead>
+                <TableHead className="text-right">Remaining</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={7} />
+              <TableSkeleton columns={8} />
             ) : (
               <TableBody>
-                {sales.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.invoiceNumber}</TableCell>
+                {orders.map((o) => (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium">{o.orderNumber}</TableCell>
+                    <TableCell className="text-muted-foreground">{o.orderDate}</TableCell>
                     <TableCell>
-                      {s.customer ? `${s.customer.firstName} ${s.customer.lastName || ''}` : 'Walk-in'}
+                      {o.customer ? `${o.customer.firstName} ${o.customer.lastName || ''}` : '-'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{s.saleDate}</TableCell>
-                    <TableCell className="text-right font-medium">{s.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-medium">{o.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{o.billedAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{o.remainingAmount.toFixed(2)}</TableCell>
                     <TableCell>
-                      <Badge variant={paymentStatusVariant(s.paymentStatus)}>{s.paymentStatus}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={saleStatusVariant(s.status)}>{s.status}</Badge>
+                      <Badge variant={statusVariant(o.status)}>{o.status.replace('_', ' ')}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -235,16 +237,21 @@ export default function Sales() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewSale(s)}>
+                          <DropdownMenuItem onClick={() => navigate(`/sales/orders/${o.id}`)}>
                             <Eye className="h-4 w-4" /> View
                           </DropdownMenuItem>
-                          {canManage && s.status !== 'CANCELLED' && (
-                            <DropdownMenuItem onClick={() => navigate(`/sales/${s.id}/edit`)}>
+                          {(o.status === 'DRAFT' || o.status === 'CONFIRMED' || o.status === 'PARTIALLY_BILLED') && (
+                            <DropdownMenuItem onClick={() => navigate(`/sales/orders/${o.id}/edit`)}>
                               <Pencil className="h-4 w-4" /> Edit
                             </DropdownMenuItem>
                           )}
-                          {canManage && s.status !== 'CANCELLED' && (
-                            <DropdownMenuItem variant="destructive" onClick={() => setCancelTarget(s)}>
+                          {o.status !== 'COMPLETED' && o.status !== 'CANCELLED' && (
+                            <DropdownMenuItem onClick={() => navigate(`/sales/bills/new?orderId=${o.id}`)}>
+                              <FilePlus className="h-4 w-4" /> Create Bill
+                            </DropdownMenuItem>
+                          )}
+                          {(o.status === 'DRAFT' || o.status === 'CONFIRMED') && (
+                            <DropdownMenuItem variant="destructive" onClick={() => setCancelTarget(o)}>
                               <XCircle className="h-4 w-4" /> Cancel
                             </DropdownMenuItem>
                           )}
@@ -257,20 +264,20 @@ export default function Sales() {
             )}
           </Table>
 
-          {!loading && sales.length === 0 && (
+          {!loading && orders.length === 0 && (
             <EmptyState
-              icon={Receipt}
-              title="No sales found"
-              description="Try adjusting your search or filters, or record a new sale."
+              icon={ClipboardList}
+              title="No sales orders found"
+              description="Try adjusting your search or filters, or create a new order."
               action={
-                <Button size="sm" onClick={() => navigate('/sales/new')}>
-                  <Plus className="h-4 w-4" /> Add Sale
+                <Button size="sm" onClick={() => navigate('/sales/orders/new')}>
+                  <Plus className="h-4 w-4" /> New Order
                 </Button>
               }
             />
           )}
 
-          {!loading && sales.length > 0 && (
+          {!loading && orders.length > 0 && (
             <div className="border-t border-border p-4">
               <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
@@ -278,24 +285,20 @@ export default function Sales() {
         </CardContent>
       </Card>
 
-      <SaleViewModal show={!!viewSale} sale={viewSale} onClose={() => setViewSale(null)} />
-
       <Dialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Cancel Sale</DialogTitle>
+            <DialogTitle>Cancel Sales Order</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel sale <strong>{cancelTarget?.invoiceNumber}</strong>? This cannot be
-              undone. If this sale was completed, its sold quantities will be restored to stock, and it will remain
-              in sales history with a Cancelled status.
+              Are you sure you want to cancel order <strong>{cancelTarget?.orderNumber}</strong>? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-              Keep Sale
+              Keep Order
             </Button>
             <Button variant="destructive" loading={cancelling} onClick={handleCancelConfirm}>
-              Cancel Sale
+              Cancel Order
             </Button>
           </DialogFooter>
         </DialogContent>
