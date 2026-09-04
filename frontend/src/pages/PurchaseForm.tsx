@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
@@ -11,6 +11,9 @@ import { parseApiError } from '../utils/apiError';
 import { PaymentStatus, Purchase, PurchaseStatus } from '../types/purchase';
 import { Product } from '../types/product';
 import { Supplier } from '../types/supplier';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +67,12 @@ export default function PurchaseForm() {
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
 
+  const initialSnapshot = useRef<string | null>(null);
+  const getSnapshot = () => JSON.stringify({ supplierId, purchaseDate, paymentStatus, status, notes, items });
+  const { guardedNavigate, confirmOpen, confirmLeave, cancelLeave } = useUnsavedChangesGuard(
+    () => initialSnapshot.current !== null && getSnapshot() !== initialSnapshot.current
+  );
+
   useEffect(() => {
     const loadReferenceData = async () => {
       const [supplierRes, productRes] = await Promise.all([
@@ -97,6 +106,13 @@ export default function PurchaseForm() {
     Promise.all([loadReferenceData(), loadPurchase()]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && initialSnapshot.current === null) {
+      initialSnapshot.current = getSnapshot();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const getProduct = (productId: string) => products.find((p) => String(p.id) === productId);
 
@@ -200,6 +216,8 @@ export default function PurchaseForm() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Purchases" onClick={() => guardedNavigate('/purchases')} />
+
       <PageHeader title={isEdit ? 'Edit Purchase' : 'Create Purchase'} description="Record stock ordered from a supplier." />
 
       {error && (
@@ -410,7 +428,7 @@ export default function PurchaseForm() {
           <Button type="submit" loading={submitting}>
             {isEdit ? 'Save Changes' : 'Create Purchase'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/purchases')}>
+          <Button type="button" variant="outline" onClick={() => guardedNavigate('/purchases')}>
             Cancel
           </Button>
         </div>
@@ -435,6 +453,14 @@ export default function PurchaseForm() {
           setShowProductModal(false);
           toast.success('Product added');
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes to this purchase. Leaving now will discard them."
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
       />
     </div>
   );

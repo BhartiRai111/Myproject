@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -9,6 +9,9 @@ import { hsnApi, itemGroupApi, unitApi } from '../api/mastersApi';
 import { parseApiError } from '../utils/apiError';
 import { Category, Product } from '../types/product';
 import { Hsn, ItemGroup, Unit } from '../types/masters';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,6 +69,38 @@ export default function ProductForm() {
 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
+  const initialSnapshot = useRef<string | null>(null);
+  const getSnapshot = () =>
+    JSON.stringify({
+      name,
+      sku,
+      barcode,
+      categoryId,
+      brand,
+      unit,
+      purchasePrice,
+      sellingPrice,
+      tax,
+      minStockLevel,
+      description,
+      manualCode,
+      itemGroupId,
+      hsnId,
+      purchaseUnitId,
+      saleUnitId,
+      tolerancePercent,
+      itemType,
+      taxNature,
+      taxBasedOn,
+      partyName,
+      partyProductName,
+      freeValue,
+      applicableProperty,
+    });
+  const { guardedNavigate, confirmOpen, confirmLeave, cancelLeave } = useUnsavedChangesGuard(
+    () => initialSnapshot.current !== null && getSnapshot() !== initialSnapshot.current
+  );
+
   useEffect(() => {
     const loadCategories = async () => {
       const res = await categoryApi.list();
@@ -122,6 +157,13 @@ export default function ProductForm() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && initialSnapshot.current === null) {
+      initialSnapshot.current = getSnapshot();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const validate = (): string | null => {
     if (!name.trim()) return 'Product name is required';
@@ -202,6 +244,8 @@ export default function ProductForm() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Products" onClick={() => guardedNavigate('/products')} />
+
       <PageHeader
         title={isEdit ? 'Edit Product' : 'Add Product'}
         description="Manage catalog details, pricing, and stock thresholds."
@@ -499,7 +543,7 @@ export default function ProductForm() {
           <Button type="submit" loading={submitting}>
             {isEdit ? 'Save Changes' : 'Create Product'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/products')}>
+          <Button type="button" variant="outline" onClick={() => guardedNavigate('/products')}>
             Cancel
           </Button>
         </div>
@@ -514,6 +558,14 @@ export default function ProductForm() {
           setTimeout(() => setCategoryId(String(category.id)), 0);
           toast.success('Category added');
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes to this product. Leaving now will discard them."
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
       />
     </div>
   );

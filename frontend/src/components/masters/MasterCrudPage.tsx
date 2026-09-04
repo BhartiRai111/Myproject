@@ -1,7 +1,10 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { LucideIcon, MoreHorizontal, Plus, Search, ShieldCheck, Ban } from 'lucide-react';
 import { parseApiError } from '../../utils/apiError';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { TableSkeleton } from '@/components/TableSkeleton';
@@ -61,6 +64,8 @@ export interface MasterCrudPageProps<T extends MasterRow, TPayload> {
   deactivate: (id: number) => Promise<any>;
   extraFilterSlot?: ReactNode;
   reloadToken?: unknown;
+  backTo?: string;
+  backLabel?: string;
 }
 
 const PAGE_SIZE = 10;
@@ -84,6 +89,8 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
   deactivate,
   extraFilterSlot,
   reloadToken,
+  backTo = '/masters',
+  backLabel = 'Back to Masters',
 }: MasterCrudPageProps<T, TPayload>) {
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,6 +109,9 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [viewItem, setViewItem] = useState<T | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const initialValuesSnapshot = useRef<string | null>(null);
+  const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
@@ -129,19 +139,40 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
 
   const openAdd = () => {
     setValues(emptyValues);
+    initialValuesSnapshot.current = JSON.stringify(emptyValues);
     setError('');
     setFieldErrors({});
     setFormModal({ show: true, mode: 'add', item: null });
   };
 
   const openEdit = (item: T) => {
-    setValues(toFormValues(item));
+    const formValues = toFormValues(item);
+    setValues(formValues);
+    initialValuesSnapshot.current = JSON.stringify(formValues);
     setError('');
     setFieldErrors({});
     setFormModal({ show: true, mode: 'edit', item });
   };
 
   const closeForm = () => setFormModal((prev) => ({ ...prev, show: false }));
+
+  const isFormDirty = () =>
+    initialValuesSnapshot.current !== null && JSON.stringify(values) !== initialValuesSnapshot.current;
+
+  const requestCloseForm = () => {
+    if (isFormDirty()) {
+      setDiscardConfirmOpen(true);
+    } else {
+      closeForm();
+    }
+  };
+
+  const confirmDiscard = () => {
+    setDiscardConfirmOpen(false);
+    closeForm();
+  };
+
+  const cancelDiscard = () => setDiscardConfirmOpen(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +215,8 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
 
   return (
     <div className="space-y-6">
+      <BackButton label={backLabel} onClick={() => navigate(backTo)} />
+
       <PageHeader
         title={title}
         description={description}
@@ -304,7 +337,7 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
         </CardContent>
       </Card>
 
-      <Dialog open={formModal.show} onOpenChange={(open) => !open && closeForm()}>
+      <Dialog open={formModal.show} onOpenChange={(open) => !open && requestCloseForm()}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{formModal.mode === 'add' ? `Add ${title}` : `Edit ${title}`}</DialogTitle>
@@ -325,7 +358,7 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
             {renderForm(values, (updater) => setValues((prev) => updater(prev)), fieldErrors)}
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeForm} disabled={submitting}>
+              <Button type="button" variant="outline" onClick={requestCloseForm} disabled={submitting}>
                 Cancel
               </Button>
               <Button type="submit" loading={submitting}>
@@ -335,6 +368,14 @@ export function MasterCrudPage<T extends MasterRow, TPayload>({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard unsaved changes?"
+        description={`You have unsaved changes to this ${title.toLowerCase()}. Leaving now will discard them.`}
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
 
       {renderView && (
         <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>

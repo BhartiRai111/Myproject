@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { FileText, MoreHorizontal, Plus, Search, ShieldCheck, Ban, Trash2 } from 'lucide-react';
 import { hsnApi } from '../../api/mastersApi';
 import { Hsn, HsnPayload, HsnTaxRate } from '../../types/masters';
 import { parseApiError } from '../../utils/apiError';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { TableSkeleton } from '@/components/TableSkeleton';
@@ -45,6 +48,7 @@ const emptyTaxRate = (): HsnTaxRate => ({
 const EMPTY: HsnPayload = { hsnCode: '', description: '', taxRates: [emptyTaxRate()] };
 
 export default function HsnMaster() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<Hsn[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -62,6 +66,8 @@ export default function HsnMaster() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [viewItem, setViewItem] = useState<Hsn | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const initialValuesSnapshot = useRef<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -89,23 +95,44 @@ export default function HsnMaster() {
 
   const openAdd = () => {
     setValues(EMPTY);
+    initialValuesSnapshot.current = JSON.stringify(EMPTY);
     setError('');
     setFieldErrors({});
     setFormModal({ show: true, mode: 'add', item: null });
   };
 
   const openEdit = (item: Hsn) => {
-    setValues({
+    const formValues: HsnPayload = {
       hsnCode: item.hsnCode,
       description: item.description || '',
       taxRates: item.taxRates.length > 0 ? item.taxRates.map((r) => ({ ...r })) : [emptyTaxRate()],
-    });
+    };
+    setValues(formValues);
+    initialValuesSnapshot.current = JSON.stringify(formValues);
     setError('');
     setFieldErrors({});
     setFormModal({ show: true, mode: 'edit', item });
   };
 
   const closeForm = () => setFormModal((prev) => ({ ...prev, show: false }));
+
+  const isFormDirty = () =>
+    initialValuesSnapshot.current !== null && JSON.stringify(values) !== initialValuesSnapshot.current;
+
+  const requestCloseForm = () => {
+    if (isFormDirty()) {
+      setDiscardConfirmOpen(true);
+    } else {
+      closeForm();
+    }
+  };
+
+  const confirmDiscard = () => {
+    setDiscardConfirmOpen(false);
+    closeForm();
+  };
+
+  const cancelDiscard = () => setDiscardConfirmOpen(false);
 
   const addTaxRateRow = () => setValues((p) => ({ ...p, taxRates: [...p.taxRates, emptyTaxRate()] }));
   const removeTaxRateRow = (idx: number) =>
@@ -166,6 +193,8 @@ export default function HsnMaster() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Masters" onClick={() => navigate('/masters')} />
+
       <PageHeader
         title="HSN Master"
         description="Manage HSN codes and their applicable tax rates."
@@ -280,7 +309,7 @@ export default function HsnMaster() {
         </CardContent>
       </Card>
 
-      <Dialog open={formModal.show} onOpenChange={(open) => !open && closeForm()}>
+      <Dialog open={formModal.show} onOpenChange={(open) => !open && requestCloseForm()}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{formModal.mode === 'add' ? 'Add HSN Code' : 'Edit HSN Code'}</DialogTitle>
@@ -390,7 +419,7 @@ export default function HsnMaster() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={closeForm} disabled={submitting}>
+              <Button type="button" variant="outline" onClick={requestCloseForm} disabled={submitting}>
                 Cancel
               </Button>
               <Button type="submit" loading={submitting}>
@@ -400,6 +429,14 @@ export default function HsnMaster() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={discardConfirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes to this HSN code. Leaving now will discard them."
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
 
       <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
         <DialogContent className="sm:max-w-xl">

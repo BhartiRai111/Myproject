@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supplierApi } from '../api/supplierApi';
 import { parseApiError } from '../utils/apiError';
 import { Supplier } from '../types/supplier';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +37,13 @@ export default function SupplierForm() {
   const [gstNumber, setGstNumber] = useState('');
   const [notes, setNotes] = useState('');
 
+  const initialSnapshot = useRef<string | null>(null);
+  const getSnapshot = () =>
+    JSON.stringify({ name, contactPerson, mobile, email, address, city, state, pincode, gstNumber, notes });
+  const { guardedNavigate, confirmOpen, confirmLeave, cancelLeave } = useUnsavedChangesGuard(
+    () => initialSnapshot.current !== null && getSnapshot() !== initialSnapshot.current
+  );
+
   useEffect(() => {
     const loadSupplier = async () => {
       if (!isEdit) return;
@@ -54,6 +64,13 @@ export default function SupplierForm() {
     loadSupplier().finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && initialSnapshot.current === null) {
+      initialSnapshot.current = getSnapshot();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const validate = (): string | null => {
     if (!name.trim()) return 'Supplier name is required';
@@ -117,6 +134,8 @@ export default function SupplierForm() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Suppliers" onClick={() => guardedNavigate('/suppliers')} />
+
       <PageHeader
         title={isEdit ? 'Edit Supplier' : 'Add Supplier'}
         description="Manage supplier contact and business details."
@@ -240,11 +259,19 @@ export default function SupplierForm() {
           <Button type="submit" loading={submitting}>
             {isEdit ? 'Save Changes' : 'Create Supplier'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/suppliers')}>
+          <Button type="button" variant="outline" onClick={() => guardedNavigate('/suppliers')}>
             Cancel
           </Button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes to this supplier. Leaving now will discard them."
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
+      />
     </div>
   );
 }

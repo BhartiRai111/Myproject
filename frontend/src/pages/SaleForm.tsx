@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
@@ -12,6 +12,9 @@ import { PaymentStatus } from '../types/purchase';
 import { Product } from '../types/product';
 import { Customer, Sale, SaleStatus } from '../types/sale';
 import { useAuth } from '../context/AuthContext';
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,6 +77,12 @@ export default function SaleForm() {
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
 
+  const initialSnapshot = useRef<string | null>(null);
+  const getSnapshot = () => JSON.stringify({ customerId, saleDate, paymentStatus, status, notes, items });
+  const { guardedNavigate, confirmOpen, confirmLeave, cancelLeave } = useUnsavedChangesGuard(
+    () => initialSnapshot.current !== null && getSnapshot() !== initialSnapshot.current
+  );
+
   useEffect(() => {
     const loadReferenceData = async () => {
       const [customerRes, productRes] = await Promise.all([customerApi.list(), productApi.list({ size: 200 })]);
@@ -112,6 +121,13 @@ export default function SaleForm() {
     Promise.all([loadReferenceData(), loadSale()]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && initialSnapshot.current === null) {
+      initialSnapshot.current = getSnapshot();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const getProduct = (productId: string) => products.find((p) => String(p.id) === productId);
 
@@ -227,6 +243,8 @@ export default function SaleForm() {
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Sales" onClick={() => guardedNavigate('/sales')} />
+
       <PageHeader title={isEdit ? 'Edit Sale' : 'Create Sale'} description="Record a sale to a customer or walk-in buyer." />
 
       {error && (
@@ -449,7 +467,7 @@ export default function SaleForm() {
           <Button type="submit" loading={submitting}>
             {isEdit ? 'Save Changes' : 'Create Sale'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/sales')}>
+          <Button type="button" variant="outline" onClick={() => guardedNavigate('/sales')}>
             Cancel
           </Button>
         </div>
@@ -474,6 +492,14 @@ export default function SaleForm() {
           setShowProductModal(false);
           toast.success('Product added');
         }}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Discard unsaved changes?"
+        description="You have unsaved changes to this sale. Leaving now will discard them."
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
       />
     </div>
   );
