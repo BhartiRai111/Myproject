@@ -40,6 +40,8 @@ public class CategoryService {
         Category category = Category.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .itemType(request.getItemType())
+                .applicableProperty(request.getApplicableProperty())
                 .build();
 
         return CategoryResponse.fromEntity(categoryRepository.save(category));
@@ -56,6 +58,8 @@ public class CategoryService {
 
         category.setName(request.getName());
         category.setDescription(request.getDescription());
+        category.setItemType(request.getItemType());
+        category.setApplicableProperty(request.getApplicableProperty());
 
         return CategoryResponse.fromEntity(categoryRepository.save(category));
     }

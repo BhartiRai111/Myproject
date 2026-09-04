@@ -26,12 +26,16 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [itemType, setItemType] = useState('');
+  const [applicableProperty, setApplicableProperty] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editItemType, setEditItemType] = useState('');
+  const [editApplicableProperty, setEditApplicableProperty] = useState('');
   const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
@@ -52,6 +56,8 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
     if (show) {
       setName('');
       setDescription('');
+      setItemType('');
+      setApplicableProperty('');
       setError('');
       setFieldErrors({});
       setEditingId(null);
@@ -65,9 +71,11 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
     setError('');
     setFieldErrors({});
     try {
-      await categoryApi.create({ name, description });
+      await categoryApi.create({ name, description, itemType, applicableProperty });
       setName('');
       setDescription('');
+      setItemType('');
+      setApplicableProperty('');
       toast.success('Category created successfully');
       await loadCategories();
       onChanged();
@@ -84,6 +92,8 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
     setEditingId(category.id);
     setEditName(category.name);
     setEditDescription(category.description || '');
+    setEditItemType(category.itemType || '');
+    setEditApplicableProperty(category.applicableProperty || '');
     setEditError('');
   };
 
@@ -91,7 +101,12 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
     setSavingEdit(true);
     setEditError('');
     try {
-      await categoryApi.update(id, { name: editName, description: editDescription });
+      await categoryApi.update(id, {
+        name: editName,
+        description: editDescription,
+        itemType: editItemType,
+        applicableProperty: editApplicableProperty,
+      });
       toast.success('Category updated successfully');
       setEditingId(null);
       await loadCategories();
@@ -157,6 +172,25 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
               </Button>
             </div>
           </div>
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="catItemType">Item Type</Label>
+              <Input
+                id="catItemType"
+                placeholder="e.g. Goods, Service"
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value)}
+              />
+            </div>
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="catApplicableProperty">Applicable Property</Label>
+              <Input
+                id="catApplicableProperty"
+                value={applicableProperty}
+                onChange={(e) => setApplicableProperty(e.target.value)}
+              />
+            </div>
+          </div>
         </form>
 
         <Separator />
@@ -183,6 +217,16 @@ export default function CategoryManagerDialog({ show, onClose, onChanged }: Prop
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
                             placeholder="Description"
+                          />
+                          <Input
+                            value={editItemType}
+                            onChange={(e) => setEditItemType(e.target.value)}
+                            placeholder="Item Type"
+                          />
+                          <Input
+                            value={editApplicableProperty}
+                            onChange={(e) => setEditApplicableProperty(e.target.value)}
+                            placeholder="Applicable Property"
                           />
                           <div className="flex gap-2">
                             <Button type="button" size="sm" loading={savingEdit} onClick={() => handleSaveEdit(c.id)}>

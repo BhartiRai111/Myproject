@@ -9,6 +9,7 @@ import {
   Contact,
   CreditCard,
   BarChart3,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 import { Role } from '@/types/user';
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Suppliers', path: '/suppliers', icon: Truck, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Purchases', path: '/purchases', icon: ShoppingCart, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Sales', path: '/sales', icon: Receipt, enabled: true },
+  { label: 'Masters', path: '/masters', icon: Landmark, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Customers', path: '/customers', icon: Contact, enabled: false },
   { label: 'Payments', path: '/payments', icon: CreditCard, enabled: false },
   { label: 'Reports', path: '/reports', icon: BarChart3, enabled: false },

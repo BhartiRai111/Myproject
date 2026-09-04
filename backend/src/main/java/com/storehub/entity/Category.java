@@ -28,6 +28,12 @@ public class Category {
     @Column(length = 255)
     private String description;
 
+    @Column(name = "item_type", length = 50)
+    private String itemType;
+
+    @Column(name = "applicable_property", length = 100)
+    private String applicableProperty;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CategoryStatus status;

@@ -6,6 +6,8 @@ export interface Category {
   id: number;
   name: string;
   description?: string;
+  itemType?: string;
+  applicableProperty?: string;
   status: CategoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -14,6 +16,8 @@ export interface Category {
 export interface CategoryPayload {
   name: string;
   description?: string;
+  itemType?: string;
+  applicableProperty?: string;
 }
 
 export interface Product {
@@ -32,6 +36,23 @@ export interface Product {
   stockQuantity: number;
   status: ProductStatus;
   description?: string;
+  manualCode?: string;
+  itemGroupId?: number;
+  itemGroupName?: string;
+  hsnId?: number;
+  hsnCode?: string;
+  purchaseUnitId?: number;
+  purchaseUnitName?: string;
+  saleUnitId?: number;
+  saleUnitName?: string;
+  tolerancePercent?: number;
+  itemType?: string;
+  taxNature?: string;
+  taxBasedOn?: string;
+  partyName?: string;
+  partyProductName?: string;
+  freeValue?: number;
+  applicableProperty?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,4 +69,17 @@ export interface ProductPayload {
   tax?: number;
   minStockLevel?: number;
   description?: string;
+  manualCode?: string;
+  itemGroupId?: number | '';
+  hsnId?: number | '';
+  purchaseUnitId?: number | '';
+  saleUnitId?: number | '';
+  tolerancePercent?: number;
+  itemType?: string;
+  taxNature?: string;
+  taxBasedOn?: string;
+  partyName?: string;
+  partyProductName?: string;
+  freeValue?: number;
+  applicableProperty?: string;
 }

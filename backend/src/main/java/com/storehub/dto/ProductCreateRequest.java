@@ -43,4 +43,32 @@ public class ProductCreateRequest {
     private Integer minStockLevel;
 
     private String description;
+
+    private String manualCode;
+
+    private Long itemGroupId;
+
+    private Long hsnId;
+
+    private Long purchaseUnitId;
+
+    private Long saleUnitId;
+
+    @DecimalMin(value = "0", message = "Tolerance percent must be greater than or equal to 0")
+    private BigDecimal tolerancePercent;
+
+    private String itemType;
+
+    private String taxNature;
+
+    private String taxBasedOn;
+
+    private String partyName;
+
+    private String partyProductName;
+
+    @DecimalMin(value = "0", message = "Free value must be greater than or equal to 0")
+    private BigDecimal freeValue;
+
+    private String applicableProperty;
 }

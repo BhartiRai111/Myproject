@@ -18,6 +18,7 @@ public class InventoryStartupRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        inventoryService.relaxLegacyStockQuantityColumn();
         inventoryService.backfillInventoryForExistingProducts();
     }
 }

@@ -200,6 +200,22 @@ public class InventoryService {
 
     // ---- one-time startup migration: seed Inventory from the legacy Product.stock_quantity column ----
 
+    /**
+     * The legacy products.stock_quantity column was left in the database (never dropped, per
+     * migration policy) when Inventory became the source of truth, but it is still NOT NULL with
+     * no default from its original mapping. Since Product no longer maps this column, Hibernate
+     * omits it from INSERTs, which MySQL then rejects (error 1364). Relaxing it here is idempotent
+     * and safe to run on every startup.
+     */
+    @Transactional
+    public void relaxLegacyStockQuantityColumn() {
+        try {
+            entityManager.createNativeQuery("ALTER TABLE products MODIFY stock_quantity INT NULL DEFAULT 0").executeUpdate();
+        } catch (Exception ignored) {
+            // Column already relaxed, or DDL not permitted in this environment; safe to continue.
+        }
+    }
+
     @Transactional
     public void backfillInventoryForExistingProducts() {
         List<Product> products = productRepository.findAll();

@@ -18,6 +18,18 @@ import Sales from './pages/Sales';
 import SupplierForm from './pages/SupplierForm';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
+import MastersDashboard from './pages/MastersDashboard';
+import CurrencyMaster from './pages/masters/CurrencyMaster';
+import CountryMaster from './pages/masters/CountryMaster';
+import StateMaster from './pages/masters/StateMaster';
+import CityMaster from './pages/masters/CityMaster';
+import ZoneMaster from './pages/masters/ZoneMaster';
+import NationalityMaster from './pages/masters/NationalityMaster';
+import UnitMaster from './pages/masters/UnitMaster';
+import ItemGroupMaster from './pages/masters/ItemGroupMaster';
+import HsnMaster from './pages/masters/HsnMaster';
+import EmployeeMaster from './pages/masters/EmployeeMaster';
+import PartyMaster from './pages/masters/PartyMaster';
 
 const DISABLED_MODULES = ['customers', 'payments', 'reports'];
 
@@ -60,6 +72,21 @@ export default function App() {
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/suppliers/new" element={<SupplierForm />} />
               <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
+            </Route>
+
+            <Route element={<ManagerRoute />}>
+              <Route path="/masters" element={<MastersDashboard />} />
+              <Route path="/masters/currencies" element={<CurrencyMaster />} />
+              <Route path="/masters/countries" element={<CountryMaster />} />
+              <Route path="/masters/states" element={<StateMaster />} />
+              <Route path="/masters/cities" element={<CityMaster />} />
+              <Route path="/masters/zones" element={<ZoneMaster />} />
+              <Route path="/masters/nationalities" element={<NationalityMaster />} />
+              <Route path="/masters/units" element={<UnitMaster />} />
+              <Route path="/masters/item-groups" element={<ItemGroupMaster />} />
+              <Route path="/masters/hsn" element={<HsnMaster />} />
+              <Route path="/masters/employees" element={<EmployeeMaster />} />
+              <Route path="/masters/parties" element={<PartyMaster />} />
             </Route>
 
             {DISABLED_MODULES.map((path) => (

@@ -16,6 +16,8 @@ public class CategoryResponse {
     private Long id;
     private String name;
     private String description;
+    private String itemType;
+    private String applicableProperty;
     private CategoryStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -25,6 +27,8 @@ public class CategoryResponse {
                 .id(category.getId())
                 .name(category.getName())
                 .description(category.getDescription())
+                .itemType(category.getItemType())
+                .applicableProperty(category.getApplicableProperty())
                 .status(category.getStatus())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())

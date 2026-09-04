@@ -12,4 +12,8 @@ public class CategoryCreateRequest {
     private String name;
 
     private String description;
+
+    private String itemType;
+
+    private String applicableProperty;
 }

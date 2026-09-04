@@ -5,8 +5,11 @@ import com.storehub.dto.ProductCreateRequest;
 import com.storehub.dto.ProductResponse;
 import com.storehub.dto.ProductUpdateRequest;
 import com.storehub.entity.Category;
+import com.storehub.entity.Hsn;
+import com.storehub.entity.ItemGroup;
 import com.storehub.entity.Product;
 import com.storehub.entity.ProductStatus;
+import com.storehub.entity.Unit;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ProductNotFoundException;
 import com.storehub.repository.ProductRepository;
@@ -32,6 +35,9 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
     private final InventoryService inventoryService;
+    private final ItemGroupService itemGroupService;
+    private final HsnService hsnService;
+    private final UnitService unitService;
 
     public PagedResponse<ProductResponse> searchProducts(String search, Long categoryId, ProductStatus status,
                                                            int page, int size, String sortBy, String sortDir) {
@@ -66,6 +72,10 @@ public class ProductService {
         }
 
         Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
+        ItemGroup itemGroup = request.getItemGroupId() != null ? itemGroupService.findOrThrow(request.getItemGroupId()) : null;
+        Hsn hsn = request.getHsnId() != null ? hsnService.findOrThrow(request.getHsnId()) : null;
+        Unit purchaseUnit = request.getPurchaseUnitId() != null ? unitService.findOrThrow(request.getPurchaseUnitId()) : null;
+        Unit saleUnit = request.getSaleUnitId() != null ? unitService.findOrThrow(request.getSaleUnitId()) : null;
 
         Product product = Product.builder()
                 .name(request.getName())
@@ -79,6 +89,19 @@ public class ProductService {
                 .tax(request.getTax())
                 .minStockLevel(request.getMinStockLevel())
                 .description(request.getDescription())
+                .manualCode(request.getManualCode())
+                .itemGroup(itemGroup)
+                .hsn(hsn)
+                .purchaseUnit(purchaseUnit)
+                .saleUnit(saleUnit)
+                .tolerancePercent(request.getTolerancePercent())
+                .itemType(request.getItemType())
+                .taxNature(request.getTaxNature())
+                .taxBasedOn(request.getTaxBasedOn())
+                .partyName(request.getPartyName())
+                .partyProductName(request.getPartyProductName())
+                .freeValue(request.getFreeValue())
+                .applicableProperty(request.getApplicableProperty())
                 .build();
 
         Product saved = productRepository.save(product);
@@ -106,6 +129,10 @@ public class ProductService {
         }
 
         Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
+        ItemGroup itemGroup = request.getItemGroupId() != null ? itemGroupService.findOrThrow(request.getItemGroupId()) : null;
+        Hsn hsn = request.getHsnId() != null ? hsnService.findOrThrow(request.getHsnId()) : null;
+        Unit purchaseUnit = request.getPurchaseUnitId() != null ? unitService.findOrThrow(request.getPurchaseUnitId()) : null;
+        Unit saleUnit = request.getSaleUnitId() != null ? unitService.findOrThrow(request.getSaleUnitId()) : null;
 
         product.setName(request.getName());
         product.setSku(request.getSku());
@@ -118,6 +145,19 @@ public class ProductService {
         product.setTax(request.getTax());
         product.setMinStockLevel(request.getMinStockLevel());
         product.setDescription(request.getDescription());
+        product.setManualCode(request.getManualCode());
+        product.setItemGroup(itemGroup);
+        product.setHsn(hsn);
+        product.setPurchaseUnit(purchaseUnit);
+        product.setSaleUnit(saleUnit);
+        product.setTolerancePercent(request.getTolerancePercent());
+        product.setItemType(request.getItemType());
+        product.setTaxNature(request.getTaxNature());
+        product.setTaxBasedOn(request.getTaxBasedOn());
+        product.setPartyName(request.getPartyName());
+        product.setPartyProductName(request.getPartyProductName());
+        product.setFreeValue(request.getFreeValue());
+        product.setApplicableProperty(request.getApplicableProperty());
 
         Product saved = productRepository.save(product);
         return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id));

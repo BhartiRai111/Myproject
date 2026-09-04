@@ -61,6 +61,49 @@ public class Product {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "manual_code", length = 50)
+    private String manualCode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_group_id")
+    private ItemGroup itemGroup;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hsn_id")
+    private Hsn hsn;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "purchase_unit_id")
+    private Unit purchaseUnit;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sale_unit_id")
+    private Unit saleUnit;
+
+    @Column(name = "tolerance_percent", precision = 5, scale = 2)
+    private BigDecimal tolerancePercent;
+
+    @Column(name = "item_type", length = 50)
+    private String itemType;
+
+    @Column(name = "tax_nature", length = 50)
+    private String taxNature;
+
+    @Column(name = "tax_based_on", length = 50)
+    private String taxBasedOn;
+
+    @Column(name = "party_name", length = 150)
+    private String partyName;
+
+    @Column(name = "party_product_name", length = 150)
+    private String partyProductName;
+
+    @Column(name = "free_value", precision = 12, scale = 2)
+    private BigDecimal freeValue;
+
+    @Column(name = "applicable_property", length = 100)
+    private String applicableProperty;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

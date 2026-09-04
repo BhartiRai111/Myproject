@@ -29,6 +29,23 @@ public class ProductResponse {
     private Integer stockQuantity;
     private ProductStatus status;
     private String description;
+    private String manualCode;
+    private Long itemGroupId;
+    private String itemGroupName;
+    private Long hsnId;
+    private String hsnCode;
+    private Long purchaseUnitId;
+    private String purchaseUnitName;
+    private Long saleUnitId;
+    private String saleUnitName;
+    private BigDecimal tolerancePercent;
+    private String itemType;
+    private String taxNature;
+    private String taxBasedOn;
+    private String partyName;
+    private String partyProductName;
+    private BigDecimal freeValue;
+    private String applicableProperty;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -49,6 +66,23 @@ public class ProductResponse {
                 .stockQuantity(currentStock)
                 .status(product.getStatus())
                 .description(product.getDescription())
+                .manualCode(product.getManualCode())
+                .itemGroupId(product.getItemGroup() != null ? product.getItemGroup().getId() : null)
+                .itemGroupName(product.getItemGroup() != null ? product.getItemGroup().getName() : null)
+                .hsnId(product.getHsn() != null ? product.getHsn().getId() : null)
+                .hsnCode(product.getHsn() != null ? product.getHsn().getHsnCode() : null)
+                .purchaseUnitId(product.getPurchaseUnit() != null ? product.getPurchaseUnit().getId() : null)
+                .purchaseUnitName(product.getPurchaseUnit() != null ? product.getPurchaseUnit().getName() : null)
+                .saleUnitId(product.getSaleUnit() != null ? product.getSaleUnit().getId() : null)
+                .saleUnitName(product.getSaleUnit() != null ? product.getSaleUnit().getName() : null)
+                .tolerancePercent(product.getTolerancePercent())
+                .itemType(product.getItemType())
+                .taxNature(product.getTaxNature())
+                .taxBasedOn(product.getTaxBasedOn())
+                .partyName(product.getPartyName())
+                .partyProductName(product.getPartyProductName())
+                .freeValue(product.getFreeValue())
+                .applicableProperty(product.getApplicableProperty())
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();
