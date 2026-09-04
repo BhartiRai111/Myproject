@@ -42,7 +42,7 @@ public class CustomerLedgerEntry {
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "reference_type", nullable = false, length = 20)
+    @Column(name = "reference_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private LedgerReferenceType referenceType;
 
     @Column(name = "reference_id", nullable = false)

@@ -12,26 +12,32 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Movement log of cash/bank/UPI inflows (and reversal outflows), one row per
- * Receipt. Balance per payment mode is SUM(amount), following the same
- * immutable-log convention as StockHistory and CustomerLedgerEntry.
+ * Immutable log of supplier payable movements (mirrors CustomerLedgerEntry):
+ * a Purchase Bill posts a CREDIT (increases payable), a Payment posts a
+ * DEBIT (reduces payable), and cancelling/deleting either posts an
+ * offsetting entry rather than removing history. A supplier's outstanding
+ * balance is SUM(CREDIT) - SUM(DEBIT).
  */
 @Entity
-@Table(name = "cash_ledger_entries")
+@Table(name = "supplier_ledger_entries")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CashLedgerEntry {
+public class SupplierLedgerEntry {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Supplier supplier;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_mode", nullable = false, length = 20)
-    private PaymentMode paymentMode;
+    @Column(name = "entry_type", nullable = false, length = 10)
+    private LedgerEntryType entryType;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;

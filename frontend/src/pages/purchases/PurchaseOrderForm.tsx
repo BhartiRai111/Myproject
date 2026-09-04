@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
-import SupplierQuickAddModal from '../components/SupplierQuickAddModal';
-import ProductQuickAddModal from '../components/ProductQuickAddModal';
-import { productApi } from '../api/productApi';
-import { purchaseApi } from '../api/purchaseApi';
-import { supplierApi } from '../api/supplierApi';
-import { parseApiError } from '../utils/apiError';
-import { PaymentStatus, Purchase, PurchaseStatus } from '../types/purchase';
-import { Product } from '../types/product';
-import { Supplier } from '../types/supplier';
-import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
+import SupplierQuickAddModal from '../../components/SupplierQuickAddModal';
+import ProductQuickAddModal from '../../components/ProductQuickAddModal';
+import { productApi } from '../../api/productApi';
+import { supplierApi } from '../../api/supplierApi';
+import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { parseApiError } from '../../utils/apiError';
+import { Product } from '../../types/product';
+import { Supplier } from '../../types/purchase';
+import { PurchaseOrder, PurchaseOrderPayload } from '../../types/purchaseOrder';
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
 import { BackButton } from '@/components/BackButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
@@ -29,23 +29,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface ItemRow {
   productId: string;
   quantity: string;
-  purchasePrice: string;
+  rate: string;
   discount: string;
-  tax: string;
+  gstPercent: string;
+  minQuantity: number;
 }
 
-const EMPTY_ROW: ItemRow = { productId: '', quantity: '1', purchasePrice: '', discount: '0', tax: '0' };
+const EMPTY_ROW: ItemRow = { productId: '', quantity: '1', rate: '', discount: '0', gstPercent: '0', minQuantity: 0 };
 
 function toNumber(value: string): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function rowSubtotal(row: ItemRow): number {
-  return toNumber(row.quantity) * toNumber(row.purchasePrice) - toNumber(row.discount) + toNumber(row.tax);
+function rowTotal(row: ItemRow): number {
+  const taxable = toNumber(row.quantity) * toNumber(row.rate) - toNumber(row.discount);
+  const gst = taxable * (toNumber(row.gstPercent) / 100);
+  return taxable + gst;
 }
 
-export default function PurchaseForm() {
+export default function PurchaseOrderForm() {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
@@ -58,17 +61,21 @@ export default function PurchaseForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [supplierId, setSupplierId] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState('');
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('UNPAID');
-  const [status, setStatus] = useState<PurchaseStatus>('PENDING');
-  const [notes, setNotes] = useState('');
+  const [supplierPhone, setSupplierPhone] = useState('');
+  const [supplierGstin, setSupplierGstin] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [orderDate, setOrderDate] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
+  const [remarks, setRemarks] = useState('');
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ROW }]);
 
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
 
   const initialSnapshot = useRef<string | null>(null);
-  const getSnapshot = () => JSON.stringify({ supplierId, purchaseDate, paymentStatus, status, notes, items });
+  const getSnapshot = () =>
+    JSON.stringify({ supplierId, supplierPhone, supplierGstin, billingAddress, shippingAddress, orderDate, expectedDeliveryDate, remarks, items });
   const { guardedNavigate, confirmOpen, confirmLeave, cancelLeave } = useUnsavedChangesGuard(
     () => initialSnapshot.current !== null && getSnapshot() !== initialSnapshot.current
   );
@@ -77,33 +84,37 @@ export default function PurchaseForm() {
     const loadReferenceData = async () => {
       const [supplierRes, productRes] = await Promise.all([
         supplierApi.list({ size: 200 }),
-        productApi.list({ size: 200 }),
+        productApi.list({ size: 200, status: 'ACTIVE' }),
       ]);
       setSuppliers(supplierRes.data.content);
       setProducts(productRes.data.content);
     };
 
-    const loadPurchase = async () => {
+    const loadOrder = async () => {
       if (!isEdit) return;
-      const res = await purchaseApi.getById(Number(id));
-      const purchase: Purchase = res.data;
-      setSupplierId(String(purchase.supplier.id));
-      setPurchaseDate(purchase.purchaseDate);
-      setPaymentStatus(purchase.paymentStatus);
-      setStatus(purchase.status);
-      setNotes(purchase.notes || '');
+      const res = await purchaseOrderApi.getById(Number(id));
+      const order: PurchaseOrder = res.data;
+      setSupplierId(order.supplier ? String(order.supplier.id) : '');
+      setSupplierPhone(order.supplierPhone || '');
+      setSupplierGstin(order.supplierGstin || '');
+      setBillingAddress(order.billingAddress || '');
+      setShippingAddress(order.shippingAddress || '');
+      setOrderDate(order.orderDate);
+      setExpectedDeliveryDate(order.expectedDeliveryDate || '');
+      setRemarks(order.remarks || '');
       setItems(
-        purchase.items.map((item) => ({
+        order.items.map((item) => ({
           productId: String(item.product.id),
           quantity: String(item.quantity),
-          purchasePrice: String(item.purchasePrice),
+          rate: String(item.rate),
           discount: String(item.discount),
-          tax: String(item.tax),
+          gstPercent: String(item.gstPercent),
+          minQuantity: item.receivedQuantity,
         }))
       );
     };
 
-    Promise.all([loadReferenceData(), loadPurchase()]).finally(() => setLoading(false));
+    Promise.all([loadReferenceData(), loadOrder()]).finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -123,7 +134,8 @@ export default function PurchaseForm() {
         const updated = { ...row, [field]: value };
         if (field === 'productId') {
           const product = getProduct(value);
-          updated.purchasePrice = product ? String(product.purchasePrice) : '';
+          updated.rate = product ? String(product.purchasePrice) : '';
+          updated.gstPercent = product ? String(product.tax) : '0';
         }
         return updated;
       })
@@ -133,30 +145,24 @@ export default function PurchaseForm() {
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
   const removeItemRow = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
 
-  const subtotalAmount = items.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.purchasePrice), 0);
-  const totalDiscount = items.reduce((sum, row) => sum + toNumber(row.discount), 0);
-  const totalTax = items.reduce((sum, row) => sum + toNumber(row.tax), 0);
-  const grandTotal = items.reduce((sum, row) => sum + rowSubtotal(row), 0);
+  const grandTotal = items.reduce((sum, row) => sum + rowTotal(row), 0);
 
   const validate = (): string | null => {
     if (!supplierId) return 'Supplier is required';
-    if (!purchaseDate) return 'Purchase date is required';
-    if (items.length === 0) return 'At least one purchase item is required';
-
-    const seenProducts = new Set<string>();
+    if (items.length === 0) return 'At least one order item is required';
+    const seen = new Set<string>();
     for (const row of items) {
       if (!row.productId) return 'Product is required for every item';
-      if (seenProducts.has(row.productId)) {
-        return 'The same product cannot be added more than once. Update the existing item instead.';
-      }
-      seenProducts.add(row.productId);
-
+      if (seen.has(row.productId)) return 'The same product cannot be added more than once. Update the existing item instead.';
+      seen.add(row.productId);
       if (toNumber(row.quantity) <= 0) return 'Quantity must be greater than 0';
-      if (toNumber(row.purchasePrice) < 0) return 'Purchase price must be greater than or equal to 0';
+      if (row.minQuantity > 0 && toNumber(row.quantity) < row.minQuantity) {
+        return `Quantity cannot be reduced below ${row.minQuantity} (already received)`;
+      }
+      if (toNumber(row.rate) < 0) return 'Purchase rate must be greater than or equal to 0';
       if (toNumber(row.discount) < 0) return 'Discount cannot be negative';
-      if (toNumber(row.tax) < 0) return 'Tax cannot be negative';
+      if (toNumber(row.gstPercent) < 0) return 'GST % cannot be negative';
     }
-
     return null;
   };
 
@@ -171,32 +177,37 @@ export default function PurchaseForm() {
       return;
     }
 
-    const payload = {
+    const payload: PurchaseOrderPayload = {
       supplierId: Number(supplierId),
-      purchaseDate,
-      paymentStatus,
-      notes,
+      supplierPhone: supplierPhone || undefined,
+      supplierGstin: supplierGstin || undefined,
+      billingAddress: billingAddress || undefined,
+      shippingAddress: shippingAddress || undefined,
+      orderDate,
+      expectedDeliveryDate: expectedDeliveryDate || undefined,
+      remarks: remarks || undefined,
       items: items.map((row) => ({
         productId: Number(row.productId),
         quantity: toNumber(row.quantity),
-        purchasePrice: toNumber(row.purchasePrice),
+        rate: toNumber(row.rate),
         discount: toNumber(row.discount),
-        tax: toNumber(row.tax),
+        gstPercent: toNumber(row.gstPercent),
       })),
     };
 
     setSubmitting(true);
     try {
       if (isEdit) {
-        await purchaseApi.update(Number(id), { ...payload, status });
-        toast.success('Purchase updated successfully');
+        const res = await purchaseOrderApi.update(Number(id), payload);
+        toast.success('Purchase order updated successfully');
+        navigate(`/purchases/orders/${res.data.id}`);
       } else {
-        await purchaseApi.create(payload);
-        toast.success('Purchase created successfully');
+        const res = await purchaseOrderApi.create(payload);
+        toast.success('Purchase order created successfully');
+        navigate(`/purchases/orders/${res.data.id}`);
       }
-      navigate('/purchases');
     } catch (err) {
-      const parsed = parseApiError(err, 'Failed to save purchase');
+      const parsed = parseApiError(err, 'Failed to save purchase order');
       setError(parsed.message);
       setFieldErrors(parsed.fieldErrors);
     } finally {
@@ -216,9 +227,12 @@ export default function PurchaseForm() {
 
   return (
     <div className="space-y-6">
-      <BackButton label="Back to Purchases" onClick={() => guardedNavigate('/purchases')} />
+      <BackButton label="Back to Purchase Orders" onClick={() => guardedNavigate('/purchases/orders')} />
 
-      <PageHeader title={isEdit ? 'Edit Purchase' : 'Create Purchase'} description="Record stock ordered from a supplier." />
+      <PageHeader
+        title={isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}
+        description="Purchase orders do not affect stock or accounts until billed."
+      />
 
       {error && (
         <Alert variant="destructive">
@@ -229,7 +243,7 @@ export default function PurchaseForm() {
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <Card>
           <CardHeader>
-            <CardTitle>Purchase Information</CardTitle>
+            <CardTitle>Supplier &amp; Order Details</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1.5">
@@ -241,9 +255,8 @@ export default function PurchaseForm() {
                   </SelectTrigger>
                   <SelectContent>
                     {suppliers.map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)} disabled={s.status === 'INACTIVE'}>
+                      <SelectItem key={s.id} value={String(s.id)}>
                         {s.name}
-                        {s.status === 'INACTIVE' ? ' (Inactive)' : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -252,60 +265,59 @@ export default function PurchaseForm() {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {fieldErrors.supplierId && <p className="text-xs text-destructive">{fieldErrors.supplierId}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Label htmlFor="supplierPhone">Supplier Phone</Label>
+              <Input id="supplierPhone" value={supplierPhone} onChange={(e) => setSupplierPhone(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="supplierGstin">Supplier GSTIN</Label>
+              <Input id="supplierGstin" value={supplierGstin} onChange={(e) => setSupplierGstin(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="orderDate">Order Date</Label>
               <Input
-                id="purchaseDate"
+                id="orderDate"
                 type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                invalid={!!fieldErrors.purchaseDate}
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+                invalid={!!fieldErrors.orderDate}
               />
-              {fieldErrors.purchaseDate && <p className="text-xs text-destructive">{fieldErrors.purchaseDate}</p>}
+              {fieldErrors.orderDate && <p className="text-xs text-destructive">{fieldErrors.orderDate}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label>Payment Status</Label>
-              <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UNPAID">Unpaid</SelectItem>
-                  <SelectItem value="PARTIAL">Partial</SelectItem>
-                  <SelectItem value="PAID">Paid</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="expectedDeliveryDate">Expected Delivery Date</Label>
+              <Input
+                id="expectedDeliveryDate"
+                type="date"
+                value={expectedDeliveryDate}
+                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+              />
             </div>
 
-            {isEdit && (
-              <div className="space-y-1.5">
-                <Label>Purchase Status</Label>
-                <Select value={status} onValueChange={(v) => setStatus(v as PurchaseStatus)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="billingAddress">Billing Address</Label>
+              <Textarea id="billingAddress" rows={2} value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="shippingAddress">Shipping Address</Label>
+              <Textarea id="shippingAddress" rows={2} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} />
+            </div>
 
             <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Label htmlFor="remarks">Remarks</Label>
+              <Textarea id="remarks" rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Purchase Items</CardTitle>
+            <CardTitle>Order Items</CardTitle>
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={() => setShowProductModal(true)}>
                 <Plus className="h-4 w-4" /> New Product
@@ -322,10 +334,10 @@ export default function PurchaseForm() {
                   <TableRow>
                     <TableHead className="min-w-[200px]">Product</TableHead>
                     <TableHead className="w-24">Qty</TableHead>
-                    <TableHead className="w-32">Price</TableHead>
-                    <TableHead className="w-28">Discount</TableHead>
-                    <TableHead className="w-28">Tax</TableHead>
-                    <TableHead className="w-28 text-right">Subtotal</TableHead>
+                    <TableHead className="w-28">Rate</TableHead>
+                    <TableHead className="w-24">Discount</TableHead>
+                    <TableHead className="w-20">GST %</TableHead>
+                    <TableHead className="w-28 text-right">Total</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
@@ -339,49 +351,34 @@ export default function PurchaseForm() {
                           </SelectTrigger>
                           <SelectContent>
                             {products.map((p) => (
-                              <SelectItem key={p.id} value={String(p.id)} disabled={p.status === 'INACTIVE'}>
-                                {p.name} ({p.unit}){p.status === 'INACTIVE' ? ' (Inactive)' : ''}
+                              <SelectItem key={p.id} value={String(p.id)}>
+                                {p.name} ({p.unit})
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {row.minQuantity > 0 && (
+                          <p className="mt-1 text-xs text-muted-foreground">Already received: {row.minQuantity}</p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Input
                           type="number"
-                          min={1}
+                          min={row.minQuantity || 1}
                           value={row.quantity}
                           onChange={(e) => updateItem(index, 'quantity', e.target.value)}
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.purchasePrice}
-                          onChange={(e) => updateItem(index, 'purchasePrice', e.target.value)}
-                        />
+                        <Input type="number" min={0} step="0.01" value={row.rate} onChange={(e) => updateItem(index, 'rate', e.target.value)} />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.discount}
-                          onChange={(e) => updateItem(index, 'discount', e.target.value)}
-                        />
+                        <Input type="number" min={0} step="0.01" value={row.discount} onChange={(e) => updateItem(index, 'discount', e.target.value)} />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={row.tax}
-                          onChange={(e) => updateItem(index, 'tax', e.target.value)}
-                        />
+                        <Input type="number" min={0} step="0.01" value={row.gstPercent} onChange={(e) => updateItem(index, 'gstPercent', e.target.value)} />
                       </TableCell>
-                      <TableCell className="text-right font-medium">{rowSubtotal(row).toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-medium">{rowTotal(row).toFixed(2)}</TableCell>
                       <TableCell>
                         <Button
                           type="button"
@@ -389,7 +386,7 @@ export default function PurchaseForm() {
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => removeItemRow(index)}
-                          disabled={items.length === 1}
+                          disabled={items.length === 1 || row.minQuantity > 0}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -402,18 +399,6 @@ export default function PurchaseForm() {
 
             <div className="mt-4 flex justify-end">
               <div className="w-full max-w-xs space-y-1.5 text-sm">
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span>
-                  <span>{subtotalAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Discount</span>
-                  <span>-{totalDiscount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Tax</span>
-                  <span>+{totalTax.toFixed(2)}</span>
-                </div>
                 <Separator />
                 <div className="flex justify-between text-base font-semibold">
                   <span>Grand Total</span>
@@ -426,9 +411,9 @@ export default function PurchaseForm() {
 
         <div className="flex gap-2">
           <Button type="submit" loading={submitting}>
-            {isEdit ? 'Save Changes' : 'Create Purchase'}
+            {isEdit ? 'Save Changes' : 'Create Order'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => guardedNavigate('/purchases')}>
+          <Button type="button" variant="outline" onClick={() => guardedNavigate('/purchases/orders')}>
             Cancel
           </Button>
         </div>
@@ -458,7 +443,7 @@ export default function PurchaseForm() {
       <ConfirmDialog
         open={confirmOpen}
         title="Discard unsaved changes?"
-        description="You have unsaved changes to this purchase. Leaving now will discard them."
+        description="You have unsaved changes to this purchase order. Leaving now will discard them."
         onConfirm={confirmLeave}
         onCancel={cancelLeave}
       />

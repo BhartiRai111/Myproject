@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, MoreHorizontal, Pencil, Plus, Search, ShoppingCart, XCircle } from 'lucide-react';
-import { purchaseApi } from '../api/purchaseApi';
-import PurchaseViewModal from '../components/PurchaseViewModal';
-import { parseApiError } from '../utils/apiError';
-import { PaymentStatus, Purchase, PurchaseStatus } from '../types/purchase';
+import { Eye, FileText, IndianRupee, MoreHorizontal, Pencil, Plus, Printer, Search, Trash2 } from 'lucide-react';
+import { purchaseApi } from '../../api/purchaseApi';
+import { parseApiError } from '../../utils/apiError';
+import { PaymentStatus, Purchase, PurchaseStatus } from '../../types/purchase';
+import { BackButton } from '@/components/BackButton';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { TableSkeleton } from '@/components/TableSkeleton';
@@ -22,14 +23,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 
 const PAGE_SIZE = 10;
 const ALL = '__all__';
@@ -40,13 +33,7 @@ function paymentStatusVariant(status: PaymentStatus) {
   return 'destructive' as const;
 }
 
-function purchaseStatusVariant(status: PurchaseStatus) {
-  if (status === 'COMPLETED') return 'success' as const;
-  if (status === 'CANCELLED') return 'destructive' as const;
-  return 'muted' as const;
-}
-
-export default function Purchases() {
+export default function PurchaseBills() {
   const navigate = useNavigate();
 
   const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -58,10 +45,8 @@ export default function Purchases() {
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  const [viewPurchase, setViewPurchase] = useState<Purchase | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Purchase | null>(null);
-  const [cancelling, setCancelling] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Purchase | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadPurchases = async () => {
     setLoading(true);
@@ -78,7 +63,7 @@ export default function Purchases() {
       setPurchases(res.data.content);
       setTotalPages(res.data.totalPages);
     } catch (err) {
-      toast.error(parseApiError(err, 'Failed to load purchases').message);
+      toast.error(parseApiError(err, 'Failed to load purchase bills').message);
     } finally {
       setLoading(false);
     }
@@ -95,30 +80,32 @@ export default function Purchases() {
     loadPurchases();
   };
 
-  const handleCancelConfirm = async () => {
-    if (!cancelTarget) return;
-    setCancelling(true);
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await purchaseApi.cancel(cancelTarget.id);
-      toast.success('Purchase cancelled successfully');
-      setCancelTarget(null);
+      await purchaseApi.remove(deleteTarget.id);
+      toast.success('Purchase bill deleted and fully reversed');
+      setDeleteTarget(null);
       loadPurchases();
     } catch (err) {
-      toast.error(parseApiError(err, 'Failed to cancel purchase').message);
+      toast.error(parseApiError(err, 'Failed to delete purchase bill').message);
     } finally {
-      setCancelling(false);
+      setDeleting(false);
     }
   };
 
   return (
     <div className="space-y-6">
+      <BackButton label="Back to Purchases" onClick={() => navigate('/purchases')} />
+
       <PageHeader
-        title="Purchases"
-        description="Track stock ordered from your suppliers."
+        title="Purchase Bills"
+        description="GST and Non-GST bills received from suppliers."
         actions={
-          <Button onClick={() => navigate('/purchases/new')}>
+          <Button onClick={() => navigate('/purchases/bills/new')}>
             <Plus className="h-4 w-4" />
-            Add Purchase
+            New Bill
           </Button>
         }
       />
@@ -128,7 +115,7 @@ export default function Purchases() {
           <form onSubmit={handleSearchSubmit} className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search by purchase number or supplier"
+              placeholder="Search by bill number or supplier"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -196,30 +183,36 @@ export default function Purchases() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Purchase #</TableHead>
-                <TableHead>Supplier</TableHead>
+                <TableHead>Bill #</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Paid</TableHead>
+                <TableHead className="text-right">Payable</TableHead>
                 <TableHead>Payment</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={7} />
+              <TableSkeleton columns={9} />
             ) : (
               <TableBody>
                 {purchases.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.purchaseNumber}</TableCell>
-                    <TableCell>{p.supplier.name}</TableCell>
                     <TableCell className="text-muted-foreground">{p.purchaseDate}</TableCell>
+                    <TableCell>{p.supplier ? p.supplier.name : '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={p.gstType === 'GST' ? 'secondary' : 'muted'}>
+                        {p.gstType === 'GST' ? 'GST' : 'Non-GST'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right font-medium">{p.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{p.paidAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{p.payableAmount.toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge variant={paymentStatusVariant(p.paymentStatus)}>{p.paymentStatus}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={purchaseStatusVariant(p.status)}>{p.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -229,17 +222,25 @@ export default function Purchases() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewPurchase(p)}>
+                          <DropdownMenuItem onClick={() => navigate(`/purchases/bills/${p.id}`)}>
                             <Eye className="h-4 w-4" /> View
                           </DropdownMenuItem>
-                          {p.status !== 'CANCELLED' && (
-                            <DropdownMenuItem onClick={() => navigate(`/purchases/${p.id}/edit`)}>
+                          <DropdownMenuItem onClick={() => navigate(`/purchases/bills/${p.id}`)}>
+                            <Printer className="h-4 w-4" /> Print
+                          </DropdownMenuItem>
+                          {p.status !== 'CANCELLED' && !p.hasPayments && (
+                            <DropdownMenuItem onClick={() => navigate(`/purchases/bills/${p.id}/edit`)}>
                               <Pencil className="h-4 w-4" /> Edit
                             </DropdownMenuItem>
                           )}
+                          {p.payableAmount > 0 && p.supplier && (
+                            <DropdownMenuItem onClick={() => navigate(`/purchases/payments/new?supplierId=${p.supplier!.id}`)}>
+                              <IndianRupee className="h-4 w-4" /> Payment
+                            </DropdownMenuItem>
+                          )}
                           {p.status !== 'CANCELLED' && (
-                            <DropdownMenuItem variant="destructive" onClick={() => setCancelTarget(p)}>
-                              <XCircle className="h-4 w-4" /> Cancel
+                            <DropdownMenuItem variant="destructive" onClick={() => setDeleteTarget(p)}>
+                              <Trash2 className="h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -253,12 +254,12 @@ export default function Purchases() {
 
           {!loading && purchases.length === 0 && (
             <EmptyState
-              icon={ShoppingCart}
-              title="No purchases found"
-              description="Try adjusting your search or filters, or create a new purchase."
+              icon={FileText}
+              title="No purchase bills found"
+              description="Try adjusting your search or filters, or create a new bill."
               action={
-                <Button size="sm" onClick={() => navigate('/purchases/new')}>
-                  <Plus className="h-4 w-4" /> Add Purchase
+                <Button size="sm" onClick={() => navigate('/purchases/bills/new')}>
+                  <Plus className="h-4 w-4" /> New Bill
                 </Button>
               }
             />
@@ -272,27 +273,15 @@ export default function Purchases() {
         </CardContent>
       </Card>
 
-      <PurchaseViewModal show={!!viewPurchase} purchase={viewPurchase} onClose={() => setViewPurchase(null)} />
-
-      <Dialog open={!!cancelTarget} onOpenChange={(open) => !open && setCancelTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Cancel Purchase</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel purchase <strong>{cancelTarget?.purchaseNumber}</strong>? This cannot
-              be undone, and the purchase will remain in history with a Cancelled status.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelling}>
-              Keep Purchase
-            </Button>
-            <Button variant="destructive" loading={cancelling} onClick={handleCancelConfirm}>
-              Cancel Purchase
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete Purchase Bill"
+        description={`Deleting bill ${deleteTarget?.purchaseNumber} will reverse its stock, the supplier account entry, and any GST entry. This cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Bill'}
+        cancelLabel="Keep Bill"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

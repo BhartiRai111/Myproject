@@ -4,6 +4,8 @@ import com.storehub.entity.*;
 import com.storehub.repository.CashLedgerEntryRepository;
 import com.storehub.repository.CustomerLedgerEntryRepository;
 import com.storehub.repository.GstEntryRepository;
+import com.storehub.repository.PurchaseGstEntryRepository;
+import com.storehub.repository.SupplierLedgerEntryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ public class LedgerService {
     private final CustomerLedgerEntryRepository customerLedgerEntryRepository;
     private final GstEntryRepository gstEntryRepository;
     private final CashLedgerEntryRepository cashLedgerEntryRepository;
+    private final SupplierLedgerEntryRepository supplierLedgerEntryRepository;
+    private final PurchaseGstEntryRepository purchaseGstEntryRepository;
 
     @Transactional
     public void recordSaleDebit(Sale sale) {
@@ -173,5 +177,122 @@ public class LedgerService {
 
     public BigDecimal getTotalOutstanding() {
         return customerLedgerEntryRepository.getTotalOutstanding();
+    }
+
+    // ---- Supplier payable ledger, input GST log, and cash outflow (purchase side) ----
+
+    @Transactional
+    public void recordPurchaseCredit(Purchase purchase) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(purchase.getSupplier())
+                .entryType(LedgerEntryType.CREDIT)
+                .amount(purchase.getTotalAmount())
+                .referenceType(LedgerReferenceType.PURCHASE)
+                .referenceId(purchase.getId())
+                .description("Purchase " + purchase.getPurchaseNumber())
+                .entryDate(purchase.getPurchaseDate())
+                .build());
+    }
+
+    @Transactional
+    public void reversePurchaseCredit(Purchase purchase, String reason) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(purchase.getSupplier())
+                .entryType(LedgerEntryType.DEBIT)
+                .amount(purchase.getTotalAmount())
+                .referenceType(LedgerReferenceType.PURCHASE)
+                .referenceId(purchase.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
+    @Transactional
+    public void recordInputGstEntry(Purchase purchase) {
+        if (purchase.getGstType() != GstType.GST) {
+            return;
+        }
+        purchaseGstEntryRepository.save(PurchaseGstEntry.builder()
+                .purchaseId(purchase.getId())
+                .taxableAmount(purchase.getTaxableAmount())
+                .cgstAmount(purchase.getCgstAmount())
+                .sgstAmount(purchase.getSgstAmount())
+                .igstAmount(purchase.getIgstAmount())
+                .entryDate(purchase.getPurchaseDate())
+                .build());
+    }
+
+    @Transactional
+    public void reverseInputGstEntry(Purchase purchase) {
+        if (purchase.getGstType() != GstType.GST) {
+            return;
+        }
+        purchaseGstEntryRepository.save(PurchaseGstEntry.builder()
+                .purchaseId(purchase.getId())
+                .taxableAmount(purchase.getTaxableAmount().negate())
+                .cgstAmount(purchase.getCgstAmount().negate())
+                .sgstAmount(purchase.getSgstAmount().negate())
+                .igstAmount(purchase.getIgstAmount().negate())
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
+    @Transactional
+    public void recordPaymentDebit(Payment payment) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(payment.getSupplier())
+                .entryType(LedgerEntryType.DEBIT)
+                .amount(payment.getAmount())
+                .referenceType(LedgerReferenceType.PAYMENT)
+                .referenceId(payment.getId())
+                .description("Payment " + payment.getPaymentNumber())
+                .entryDate(payment.getPaymentDate())
+                .build());
+    }
+
+    @Transactional
+    public void reversePaymentDebit(Payment payment, String reason) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(payment.getSupplier())
+                .entryType(LedgerEntryType.CREDIT)
+                .amount(payment.getAmount())
+                .referenceType(LedgerReferenceType.PAYMENT)
+                .referenceId(payment.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
+    /** Cash/bank/UPI outflow for a manual Payment Entry. */
+    @Transactional
+    public void recordCashEntryOut(Payment payment) {
+        cashLedgerEntryRepository.save(CashLedgerEntry.builder()
+                .paymentMode(payment.getPaymentMode())
+                .amount(payment.getAmount().negate())
+                .referenceType(LedgerReferenceType.PAYMENT)
+                .referenceId(payment.getId())
+                .description("Payment " + payment.getPaymentNumber())
+                .entryDate(payment.getPaymentDate())
+                .build());
+    }
+
+    @Transactional
+    public void reverseCashEntryOut(Payment payment, String reason) {
+        cashLedgerEntryRepository.save(CashLedgerEntry.builder()
+                .paymentMode(payment.getPaymentMode())
+                .amount(payment.getAmount())
+                .referenceType(LedgerReferenceType.PAYMENT)
+                .referenceId(payment.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
+    public BigDecimal getOutstandingForSupplier(Long supplierId) {
+        return supplierLedgerEntryRepository.getOutstandingForSupplier(supplierId);
+    }
+
+    public BigDecimal getTotalPayables() {
+        return supplierLedgerEntryRepository.getTotalOutstanding();
     }
 }

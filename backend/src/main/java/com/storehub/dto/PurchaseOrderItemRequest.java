@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 
 @Getter
 @Setter
-public class PurchaseItemRequest {
+public class PurchaseOrderItemRequest {
 
     @NotNull(message = "Product is required")
     private Long productId;
@@ -19,21 +19,15 @@ public class PurchaseItemRequest {
     @Min(value = 1, message = "Quantity must be greater than 0")
     private Integer quantity;
 
-    @NotNull(message = "Purchase price is required")
-    @DecimalMin(value = "0", message = "Purchase price must be greater than or equal to 0")
-    private BigDecimal purchasePrice;
+    @NotNull(message = "Purchase rate is required")
+    @DecimalMin(value = "0", message = "Purchase rate must be greater than or equal to 0")
+    private BigDecimal rate;
 
     @NotNull(message = "Discount is required")
     @DecimalMin(value = "0", message = "Discount cannot be negative")
     private BigDecimal discount = BigDecimal.ZERO;
 
-    @NotNull(message = "Tax is required")
-    @DecimalMin(value = "0", message = "Tax cannot be negative")
-    private BigDecimal tax = BigDecimal.ZERO;
-
+    @NotNull(message = "GST percent is required")
     @DecimalMin(value = "0", message = "GST percent cannot be negative")
     private BigDecimal gstPercent = BigDecimal.ZERO;
-
-    /** Set when this line receives against a specific Purchase Order line, so the order's received quantity can be tracked. */
-    private Long purchaseOrderItemId;
 }

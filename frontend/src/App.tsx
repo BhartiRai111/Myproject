@@ -10,9 +10,17 @@ import InventoryPage from './pages/Inventory';
 import Login from './pages/Login';
 import ProductForm from './pages/ProductForm';
 import Products from './pages/Products';
-import PurchaseForm from './pages/PurchaseForm';
-import Purchases from './pages/Purchases';
 import Register from './pages/Register';
+import PurchaseHub from './pages/purchases/PurchaseHub';
+import PurchaseOrders from './pages/purchases/PurchaseOrders';
+import PurchaseOrderForm from './pages/purchases/PurchaseOrderForm';
+import PurchaseOrderDetail from './pages/purchases/PurchaseOrderDetail';
+import PurchaseBills from './pages/purchases/PurchaseBills';
+import PurchaseBillForm from './pages/purchases/PurchaseBillForm';
+import PurchaseBillDetail from './pages/purchases/PurchaseBillDetail';
+import Payments from './pages/purchases/Payments';
+import PaymentForm from './pages/purchases/PaymentForm';
+import PaymentDetail from './pages/purchases/PaymentDetail';
 import SalesHub from './pages/sales/SalesHub';
 import SalesOrders from './pages/sales/SalesOrders';
 import SalesOrderForm from './pages/sales/SalesOrderForm';
@@ -57,9 +65,21 @@ export default function App() {
             </Route>
 
             <Route element={<ManagerRoute />}>
-              <Route path="/purchases" element={<Purchases />} />
-              <Route path="/purchases/new" element={<PurchaseForm />} />
-              <Route path="/purchases/:id/edit" element={<PurchaseForm />} />
+              <Route path="/purchases" element={<PurchaseHub />} />
+
+              <Route path="/purchases/orders" element={<PurchaseOrders />} />
+              <Route path="/purchases/orders/new" element={<PurchaseOrderForm />} />
+              <Route path="/purchases/orders/:id" element={<PurchaseOrderDetail />} />
+              <Route path="/purchases/orders/:id/edit" element={<PurchaseOrderForm />} />
+
+              <Route path="/purchases/bills" element={<PurchaseBills />} />
+              <Route path="/purchases/bills/new" element={<PurchaseBillForm />} />
+              <Route path="/purchases/bills/:id" element={<PurchaseBillDetail />} />
+              <Route path="/purchases/bills/:id/edit" element={<PurchaseBillForm />} />
+
+              <Route path="/purchases/payments" element={<Payments />} />
+              <Route path="/purchases/payments/new" element={<PaymentForm />} />
+              <Route path="/purchases/payments/:id" element={<PaymentDetail />} />
             </Route>
 
             <Route path="/sales" element={<SalesHub />} />

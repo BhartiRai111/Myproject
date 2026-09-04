@@ -16,6 +16,14 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
 
     List<Purchase> findBySupplierIdOrderByCreatedAtDesc(Long supplierId);
 
+    @Query("SELECT p FROM Purchase p WHERE p.supplier.id = :supplierId AND p.payableAmount > 0 " +
+            "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED ORDER BY p.purchaseDate ASC, p.id ASC")
+    List<Purchase> findOutstandingBySupplier(@Param("supplierId") Long supplierId);
+
+    @Query("SELECT COALESCE(SUM(p.totalAmount), 0) FROM Purchase p WHERE p.purchaseDate = :date " +
+            "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED")
+    java.math.BigDecimal getTotalPurchasesForDate(@Param("date") LocalDate date);
+
     @Query("SELECT p FROM Purchase p WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.purchaseNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

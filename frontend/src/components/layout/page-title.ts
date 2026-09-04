@@ -3,8 +3,20 @@ export function getPageTitle(pathname: string): { title: string; parent?: string
   if (pathname === '/users') return { title: 'User Management' };
 
   if (pathname === '/purchases') return { title: 'Purchases' };
-  if (pathname === '/purchases/new') return { title: 'Create Purchase', parent: 'Purchases' };
-  if (/^\/purchases\/\d+\/edit$/.test(pathname)) return { title: 'Edit Purchase', parent: 'Purchases' };
+
+  if (pathname === '/purchases/orders') return { title: 'Purchase Orders', parent: 'Purchases' };
+  if (pathname === '/purchases/orders/new') return { title: 'New Purchase Order', parent: 'Purchase Orders' };
+  if (/^\/purchases\/orders\/\d+\/edit$/.test(pathname)) return { title: 'Edit Purchase Order', parent: 'Purchase Orders' };
+  if (/^\/purchases\/orders\/\d+$/.test(pathname)) return { title: 'Purchase Order Detail', parent: 'Purchase Orders' };
+
+  if (pathname === '/purchases/bills') return { title: 'Purchase Bills', parent: 'Purchases' };
+  if (pathname === '/purchases/bills/new') return { title: 'New Purchase Bill', parent: 'Purchase Bills' };
+  if (/^\/purchases\/bills\/\d+\/edit$/.test(pathname)) return { title: 'Edit Purchase Bill', parent: 'Purchase Bills' };
+  if (/^\/purchases\/bills\/\d+$/.test(pathname)) return { title: 'Purchase Bill Detail', parent: 'Purchase Bills' };
+
+  if (pathname === '/purchases/payments') return { title: 'Payment Entries', parent: 'Purchases' };
+  if (pathname === '/purchases/payments/new') return { title: 'New Payment', parent: 'Payment Entries' };
+  if (/^\/purchases\/payments\/\d+$/.test(pathname)) return { title: 'Payment Detail', parent: 'Payment Entries' };
 
   if (pathname === '/sales') return { title: 'Sales' };
 
