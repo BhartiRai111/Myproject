@@ -54,9 +54,6 @@ public class Product {
     @Column(name = "min_stock_level")
     private Integer minStockLevel;
 
-    @Column(name = "stock_quantity", nullable = false)
-    private Integer stockQuantity;
-
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ProductStatus status;
@@ -89,9 +86,6 @@ public class Product {
         }
         if (this.minStockLevel == null) {
             this.minStockLevel = 0;
-        }
-        if (this.stockQuantity == null) {
-            this.stockQuantity = 0;
         }
         if (this.status == null) {
             this.status = ProductStatus.ACTIVE;

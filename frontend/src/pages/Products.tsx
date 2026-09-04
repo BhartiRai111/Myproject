@@ -43,8 +43,6 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'name-desc', label: 'Name (Z-A)' },
   { value: 'sellingPrice-asc', label: 'Selling Price (Low-High)' },
   { value: 'sellingPrice-desc', label: 'Selling Price (High-Low)' },
-  { value: 'stockQuantity-asc', label: 'Stock (Low-High)' },
-  { value: 'stockQuantity-desc', label: 'Stock (High-Low)' },
   { value: 'createdAt-desc', label: 'Newest First' },
 ];
 

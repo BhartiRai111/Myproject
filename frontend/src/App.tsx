@@ -6,6 +6,7 @@ import MainLayout from './components/layout/MainLayout';
 import { AuthProvider } from './context/AuthContext';
 import ComingSoon from './pages/ComingSoon';
 import Dashboard from './pages/Dashboard';
+import InventoryPage from './pages/Inventory';
 import Login from './pages/Login';
 import ProductForm from './pages/ProductForm';
 import Products from './pages/Products';
@@ -18,7 +19,7 @@ import SupplierForm from './pages/SupplierForm';
 import Suppliers from './pages/Suppliers';
 import Users from './pages/Users';
 
-const DISABLED_MODULES = ['inventory', 'customers', 'payments', 'reports'];
+const DISABLED_MODULES = ['customers', 'payments', 'reports'];
 
 export default function App() {
   return (
@@ -52,6 +53,8 @@ export default function App() {
               <Route path="/products/new" element={<ProductForm />} />
               <Route path="/products/:id/edit" element={<ProductForm />} />
             </Route>
+
+            <Route path="/inventory" element={<InventoryPage />} />
 
             <Route element={<ManagerRoute />}>
               <Route path="/suppliers" element={<Suppliers />} />

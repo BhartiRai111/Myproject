@@ -11,6 +11,8 @@ import com.storehub.entity.ProductStatus;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseItem;
 import com.storehub.entity.PurchaseStatus;
+import com.storehub.entity.ReferenceType;
+import com.storehub.entity.StockMovementType;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
 import com.storehub.exception.BadRequestException;
@@ -40,6 +42,7 @@ public class PurchaseService {
     private final PurchaseRepository purchaseRepository;
     private final ProductService productService;
     private final SupplierService supplierService;
+    private final InventoryService inventoryService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
@@ -98,7 +101,7 @@ public class PurchaseService {
                 .collect(Collectors.toSet());
         boolean oldWasCompleted = purchase.getStatus() == PurchaseStatus.COMPLETED;
         if (oldWasCompleted) {
-            restoreStock(oldItems);
+            restoreStock(purchase, oldItems);
         }
 
         Long oldSupplierId = purchase.getSupplier().getId();
@@ -117,7 +120,7 @@ public class PurchaseService {
         applyItems(purchase, request.getItems(), allowedInactiveProductIds);
 
         if (request.getStatus() == PurchaseStatus.COMPLETED) {
-            addStock(purchase.getItems());
+            addStock(purchase, purchase.getItems());
         }
         purchase.setStatus(request.getStatus());
 
@@ -134,7 +137,7 @@ public class PurchaseService {
         }
 
         if (purchase.getStatus() == PurchaseStatus.COMPLETED) {
-            restoreStock(purchase.getItems());
+            restoreStock(purchase, purchase.getItems());
         }
 
         purchase.setStatus(PurchaseStatus.CANCELLED);
@@ -190,15 +193,19 @@ public class PurchaseService {
         purchase.setTotalAmount(total);
     }
 
-    private void addStock(List<PurchaseItem> items) {
+    private void addStock(Purchase purchase, List<PurchaseItem> items) {
+        String reason = "Purchase " + purchase.getPurchaseNumber();
         for (PurchaseItem item : items) {
-            productService.adjustStock(item.getProduct().getId(), item.getQuantity());
+            inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(),
+                    StockMovementType.PURCHASE, ReferenceType.PURCHASE, purchase.getId(), reason);
         }
     }
 
-    private void restoreStock(List<PurchaseItem> items) {
+    private void restoreStock(Purchase purchase, List<PurchaseItem> items) {
+        String reason = "Purchase cancelled: " + purchase.getPurchaseNumber();
         for (PurchaseItem item : items) {
-            productService.adjustStock(item.getProduct().getId(), -item.getQuantity());
+            inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(),
+                    StockMovementType.PURCHASE_CANCEL, ReferenceType.PURCHASE, purchase.getId(), reason);
         }
     }
 

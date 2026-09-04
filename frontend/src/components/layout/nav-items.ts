@@ -25,7 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, enabled: true },
   { label: 'Users', path: '/users', icon: Users, enabled: true, allowedRoles: ['ADMIN'] },
   { label: 'Products', path: '/products', icon: Package, enabled: true },
-  { label: 'Inventory', path: '/inventory', icon: Boxes, enabled: false },
+  { label: 'Inventory', path: '/inventory', icon: Boxes, enabled: true },
   { label: 'Suppliers', path: '/suppliers', icon: Truck, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Purchases', path: '/purchases', icon: ShoppingCart, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Sales', path: '/sales', icon: Receipt, enabled: true },

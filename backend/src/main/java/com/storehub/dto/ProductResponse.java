@@ -32,7 +32,7 @@ public class ProductResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    public static ProductResponse fromEntity(Product product) {
+    public static ProductResponse fromEntity(Product product, int currentStock) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -46,7 +46,7 @@ public class ProductResponse {
                 .sellingPrice(product.getSellingPrice())
                 .tax(product.getTax())
                 .minStockLevel(product.getMinStockLevel())
-                .stockQuantity(product.getStockQuantity())
+                .stockQuantity(currentStock)
                 .status(product.getStatus())
                 .description(product.getDescription())
                 .createdAt(product.getCreatedAt())

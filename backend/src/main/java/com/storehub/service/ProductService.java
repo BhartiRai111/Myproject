@@ -18,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -25,10 +27,11 @@ import java.util.Set;
 public class ProductService {
 
     private static final Set<String> SORTABLE_FIELDS = Set.of(
-            "name", "sku", "purchasePrice", "sellingPrice", "stockQuantity", "createdAt");
+            "name", "sku", "purchasePrice", "sellingPrice", "createdAt");
 
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
+    private final InventoryService inventoryService;
 
     public PagedResponse<ProductResponse> searchProducts(String search, Long categoryId, ProductStatus status,
                                                            int page, int size, String sortBy, String sortDir) {
@@ -36,11 +39,17 @@ public class ProductService {
         Sort sort = "desc".equalsIgnoreCase(sortDir) ? Sort.by(field).descending() : Sort.by(field).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<Product> result = productRepository.search(search, categoryId, status, pageable);
-        return PagedResponse.fromPage(result.map(ProductResponse::fromEntity));
+
+        List<Long> productIds = result.getContent().stream().map(Product::getId).toList();
+        Map<Long, Integer> stockByProductId = inventoryService.getCurrentStockBulk(productIds);
+
+        return PagedResponse.fromPage(result.map(product ->
+                ProductResponse.fromEntity(product, stockByProductId.getOrDefault(product.getId(), 0))));
     }
 
     public ProductResponse getProductById(Long id) {
-        return ProductResponse.fromEntity(findProductOrThrow(id));
+        Product product = findProductOrThrow(id);
+        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(id));
     }
 
     @Transactional
@@ -69,11 +78,13 @@ public class ProductService {
                 .sellingPrice(request.getSellingPrice())
                 .tax(request.getTax())
                 .minStockLevel(request.getMinStockLevel())
-                .stockQuantity(0)
                 .description(request.getDescription())
                 .build();
 
-        return ProductResponse.fromEntity(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        inventoryService.createInventoryForProduct(saved);
+
+        return ProductResponse.fromEntity(saved, 0);
     }
 
     @Transactional
@@ -108,30 +119,21 @@ public class ProductService {
         product.setMinStockLevel(request.getMinStockLevel());
         product.setDescription(request.getDescription());
 
-        return ProductResponse.fromEntity(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id));
     }
 
     @Transactional
     public ProductResponse setStatus(Long id, ProductStatus status) {
         Product product = findProductOrThrow(id);
         product.setStatus(status);
-        return ProductResponse.fromEntity(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id));
     }
 
     public Product findProductOrThrow(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ProductNotFoundException(id));
-    }
-
-    @Transactional
-    public void adjustStock(Long productId, int delta) {
-        Product product = findProductOrThrow(productId);
-        int newStock = product.getStockQuantity() + delta;
-        if (newStock < 0) {
-            throw new BadRequestException("Insufficient stock for product '" + product.getName() + "'");
-        }
-        product.setStockQuantity(newStock);
-        productRepository.save(product);
     }
 
     private String blankToNull(String value) {

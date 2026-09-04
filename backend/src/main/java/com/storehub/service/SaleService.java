@@ -9,9 +9,11 @@ import com.storehub.entity.Customer;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Product;
 import com.storehub.entity.ProductStatus;
+import com.storehub.entity.ReferenceType;
 import com.storehub.entity.Sale;
 import com.storehub.entity.SaleItem;
 import com.storehub.entity.SaleStatus;
+import com.storehub.entity.StockMovementType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.SaleNotFoundException;
 import com.storehub.repository.SaleRepository;
@@ -39,6 +41,7 @@ public class SaleService {
     private final SaleRepository saleRepository;
     private final ProductService productService;
     private final CustomerService customerService;
+    private final InventoryService inventoryService;
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
@@ -69,11 +72,11 @@ public class SaleService {
                 .build();
 
         applyItems(sale, request.getItems(), Collections.emptySet());
-        deductStock(sale.getItems());
 
         Sale saved = saleRepository.save(sale);
         saved.setInvoiceNumber(String.format("INV-%06d", saved.getId()));
         saved = saleRepository.save(saved);
+        deductStock(saved, saved.getItems());
 
         return SaleResponse.fromEntity(saved);
     }
@@ -96,7 +99,7 @@ public class SaleService {
                 .collect(Collectors.toSet());
         boolean oldWasCompleted = sale.getStatus() == SaleStatus.COMPLETED;
         if (oldWasCompleted) {
-            restoreStock(oldItems);
+            restoreStock(sale, oldItems);
         }
 
         Customer customer = request.getCustomerId() != null
@@ -112,7 +115,7 @@ public class SaleService {
         applyItems(sale, request.getItems(), allowedInactiveProductIds);
 
         if (request.getStatus() == SaleStatus.COMPLETED) {
-            deductStock(sale.getItems());
+            deductStock(sale, sale.getItems());
         }
         sale.setStatus(request.getStatus());
 
@@ -129,7 +132,7 @@ public class SaleService {
         }
 
         if (sale.getStatus() == SaleStatus.COMPLETED) {
-            restoreStock(sale.getItems());
+            restoreStock(sale, sale.getItems());
         }
 
         sale.setStatus(SaleStatus.CANCELLED);
@@ -152,9 +155,10 @@ public class SaleService {
                 throw new BadRequestException("Product '" + product.getName() + "' is inactive and cannot be sold in new sales");
             }
 
-            if (itemRequest.getQuantity() > product.getStockQuantity()) {
+            int availableStock = inventoryService.getCurrentStock(product.getId());
+            if (itemRequest.getQuantity() > availableStock) {
                 throw new BadRequestException("Insufficient stock for product '" + product.getName() + "': available "
-                        + product.getStockQuantity() + ", requested " + itemRequest.getQuantity());
+                        + availableStock + ", requested " + itemRequest.getQuantity());
             }
 
             BigDecimal quantity = BigDecimal.valueOf(itemRequest.getQuantity());
@@ -178,15 +182,19 @@ public class SaleService {
         sale.setTotalAmount(total);
     }
 
-    private void restoreStock(List<SaleItem> items) {
+    private void restoreStock(Sale sale, List<SaleItem> items) {
+        String reason = "Sale cancelled: " + sale.getInvoiceNumber();
         for (SaleItem item : items) {
-            productService.adjustStock(item.getProduct().getId(), item.getQuantity());
+            inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(),
+                    StockMovementType.SALE_CANCEL, ReferenceType.SALE, sale.getId(), reason);
         }
     }
 
-    private void deductStock(List<SaleItem> items) {
+    private void deductStock(Sale sale, List<SaleItem> items) {
+        String reason = "Sale " + sale.getInvoiceNumber();
         for (SaleItem item : items) {
-            productService.adjustStock(item.getProduct().getId(), -item.getQuantity());
+            inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(),
+                    StockMovementType.SALE, ReferenceType.SALE, sale.getId(), reason);
         }
     }
 
