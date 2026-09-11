@@ -46,6 +46,11 @@ import ItemGroupMaster from './pages/masters/ItemGroupMaster';
 import HsnMaster from './pages/masters/HsnMaster';
 import EmployeeMaster from './pages/masters/EmployeeMaster';
 import PartyMaster from './pages/masters/PartyMaster';
+import AccountingHub from './pages/accounting/AccountingHub';
+import AccountMaster from './pages/accounting/AccountMaster';
+import Journals from './pages/accounting/Journals';
+import JournalEntryForm from './pages/accounting/JournalEntryForm';
+import TrialBalance from './pages/accounting/TrialBalance';
 
 const DISABLED_MODULES = ['customers', 'payments', 'reports'];
 
@@ -101,6 +106,16 @@ export default function App() {
             <Route path="/sales/receipts" element={<Receipts />} />
             <Route path="/sales/receipts/new" element={<ReceiptForm />} />
             <Route path="/sales/receipts/:id" element={<ReceiptDetail />} />
+
+            <Route element={<ManagerRoute />}>
+              <Route path="/accounting" element={<AccountingHub />} />
+              <Route path="/accounting/accounts" element={<AccountMaster />} />
+              <Route path="/accounting/journals" element={<Journals />} />
+              <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/accounting/journals/new" element={<JournalEntryForm />} />
+              </Route>
+            </Route>
 
             <Route path="/products" element={<Products />} />
             <Route element={<ManagerRoute />}>

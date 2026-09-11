@@ -54,6 +54,7 @@ public class PurchaseService {
     private final InventoryService inventoryService;
     private final PurchaseOrderService purchaseOrderService;
     private final LedgerService ledgerService;
+    private final AccountingService accountingService;
     private final PaymentService paymentService;
     private final PaymentAllocationRepository paymentAllocationRepository;
 
@@ -113,6 +114,7 @@ public class PurchaseService {
         addStock(saved, saved.getItems());
         ledgerService.recordPurchaseCredit(saved);
         ledgerService.recordInputGstEntry(saved);
+        accountingService.postPurchaseJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
 
         if (saved.getPaidAmount().signum() > 0) {
@@ -151,6 +153,7 @@ public class PurchaseService {
         }
         ledgerService.reversePurchaseCredit(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
         ledgerService.reverseInputGstEntry(purchase);
+        accountingService.reversePurchaseJournal(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
         consumeOrderQuantities(oldItems, -1);
 
         Long oldSupplierId = purchase.getSupplier().getId();
@@ -182,6 +185,7 @@ public class PurchaseService {
         Purchase saved = purchaseRepository.save(purchase);
         ledgerService.recordPurchaseCredit(saved);
         ledgerService.recordInputGstEntry(saved);
+        accountingService.postPurchaseJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
 
         if (saved.getPaidAmount().signum() > 0) {
@@ -238,6 +242,7 @@ public class PurchaseService {
         }
         ledgerService.reversePurchaseCredit(purchase, reason);
         ledgerService.reverseInputGstEntry(purchase);
+        accountingService.reversePurchaseJournal(purchase, reason);
         consumeOrderQuantities(purchase.getItems(), -1);
     }
 

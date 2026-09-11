@@ -36,6 +36,7 @@ public class ReceiptService {
     private final SaleRepository saleRepository;
     private final CustomerService customerService;
     private final LedgerService ledgerService;
+    private final AccountingService accountingService;
 
     public PagedResponse<ReceiptResponse> search(String search, Long customerId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -81,6 +82,7 @@ public class ReceiptService {
         saved = receiptRepository.save(saved);
         ledgerService.recordReceiptCredit(saved);
         ledgerService.recordCashEntry(saved);
+        accountingService.postReceiptJournal(saved);
 
         return ReceiptResponse.fromEntity(saved);
     }
@@ -104,6 +106,7 @@ public class ReceiptService {
 
         ledgerService.recordReceiptCredit(saved);
         ledgerService.recordCashEntry(saved);
+        accountingService.postReceiptJournal(saved);
         return saved;
     }
 
@@ -136,6 +139,7 @@ public class ReceiptService {
                 + receipt.getReceiptNumber();
         ledgerService.reverseReceiptCredit(receipt, reason);
         ledgerService.reverseCashEntry(receipt, reason);
+        accountingService.reverseReceiptJournal(receipt, reason);
         receiptRepository.delete(receipt);
     }
 

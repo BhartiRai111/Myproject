@@ -53,6 +53,7 @@ public class SaleService {
     private final InventoryService inventoryService;
     private final SalesOrderService salesOrderService;
     private final LedgerService ledgerService;
+    private final AccountingService accountingService;
     private final ReceiptService receiptService;
     private final ReceiptAllocationRepository receiptAllocationRepository;
 
@@ -111,6 +112,7 @@ public class SaleService {
         deductStock(saved, saved.getItems());
         ledgerService.recordSaleDebit(saved);
         ledgerService.recordGstEntry(saved);
+        accountingService.postSaleJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
 
         if (saved.getPaidAmount().signum() > 0) {
@@ -153,6 +155,7 @@ public class SaleService {
         }
         ledgerService.reverseSaleDebit(sale, "Sale revised: " + sale.getInvoiceNumber());
         ledgerService.reverseGstEntry(sale);
+        accountingService.reverseSaleJournal(sale, "Sale revised: " + sale.getInvoiceNumber());
         if (sale.getCustomer() == null) {
             ledgerService.reverseCashEntryForSale(sale, "Sale revised: " + sale.getInvoiceNumber());
         }
@@ -185,6 +188,7 @@ public class SaleService {
         Sale saved = saleRepository.save(sale);
         ledgerService.recordSaleDebit(saved);
         ledgerService.recordGstEntry(saved);
+        accountingService.postSaleJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
 
         if (saved.getPaidAmount().signum() > 0) {
@@ -248,6 +252,7 @@ public class SaleService {
         }
         ledgerService.reverseSaleDebit(sale, reason);
         ledgerService.reverseGstEntry(sale);
+        accountingService.reverseSaleJournal(sale, reason);
         consumeOrderQuantities(sale.getItems(), -1);
     }
 

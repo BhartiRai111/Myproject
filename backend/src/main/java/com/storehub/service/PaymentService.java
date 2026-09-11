@@ -36,6 +36,7 @@ public class PaymentService {
     private final PurchaseRepository purchaseRepository;
     private final SupplierService supplierService;
     private final LedgerService ledgerService;
+    private final AccountingService accountingService;
 
     public PagedResponse<PaymentResponse> search(String search, Long supplierId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -81,6 +82,7 @@ public class PaymentService {
         saved = paymentRepository.save(saved);
         ledgerService.recordPaymentDebit(saved);
         ledgerService.recordCashEntryOut(saved);
+        accountingService.postPaymentJournal(saved);
 
         return PaymentResponse.fromEntity(saved);
     }
@@ -104,6 +106,7 @@ public class PaymentService {
 
         ledgerService.recordPaymentDebit(saved);
         ledgerService.recordCashEntryOut(saved);
+        accountingService.postPaymentJournal(saved);
         return saved;
     }
 
@@ -136,6 +139,7 @@ public class PaymentService {
                 + payment.getPaymentNumber();
         ledgerService.reversePaymentDebit(payment, reason);
         ledgerService.reverseCashEntryOut(payment, reason);
+        accountingService.reversePaymentJournal(payment, reason);
         paymentRepository.delete(payment);
     }
 
