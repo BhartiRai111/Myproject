@@ -44,11 +44,24 @@ public class Sale {
     private PaymentStatus paymentStatus;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "VARCHAR(20)")
     private SaleStatus status;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    /** SALE (normal GST/Non-GST bill) or SALE_CHALLAN (Kacchi Sale). Fixed at creation. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", columnDefinition = "VARCHAR(20)")
+    private TransactionType transactionType;
+
+    /**
+     * Whether this sale is eligible for GST return reporting (GSTR-1/GSTR-3B, Phase 3).
+     * Independent of whether GST was calculated: a Kacchi Sale still calculates GST in
+     * full (see cgstAmount/sgstAmount/igstAmount below) but is excluded from reporting.
+     */
+    @Column(name = "gst_reporting_applicable")
+    private Boolean gstReportingApplicable;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "gst_type", length = 20)
@@ -113,6 +126,12 @@ public class Sale {
         this.updatedAt = now;
         if (this.status == null) {
             this.status = SaleStatus.PENDING;
+        }
+        if (this.transactionType == null) {
+            this.transactionType = TransactionType.SALE;
+        }
+        if (this.gstReportingApplicable == null) {
+            this.gstReportingApplicable = this.transactionType != TransactionType.SALE_CHALLAN;
         }
         if (this.totalAmount == null) {
             this.totalAmount = BigDecimal.ZERO;

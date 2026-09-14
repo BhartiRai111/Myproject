@@ -6,6 +6,7 @@ import com.storehub.dto.SaleResponse;
 import com.storehub.dto.SaleUpdateRequest;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.SaleStatus;
+import com.storehub.entity.TransactionType;
 import com.storehub.service.SaleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,9 +32,10 @@ public class SaleController {
             @RequestParam(required = false) SaleStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) TransactionType transactionType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(saleService.getSales(search, paymentStatus, status, fromDate, toDate, page, size));
+        return ResponseEntity.ok(saleService.getSales(search, paymentStatus, status, fromDate, toDate, transactionType, page, size));
     }
 
     @GetMapping("/{id}")
@@ -50,6 +52,13 @@ public class SaleController {
     @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<SaleResponse> updateSale(@PathVariable Long id, @Valid @RequestBody SaleUpdateRequest request) {
         return ResponseEntity.ok(saleService.updateSale(id, request));
+    }
+
+    /** Posts a DRAFT Kacchi Sale / Sale Challan: applies stock, customer ledger, GST log, and accounting effects. */
+    @PostMapping("/{id}/post")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<SaleResponse> postSaleChallan(@PathVariable Long id) {
+        return ResponseEntity.ok(saleService.postSaleChallan(id));
     }
 
     @PatchMapping("/{id}/cancel")

@@ -3,6 +3,7 @@ package com.storehub.dto;
 import com.storehub.entity.GstType;
 import com.storehub.entity.PaymentMode;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
@@ -53,4 +54,14 @@ public class PurchaseCreateRequest {
     @NotEmpty(message = "At least one purchase item is required")
     @Valid
     private List<PurchaseItemRequest> items;
+
+    /**
+     * PURCHASE (default) for a normal GST/Non-GST bill, or PURCHASE_CHALLAN
+     * for a Kacchi Purchase. Fixed at creation; determines the voucher-number
+     * prefix and whether the purchase is eligible for GST return reporting.
+     */
+    private TransactionType transactionType;
+
+    /** Kacchi Purchase only: save without posting (no stock/ledger/GST-log/accounting effects yet). */
+    private boolean saveAsDraft = false;
 }

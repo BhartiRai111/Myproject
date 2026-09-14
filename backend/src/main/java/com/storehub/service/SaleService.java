@@ -19,6 +19,7 @@ import com.storehub.entity.SalesOrder;
 import com.storehub.entity.SalesOrderItem;
 import com.storehub.entity.StockMovementType;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.SaleNotFoundException;
 import com.storehub.repository.ReceiptAllocationRepository;
@@ -59,10 +60,10 @@ public class SaleService {
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
-                                                 int page, int size) {
+                                                 TransactionType transactionType, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<SaleResponse> result = saleRepository
-                .search(search, paymentStatus, status, fromDate, toDate, pageable)
+                .search(search, paymentStatus, status, fromDate, toDate, transactionType, pageable)
                 .map(SaleResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
@@ -87,10 +88,16 @@ public class SaleService {
                 ? salesOrderService.findOrThrow(request.getSalesOrderId())
                 : null;
 
+        TransactionType type = request.getTransactionType() != null ? request.getTransactionType() : TransactionType.SALE;
+        boolean draft = request.isSaveAsDraft();
+        if (draft && type != TransactionType.SALE_CHALLAN) {
+            throw new BadRequestException("Only a Kacchi Sale / Sale Challan can be saved as a draft");
+        }
+
         Sale sale = Sale.builder()
                 .customer(customer)
                 .saleDate(request.getSaleDate())
-                .status(SaleStatus.COMPLETED)
+                .status(draft ? SaleStatus.DRAFT : SaleStatus.COMPLETED)
                 .notes(request.getNotes())
                 .gstType(request.getGstType())
                 .taxMode(request.getGstType() == GstType.GST ? request.getTaxMode() : null)
@@ -100,15 +107,54 @@ public class SaleService {
                 .shippingAddress(request.getShippingAddress())
                 .paymentMode(request.getPaymentMode())
                 .salesOrder(salesOrder)
+                .transactionType(type)
+                .gstReportingApplicable(type != TransactionType.SALE_CHALLAN)
                 .build();
 
         applyItems(sale, request.getItems(), Collections.emptySet());
         applyPayment(sale, request.getPaidAmount());
 
         Sale saved = saleRepository.save(sale);
-        saved.setInvoiceNumber(String.format("INV-%06d", saved.getId()));
+        saved.setInvoiceNumber(String.format("%s-%06d", type == TransactionType.SALE_CHALLAN ? "SC" : "INV", saved.getId()));
         saved = saleRepository.save(saved);
 
+        if (!draft) {
+            applyPostingEffects(saved);
+        }
+
+        boolean hasReceipts = !receiptAllocationRepository.findBySaleId(saved.getId()).isEmpty();
+        return SaleResponse.fromEntity(saved, hasReceipts);
+    }
+
+    /** Posts a DRAFT Kacchi Sale / Sale Challan: deducts stock, records the customer ledger + GST log, and posts the accounting journal. */
+    @Transactional
+    public SaleResponse postSaleChallan(Long id) {
+        Sale sale = findSaleOrThrow(id);
+        if (sale.getTransactionType() != TransactionType.SALE_CHALLAN) {
+            throw new BadRequestException("Only a Kacchi Sale / Sale Challan can be posted with this action");
+        }
+        if (sale.getStatus() != SaleStatus.DRAFT) {
+            throw new BadRequestException("Only a draft challan can be posted");
+        }
+
+        for (SaleItem item : sale.getItems()) {
+            int available = inventoryService.getCurrentStock(item.getProduct().getId());
+            if (item.getQuantity() > available) {
+                throw new BadRequestException("Insufficient stock for product '" + item.getProduct().getName()
+                        + "': available " + available + ", requested " + item.getQuantity());
+            }
+        }
+
+        sale.setStatus(SaleStatus.COMPLETED);
+        Sale saved = saleRepository.save(sale);
+        applyPostingEffects(saved);
+
+        boolean hasReceipts = !receiptAllocationRepository.findBySaleId(saved.getId()).isEmpty();
+        return SaleResponse.fromEntity(saved, hasReceipts);
+    }
+
+    /** Applies every side effect of posting a completed sale: stock, customer ledger, GST log, accounting journal, and immediate receipt. */
+    private void applyPostingEffects(Sale saved) {
         deductStock(saved, saved.getItems());
         ledgerService.recordSaleDebit(saved);
         ledgerService.recordGstEntry(saved);
@@ -122,9 +168,6 @@ public class SaleService {
                 ledgerService.recordCashEntryForSale(saved);
             }
         }
-
-        boolean hasReceipts = !receiptAllocationRepository.findBySaleId(saved.getId()).isEmpty();
-        return SaleResponse.fromEntity(saved, hasReceipts);
     }
 
     @Transactional
@@ -149,17 +192,20 @@ public class SaleService {
         Set<Long> allowedInactiveProductIds = oldItems.stream()
                 .map(item -> item.getProduct().getId())
                 .collect(Collectors.toSet());
+        boolean oldWasPosted = sale.getStatus() != SaleStatus.DRAFT;
         boolean oldWasCompleted = sale.getStatus() == SaleStatus.COMPLETED;
         if (oldWasCompleted) {
             restoreStock(sale, oldItems);
         }
-        ledgerService.reverseSaleDebit(sale, "Sale revised: " + sale.getInvoiceNumber());
-        ledgerService.reverseGstEntry(sale);
-        accountingService.reverseSaleJournal(sale, "Sale revised: " + sale.getInvoiceNumber());
-        if (sale.getCustomer() == null) {
-            ledgerService.reverseCashEntryForSale(sale, "Sale revised: " + sale.getInvoiceNumber());
+        if (oldWasPosted) {
+            ledgerService.reverseSaleDebit(sale, "Sale revised: " + sale.getInvoiceNumber());
+            ledgerService.reverseGstEntry(sale);
+            accountingService.reverseSaleJournal(sale, "Sale revised: " + sale.getInvoiceNumber());
+            if (sale.getCustomer() == null) {
+                ledgerService.reverseCashEntryForSale(sale, "Sale revised: " + sale.getInvoiceNumber());
+            }
+            consumeOrderQuantities(oldItems, -1);
         }
-        consumeOrderQuantities(oldItems, -1);
 
         Customer customer = request.getCustomerId() != null
                 ? customerService.findCustomerOrThrow(request.getCustomerId())
@@ -186,16 +232,18 @@ public class SaleService {
         sale.setStatus(request.getStatus());
 
         Sale saved = saleRepository.save(sale);
-        ledgerService.recordSaleDebit(saved);
-        ledgerService.recordGstEntry(saved);
-        accountingService.postSaleJournal(saved);
-        consumeOrderQuantities(saved.getItems(), 1);
+        if (request.getStatus() != SaleStatus.DRAFT) {
+            ledgerService.recordSaleDebit(saved);
+            ledgerService.recordGstEntry(saved);
+            accountingService.postSaleJournal(saved);
+            consumeOrderQuantities(saved.getItems(), 1);
 
-        if (saved.getPaidAmount().signum() > 0) {
-            if (saved.getCustomer() != null) {
-                receiptService.createSystemReceiptForSale(saved);
-            } else {
-                ledgerService.recordCashEntryForSale(saved);
+            if (saved.getPaidAmount().signum() > 0) {
+                if (saved.getCustomer() != null) {
+                    receiptService.createSystemReceiptForSale(saved);
+                } else {
+                    ledgerService.recordCashEntryForSale(saved);
+                }
             }
         }
 
@@ -242,6 +290,10 @@ public class SaleService {
     private void reverseSaleEffects(Sale sale, String reason) {
         if (sale.getStatus() == SaleStatus.COMPLETED) {
             restoreStock(sale, sale.getItems());
+        }
+        if (sale.getStatus() == SaleStatus.DRAFT) {
+            // Never posted: no stock/ledger/GST-log/accounting effects exist yet, so there is nothing to reverse.
+            return;
         }
         List<ReceiptAllocation> allocations = receiptAllocationRepository.findBySaleId(sale.getId());
         for (ReceiptAllocation allocation : allocations) {

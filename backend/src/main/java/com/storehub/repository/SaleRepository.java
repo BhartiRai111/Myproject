@@ -3,6 +3,7 @@ package com.storehub.repository;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Sale;
 import com.storehub.entity.SaleStatus;
+import com.storehub.entity.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,11 +31,13 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             "AND (:paymentStatus IS NULL OR s.paymentStatus = :paymentStatus) " +
             "AND (:status IS NULL OR s.status = :status) " +
             "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR s.saleDate <= :toDate)")
+            "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
+            "AND (:transactionType IS NULL OR s.transactionType = :transactionType)")
     Page<Sale> search(@Param("search") String search,
                        @Param("paymentStatus") PaymentStatus paymentStatus,
                        @Param("status") SaleStatus status,
                        @Param("fromDate") LocalDate fromDate,
                        @Param("toDate") LocalDate toDate,
+                       @Param("transactionType") TransactionType transactionType,
                        Pageable pageable);
 }

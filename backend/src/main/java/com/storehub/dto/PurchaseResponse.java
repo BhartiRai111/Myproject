@@ -6,6 +6,7 @@ import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseStatus;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,6 +49,8 @@ public class PurchaseResponse {
     private Long purchaseOrderId;
     private String purchaseOrderNumber;
     private boolean hasPayments;
+    private TransactionType transactionType;
+    private boolean gstReportingApplicable;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -101,6 +104,8 @@ public class PurchaseResponse {
                 .purchaseOrderId(purchase.getPurchaseOrder() != null ? purchase.getPurchaseOrder().getId() : null)
                 .purchaseOrderNumber(purchase.getPurchaseOrder() != null ? purchase.getPurchaseOrder().getOrderNumber() : null)
                 .hasPayments(hasPayments)
+                .transactionType(purchase.getTransactionType())
+                .gstReportingApplicable(Boolean.TRUE.equals(purchase.getGstReportingApplicable()))
                 .createdAt(purchase.getCreatedAt())
                 .updatedAt(purchase.getUpdatedAt())
                 .build();

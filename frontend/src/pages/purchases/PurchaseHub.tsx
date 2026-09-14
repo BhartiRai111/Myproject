@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp } from 'lucide-react';
+import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack } from 'lucide-react';
 import { purchaseSummaryApi } from '../../api/purchaseSummaryApi';
 import { PurchaseSummary } from '../../types/payment';
 import { PageHeader } from '@/components/PageHeader';
@@ -40,10 +40,17 @@ export default function PurchaseHub() {
     },
     {
       key: 'bills',
-      title: 'Purchase Bill',
+      title: 'GST Purchases (Purchase Bill)',
       description: 'Create GST or Non-GST bills, with automatic stock and account updates.',
       icon: FileText,
       path: '/purchases/bills',
+    },
+    {
+      key: 'kacchi',
+      title: 'Kacchi Purchases / Purchase Challan',
+      description: 'GST is still calculated in full — these challans are simply excluded from GST return reporting.',
+      icon: FileStack,
+      path: '/purchases/kacchi',
     },
     {
       key: 'payments',

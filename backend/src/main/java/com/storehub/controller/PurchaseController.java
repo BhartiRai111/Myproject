@@ -6,6 +6,7 @@ import com.storehub.dto.PurchaseResponse;
 import com.storehub.dto.PurchaseUpdateRequest;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.PurchaseStatus;
+import com.storehub.entity.TransactionType;
 import com.storehub.service.PurchaseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +33,10 @@ public class PurchaseController {
             @RequestParam(required = false) PurchaseStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) TransactionType transactionType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(purchaseService.getPurchases(search, paymentStatus, status, fromDate, toDate, page, size));
+        return ResponseEntity.ok(purchaseService.getPurchases(search, paymentStatus, status, fromDate, toDate, transactionType, page, size));
     }
 
     @GetMapping("/{id}")
@@ -51,6 +53,12 @@ public class PurchaseController {
     public ResponseEntity<PurchaseResponse> updatePurchase(@PathVariable Long id,
                                                             @Valid @RequestBody PurchaseUpdateRequest request) {
         return ResponseEntity.ok(purchaseService.updatePurchase(id, request));
+    }
+
+    /** Posts a DRAFT Kacchi Purchase / Purchase Challan: applies stock, supplier ledger, GST log, and accounting effects. */
+    @PostMapping("/{id}/post")
+    public ResponseEntity<PurchaseResponse> postPurchaseChallan(@PathVariable Long id) {
+        return ResponseEntity.ok(purchaseService.postPurchaseChallan(id));
     }
 
     @PatchMapping("/{id}/cancel")

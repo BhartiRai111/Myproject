@@ -20,7 +20,9 @@ export interface CustomerCreatePayload {
   email?: string;
 }
 
-export type SaleStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+export type SaleStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export type SaleTransactionType = 'SALE' | 'SALE_CHALLAN';
 
 export type GstType = 'GST' | 'NON_GST';
 export type TaxMode = 'INTRA_STATE' | 'INTER_STATE';
@@ -71,6 +73,8 @@ export interface Sale {
   salesOrderId?: number | null;
   salesOrderNumber?: string | null;
   hasReceipts: boolean;
+  transactionType: SaleTransactionType;
+  gstReportingApplicable: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,6 +103,8 @@ export interface SaleCreatePayload {
   notes?: string;
   salesOrderId?: number;
   items: SaleItemPayload[];
+  transactionType?: SaleTransactionType;
+  saveAsDraft?: boolean;
 }
 
 export interface SaleUpdatePayload extends SaleCreatePayload {

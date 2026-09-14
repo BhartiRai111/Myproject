@@ -20,6 +20,7 @@ import com.storehub.entity.StockMovementType;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.PurchaseNotFoundException;
 import com.storehub.repository.PaymentAllocationRepository;
@@ -60,10 +61,10 @@ public class PurchaseService {
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
-                                                          int page, int size) {
+                                                          TransactionType transactionType, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<PurchaseResponse> result = purchaseRepository
-                .search(search, paymentStatus, status, fromDate, toDate, pageable)
+                .search(search, paymentStatus, status, fromDate, toDate, transactionType, pageable)
                 .map(PurchaseResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
@@ -89,10 +90,16 @@ public class PurchaseService {
                 ? purchaseOrderService.findOrThrow(request.getPurchaseOrderId())
                 : null;
 
+        TransactionType type = request.getTransactionType() != null ? request.getTransactionType() : TransactionType.PURCHASE;
+        boolean draft = request.isSaveAsDraft();
+        if (draft && type != TransactionType.PURCHASE_CHALLAN) {
+            throw new BadRequestException("Only a Kacchi Purchase / Purchase Challan can be saved as a draft");
+        }
+
         Purchase purchase = Purchase.builder()
                 .supplier(supplier)
                 .purchaseDate(request.getPurchaseDate())
-                .status(PurchaseStatus.COMPLETED)
+                .status(draft ? PurchaseStatus.DRAFT : PurchaseStatus.COMPLETED)
                 .notes(request.getNotes())
                 .gstType(request.getGstType())
                 .taxMode(request.getGstType() == GstType.GST ? request.getTaxMode() : null)
@@ -102,15 +109,46 @@ public class PurchaseService {
                 .shippingAddress(request.getShippingAddress())
                 .paymentMode(request.getPaymentMode())
                 .purchaseOrder(purchaseOrder)
+                .transactionType(type)
+                .gstReportingApplicable(type != TransactionType.PURCHASE_CHALLAN)
                 .build();
 
         applyItems(purchase, request.getItems(), Collections.emptySet());
         applyPayment(purchase, request.getPaidAmount());
 
         Purchase saved = purchaseRepository.save(purchase);
-        saved.setPurchaseNumber(String.format("PUR-%06d", saved.getId()));
+        saved.setPurchaseNumber(String.format("%s-%06d", type == TransactionType.PURCHASE_CHALLAN ? "PC" : "PUR", saved.getId()));
         saved = purchaseRepository.save(saved);
 
+        if (!draft) {
+            applyPostingEffects(saved);
+        }
+
+        boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
+        return PurchaseResponse.fromEntity(saved, hasPayments);
+    }
+
+    /** Posts a DRAFT Kacchi Purchase / Purchase Challan: adds stock, records the supplier ledger + GST log, and posts the accounting journal. */
+    @Transactional
+    public PurchaseResponse postPurchaseChallan(Long id) {
+        Purchase purchase = findPurchaseOrThrow(id);
+        if (purchase.getTransactionType() != TransactionType.PURCHASE_CHALLAN) {
+            throw new BadRequestException("Only a Kacchi Purchase / Purchase Challan can be posted with this action");
+        }
+        if (purchase.getStatus() != PurchaseStatus.DRAFT) {
+            throw new BadRequestException("Only a draft challan can be posted");
+        }
+
+        purchase.setStatus(PurchaseStatus.COMPLETED);
+        Purchase saved = purchaseRepository.save(purchase);
+        applyPostingEffects(saved);
+
+        boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
+        return PurchaseResponse.fromEntity(saved, hasPayments);
+    }
+
+    /** Applies every side effect of posting a completed purchase: stock, supplier ledger, GST log, accounting journal, and immediate payment. */
+    private void applyPostingEffects(Purchase saved) {
         addStock(saved, saved.getItems());
         ledgerService.recordPurchaseCredit(saved);
         ledgerService.recordInputGstEntry(saved);
@@ -120,9 +158,6 @@ public class PurchaseService {
         if (saved.getPaidAmount().signum() > 0) {
             paymentService.createSystemPaymentForPurchase(saved);
         }
-
-        boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
-        return PurchaseResponse.fromEntity(saved, hasPayments);
     }
 
     @Transactional
@@ -147,14 +182,17 @@ public class PurchaseService {
         Set<Long> allowedInactiveProductIds = oldItems.stream()
                 .map(item -> item.getProduct().getId())
                 .collect(Collectors.toSet());
+        boolean oldWasPosted = purchase.getStatus() != PurchaseStatus.DRAFT;
         boolean oldWasCompleted = purchase.getStatus() == PurchaseStatus.COMPLETED;
         if (oldWasCompleted) {
             restoreStock(purchase, oldItems);
         }
-        ledgerService.reversePurchaseCredit(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
-        ledgerService.reverseInputGstEntry(purchase);
-        accountingService.reversePurchaseJournal(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
-        consumeOrderQuantities(oldItems, -1);
+        if (oldWasPosted) {
+            ledgerService.reversePurchaseCredit(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
+            ledgerService.reverseInputGstEntry(purchase);
+            accountingService.reversePurchaseJournal(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
+            consumeOrderQuantities(oldItems, -1);
+        }
 
         Long oldSupplierId = purchase.getSupplier().getId();
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
@@ -183,13 +221,15 @@ public class PurchaseService {
         purchase.setStatus(request.getStatus());
 
         Purchase saved = purchaseRepository.save(purchase);
-        ledgerService.recordPurchaseCredit(saved);
-        ledgerService.recordInputGstEntry(saved);
-        accountingService.postPurchaseJournal(saved);
-        consumeOrderQuantities(saved.getItems(), 1);
+        if (request.getStatus() != PurchaseStatus.DRAFT) {
+            ledgerService.recordPurchaseCredit(saved);
+            ledgerService.recordInputGstEntry(saved);
+            accountingService.postPurchaseJournal(saved);
+            consumeOrderQuantities(saved.getItems(), 1);
 
-        if (saved.getPaidAmount().signum() > 0) {
-            paymentService.createSystemPaymentForPurchase(saved);
+            if (saved.getPaidAmount().signum() > 0) {
+                paymentService.createSystemPaymentForPurchase(saved);
+            }
         }
 
         boolean hasPaymentsNow = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
@@ -235,6 +275,10 @@ public class PurchaseService {
     private void reversePurchaseEffects(Purchase purchase, String reason) {
         if (purchase.getStatus() == PurchaseStatus.COMPLETED) {
             restoreStock(purchase, purchase.getItems());
+        }
+        if (purchase.getStatus() == PurchaseStatus.DRAFT) {
+            // Never posted: no stock/ledger/GST-log/accounting effects exist yet, so there is nothing to reverse.
+            return;
         }
         List<PaymentAllocation> allocations = paymentAllocationRepository.findByPurchaseId(purchase.getId());
         for (PaymentAllocation allocation : allocations) {

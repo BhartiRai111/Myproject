@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp } from 'lucide-react';
+import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack } from 'lucide-react';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
 import { SalesSummary } from '../../types/receipt';
 import { PageHeader } from '@/components/PageHeader';
@@ -40,10 +40,17 @@ export default function SalesHub() {
     },
     {
       key: 'bills',
-      title: 'Sales Bill',
+      title: 'GST Sales (Sales Bill)',
       description: 'Create GST or Non-GST invoices, with automatic stock and account updates.',
       icon: FileText,
       path: '/sales/bills',
+    },
+    {
+      key: 'kacchi',
+      title: 'Kacchi Sales / Sale Challan',
+      description: 'GST is still calculated in full — these challans are simply excluded from GST return reporting.',
+      icon: FileStack,
+      path: '/sales/kacchi',
     },
     {
       key: 'receipts',

@@ -6,7 +6,9 @@ export type { Supplier };
 
 export type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
 
-export type PurchaseStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
+export type PurchaseStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED';
+
+export type PurchaseTransactionType = 'PURCHASE' | 'PURCHASE_CHALLAN';
 
 export type GstType = 'GST' | 'NON_GST';
 export type TaxMode = 'INTRA_STATE' | 'INTER_STATE';
@@ -57,6 +59,8 @@ export interface Purchase {
   purchaseOrderId?: number | null;
   purchaseOrderNumber?: string | null;
   hasPayments: boolean;
+  transactionType: PurchaseTransactionType;
+  gstReportingApplicable: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -85,6 +89,8 @@ export interface PurchaseCreatePayload {
   notes?: string;
   purchaseOrderId?: number;
   items: PurchaseItemPayload[];
+  transactionType?: PurchaseTransactionType;
+  saveAsDraft?: boolean;
 }
 
 export interface PurchaseUpdatePayload extends PurchaseCreatePayload {

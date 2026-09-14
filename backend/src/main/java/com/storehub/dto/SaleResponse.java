@@ -6,6 +6,7 @@ import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Sale;
 import com.storehub.entity.SaleStatus;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -48,6 +49,8 @@ public class SaleResponse {
     private Long salesOrderId;
     private String salesOrderNumber;
     private boolean hasReceipts;
+    private TransactionType transactionType;
+    private boolean gstReportingApplicable;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -101,6 +104,8 @@ public class SaleResponse {
                 .salesOrderId(sale.getSalesOrder() != null ? sale.getSalesOrder().getId() : null)
                 .salesOrderNumber(sale.getSalesOrder() != null ? sale.getSalesOrder().getOrderNumber() : null)
                 .hasReceipts(hasReceipts)
+                .transactionType(sale.getTransactionType())
+                .gstReportingApplicable(Boolean.TRUE.equals(sale.getGstReportingApplicable()))
                 .createdAt(sale.getCreatedAt())
                 .updatedAt(sale.getUpdatedAt())
                 .build();

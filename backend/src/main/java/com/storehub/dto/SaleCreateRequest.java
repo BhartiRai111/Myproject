@@ -3,6 +3,7 @@ package com.storehub.dto;
 import com.storehub.entity.GstType;
 import com.storehub.entity.PaymentMode;
 import com.storehub.entity.TaxMode;
+import com.storehub.entity.TransactionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
@@ -52,4 +53,14 @@ public class SaleCreateRequest {
     @NotEmpty(message = "At least one sale item is required")
     @Valid
     private List<SaleItemRequest> items;
+
+    /**
+     * SALE (default) for a normal GST/Non-GST bill, or SALE_CHALLAN for a
+     * Kacchi Sale. Fixed at creation; determines the voucher-number prefix
+     * and whether the sale is eligible for GST return reporting.
+     */
+    private TransactionType transactionType;
+
+    /** Kacchi Sale only: save without posting (no stock/ledger/GST-log/accounting effects yet). */
+    private boolean saveAsDraft = false;
 }

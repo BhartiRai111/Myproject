@@ -5,6 +5,7 @@ import {
   Purchase,
   PurchaseCreatePayload,
   PurchaseStatus,
+  PurchaseTransactionType,
   PurchaseUpdatePayload,
 } from '../types/purchase';
 
@@ -14,6 +15,7 @@ export interface PurchaseQuery {
   status?: PurchaseStatus | '';
   fromDate?: string;
   toDate?: string;
+  transactionType?: PurchaseTransactionType | '';
   page?: number;
   size?: number;
 }
@@ -27,6 +29,7 @@ export const purchaseApi = {
         status: query.status || undefined,
         fromDate: query.fromDate || undefined,
         toDate: query.toDate || undefined,
+        transactionType: query.transactionType || undefined,
         page: query.page ?? 0,
         size: query.size ?? 10,
       },
@@ -34,6 +37,7 @@ export const purchaseApi = {
   getById: (id: number) => api.get<Purchase>(`/purchases/${id}`),
   create: (payload: PurchaseCreatePayload) => api.post<Purchase>('/purchases', payload),
   update: (id: number, payload: PurchaseUpdatePayload) => api.put<Purchase>(`/purchases/${id}`, payload),
+  post: (id: number) => api.post<Purchase>(`/purchases/${id}/post`),
   cancel: (id: number) => api.patch<Purchase>(`/purchases/${id}/cancel`),
   remove: (id: number) => api.delete(`/purchases/${id}`),
 };

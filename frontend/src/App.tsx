@@ -18,6 +18,9 @@ import PurchaseOrderDetail from './pages/purchases/PurchaseOrderDetail';
 import PurchaseBills from './pages/purchases/PurchaseBills';
 import PurchaseBillForm from './pages/purchases/PurchaseBillForm';
 import PurchaseBillDetail from './pages/purchases/PurchaseBillDetail';
+import KacchiPurchases from './pages/purchases/KacchiPurchases';
+import KacchiPurchaseForm from './pages/purchases/KacchiPurchaseForm';
+import KacchiPurchaseDetail from './pages/purchases/KacchiPurchaseDetail';
 import Payments from './pages/purchases/Payments';
 import PaymentForm from './pages/purchases/PaymentForm';
 import PaymentDetail from './pages/purchases/PaymentDetail';
@@ -28,6 +31,9 @@ import SalesOrderDetail from './pages/sales/SalesOrderDetail';
 import SalesBills from './pages/sales/SalesBills';
 import SalesBillForm from './pages/sales/SalesBillForm';
 import SalesBillDetail from './pages/sales/SalesBillDetail';
+import KacchiSales from './pages/sales/KacchiSales';
+import KacchiSaleForm from './pages/sales/KacchiSaleForm';
+import KacchiSaleDetail from './pages/sales/KacchiSaleDetail';
 import Receipts from './pages/sales/Receipts';
 import ReceiptForm from './pages/sales/ReceiptForm';
 import ReceiptDetail from './pages/sales/ReceiptDetail';
@@ -85,6 +91,11 @@ export default function App() {
               <Route path="/purchases/payments" element={<Payments />} />
               <Route path="/purchases/payments/new" element={<PaymentForm />} />
               <Route path="/purchases/payments/:id" element={<PaymentDetail />} />
+
+              <Route path="/purchases/kacchi" element={<KacchiPurchases />} />
+              <Route path="/purchases/kacchi/new" element={<KacchiPurchaseForm />} />
+              <Route path="/purchases/kacchi/:id" element={<KacchiPurchaseDetail />} />
+              <Route path="/purchases/kacchi/:id/edit" element={<KacchiPurchaseForm />} />
             </Route>
 
             <Route path="/sales" element={<SalesHub />} />
@@ -106,6 +117,13 @@ export default function App() {
             <Route path="/sales/receipts" element={<Receipts />} />
             <Route path="/sales/receipts/new" element={<ReceiptForm />} />
             <Route path="/sales/receipts/:id" element={<ReceiptDetail />} />
+
+            <Route path="/sales/kacchi" element={<KacchiSales />} />
+            <Route path="/sales/kacchi/new" element={<KacchiSaleForm />} />
+            <Route path="/sales/kacchi/:id" element={<KacchiSaleDetail />} />
+            <Route element={<ManagerRoute />}>
+              <Route path="/sales/kacchi/:id/edit" element={<KacchiSaleForm />} />
+            </Route>
 
             <Route element={<ManagerRoute />}>
               <Route path="/accounting" element={<AccountingHub />} />
