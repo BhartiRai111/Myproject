@@ -41,4 +41,17 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
                            @Param("toDate") LocalDate toDate,
                            @Param("transactionType") TransactionType transactionType,
                            Pageable pageable);
+
+    /**
+     * Lightweight projection of every purchase eligible for GST reporting in a date range
+     * (id, purchaseNumber, purchaseDate, taxableAmount, cgstAmount, sgstAmount, igstAmount, totalAmount),
+     * for the GST Reconciliation report. Never loads full entities/relations.
+     */
+    @Query("SELECT p.id, p.purchaseNumber, p.purchaseDate, p.taxableAmount, p.cgstAmount, p.sgstAmount, p.igstAmount, p.totalAmount " +
+            "FROM Purchase p WHERE p.status = com.storehub.entity.PurchaseStatus.COMPLETED " +
+            "AND p.gstReportingApplicable = true " +
+            "AND (:fromDate IS NULL OR p.purchaseDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR p.purchaseDate <= :toDate) " +
+            "ORDER BY p.purchaseDate ASC, p.id ASC")
+    List<Object[]> findEligibleForReconciliation(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 }

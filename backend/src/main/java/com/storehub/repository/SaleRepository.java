@@ -40,4 +40,17 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
                        @Param("toDate") LocalDate toDate,
                        @Param("transactionType") TransactionType transactionType,
                        Pageable pageable);
+
+    /**
+     * Lightweight projection of every sale eligible for GST reporting in a date range
+     * (id, invoiceNumber, saleDate, taxableAmount, cgstAmount, sgstAmount, igstAmount, totalAmount),
+     * for the GST Reconciliation report. Never loads full entities/relations.
+     */
+    @Query("SELECT s.id, s.invoiceNumber, s.saleDate, s.taxableAmount, s.cgstAmount, s.sgstAmount, s.igstAmount, s.totalAmount " +
+            "FROM Sale s WHERE s.status = com.storehub.entity.SaleStatus.COMPLETED " +
+            "AND s.gstReportingApplicable = true " +
+            "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
+            "ORDER BY s.saleDate ASC, s.id ASC")
+    List<Object[]> findEligibleForReconciliation(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 }

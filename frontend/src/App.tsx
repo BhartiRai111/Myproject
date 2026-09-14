@@ -57,6 +57,16 @@ import AccountMaster from './pages/accounting/AccountMaster';
 import Journals from './pages/accounting/Journals';
 import JournalEntryForm from './pages/accounting/JournalEntryForm';
 import TrialBalance from './pages/accounting/TrialBalance';
+import GstReportsHub from './pages/gst/GstReportsHub';
+import Gstr1Report from './pages/gst/Gstr1Report';
+import PurchaseGstReport from './pages/gst/PurchaseGstReport';
+import Gstr3bSummary from './pages/gst/Gstr3bSummary';
+import OutputGstReport from './pages/gst/OutputGstReport';
+import InputGstReport from './pages/gst/InputGstReport';
+import HsnSummaryReport from './pages/gst/HsnSummaryReport';
+import TaxRateSummaryReport from './pages/gst/TaxRateSummaryReport';
+import GstLiabilityReport from './pages/gst/GstLiabilityReport';
+import GstReconciliation from './pages/gst/GstReconciliation';
 
 const DISABLED_MODULES = ['customers', 'payments', 'reports'];
 
@@ -133,6 +143,19 @@ export default function App() {
               <Route element={<AdminRoute />}>
                 <Route path="/accounting/journals/new" element={<JournalEntryForm />} />
               </Route>
+            </Route>
+
+            <Route element={<ManagerRoute />}>
+              <Route path="/gst-reports" element={<GstReportsHub />} />
+              <Route path="/gst-reports/gstr1" element={<Gstr1Report />} />
+              <Route path="/gst-reports/purchase" element={<PurchaseGstReport />} />
+              <Route path="/gst-reports/gstr3b" element={<Gstr3bSummary />} />
+              <Route path="/gst-reports/output" element={<OutputGstReport />} />
+              <Route path="/gst-reports/input" element={<InputGstReport />} />
+              <Route path="/gst-reports/hsn" element={<HsnSummaryReport />} />
+              <Route path="/gst-reports/tax-rate" element={<TaxRateSummaryReport />} />
+              <Route path="/gst-reports/liability" element={<GstLiabilityReport />} />
+              <Route path="/gst-reports/reconciliation" element={<GstReconciliation />} />
             </Route>
 
             <Route path="/products" element={<Products />} />

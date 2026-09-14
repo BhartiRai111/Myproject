@@ -57,6 +57,7 @@ public class SaleService {
     private final AccountingService accountingService;
     private final ReceiptService receiptService;
     private final ReceiptAllocationRepository receiptAllocationRepository;
+    private final GstTransactionSyncService gstTransactionSyncService;
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
@@ -160,6 +161,7 @@ public class SaleService {
         ledgerService.recordGstEntry(saved);
         accountingService.postSaleJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
+        gstTransactionSyncService.syncSale(saved);
 
         if (saved.getPaidAmount().signum() > 0) {
             if (saved.getCustomer() != null) {
@@ -205,6 +207,7 @@ public class SaleService {
                 ledgerService.reverseCashEntryForSale(sale, "Sale revised: " + sale.getInvoiceNumber());
             }
             consumeOrderQuantities(oldItems, -1);
+            gstTransactionSyncService.reverseSale(sale);
         }
 
         Customer customer = request.getCustomerId() != null
@@ -237,6 +240,7 @@ public class SaleService {
             ledgerService.recordGstEntry(saved);
             accountingService.postSaleJournal(saved);
             consumeOrderQuantities(saved.getItems(), 1);
+            gstTransactionSyncService.syncSale(saved);
 
             if (saved.getPaidAmount().signum() > 0) {
                 if (saved.getCustomer() != null) {
@@ -306,6 +310,7 @@ public class SaleService {
         ledgerService.reverseGstEntry(sale);
         accountingService.reverseSaleJournal(sale, reason);
         consumeOrderQuantities(sale.getItems(), -1);
+        gstTransactionSyncService.reverseSale(sale);
     }
 
     private void consumeOrderQuantities(List<SaleItem> items, int sign) {

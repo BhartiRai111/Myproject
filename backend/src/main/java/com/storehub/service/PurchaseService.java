@@ -58,6 +58,7 @@ public class PurchaseService {
     private final AccountingService accountingService;
     private final PaymentService paymentService;
     private final PaymentAllocationRepository paymentAllocationRepository;
+    private final GstTransactionSyncService gstTransactionSyncService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
@@ -154,6 +155,7 @@ public class PurchaseService {
         ledgerService.recordInputGstEntry(saved);
         accountingService.postPurchaseJournal(saved);
         consumeOrderQuantities(saved.getItems(), 1);
+        gstTransactionSyncService.syncPurchase(saved);
 
         if (saved.getPaidAmount().signum() > 0) {
             paymentService.createSystemPaymentForPurchase(saved);
@@ -192,6 +194,7 @@ public class PurchaseService {
             ledgerService.reverseInputGstEntry(purchase);
             accountingService.reversePurchaseJournal(purchase, "Purchase revised: " + purchase.getPurchaseNumber());
             consumeOrderQuantities(oldItems, -1);
+            gstTransactionSyncService.reversePurchase(purchase);
         }
 
         Long oldSupplierId = purchase.getSupplier().getId();
@@ -226,6 +229,7 @@ public class PurchaseService {
             ledgerService.recordInputGstEntry(saved);
             accountingService.postPurchaseJournal(saved);
             consumeOrderQuantities(saved.getItems(), 1);
+            gstTransactionSyncService.syncPurchase(saved);
 
             if (saved.getPaidAmount().signum() > 0) {
                 paymentService.createSystemPaymentForPurchase(saved);
@@ -288,6 +292,7 @@ public class PurchaseService {
         ledgerService.reverseInputGstEntry(purchase);
         accountingService.reversePurchaseJournal(purchase, reason);
         consumeOrderQuantities(purchase.getItems(), -1);
+        gstTransactionSyncService.reversePurchase(purchase);
     }
 
     private void consumeOrderQuantities(List<PurchaseItem> items, int sign) {

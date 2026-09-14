@@ -11,6 +11,7 @@ import {
   BarChart3,
   Landmark,
   BookText,
+  FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react';
 import { Role } from '@/types/user';
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Purchases', path: '/purchases', icon: ShoppingCart, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Sales', path: '/sales', icon: Receipt, enabled: true },
   { label: 'Accounting', path: '/accounting', icon: BookText, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
+  { label: 'GST Reports', path: '/gst-reports', icon: FileSpreadsheet, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Masters', path: '/masters', icon: Landmark, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Customers', path: '/customers', icon: Contact, enabled: false },
   { label: 'Payments', path: '/payments', icon: CreditCard, enabled: false },
