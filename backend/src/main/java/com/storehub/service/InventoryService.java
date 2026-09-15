@@ -67,6 +67,10 @@ public class InventoryService {
         return inventoryRepository.findByProductId(productId).map(Inventory::getCurrentStock).orElse(0);
     }
 
+    public Integer getMaxStockLevel(Long productId) {
+        return inventoryRepository.findByProductId(productId).map(Inventory::getMaxStockLevel).orElse(null);
+    }
+
     public Map<Long, Integer> getCurrentStockBulk(List<Long> productIds) {
         if (productIds.isEmpty()) {
             return Map.of();
@@ -91,13 +95,50 @@ public class InventoryService {
         return InventoryResponse.fromEntity(findInventoryOrThrow(id));
     }
 
+    private static final List<String> EXPORT_HEADER = List.of(
+            "product", "sku", "category", "unit", "currentStock", "minStockLevel", "maxStockLevel",
+            "reorderLevel", "reorderQuantity", "stockStatus", "lastUpdated");
+
+    /** Exports the same search/category/status-filtered inventory list the Inventory page shows. */
+    public String exportCsv(String search, Long categoryId, StockStatus stockStatus) {
+        String statusParam = stockStatus != null ? stockStatus.name() : null;
+        List<Inventory> rows = inventoryRepository.search(search, categoryId, statusParam, Sort.by("product.name").ascending());
+
+        StringBuilder csv = new StringBuilder();
+        csv.append(com.storehub.util.CsvUtil.row(EXPORT_HEADER.toArray()));
+        for (Inventory inv : rows) {
+            InventoryResponse r = InventoryResponse.fromEntity(inv);
+            csv.append(com.storehub.util.CsvUtil.row(
+                    r.getProductName(), r.getSku(), r.getCategoryName(), r.getUnit(), r.getCurrentStock(),
+                    r.getMinStockLevel(), r.getMaxStockLevel(), r.getReorderLevel(), r.getReorderQuantity(),
+                    r.getStockStatus(), r.getLastUpdated()));
+        }
+        return csv.toString();
+    }
+
     public InventorySummaryResponse getSummary() {
         return InventorySummaryResponse.builder()
                 .totalProducts(inventoryRepository.count())
                 .totalStockUnits(inventoryRepository.sumCurrentStock())
                 .lowStockCount(inventoryRepository.countLowStock())
                 .outOfStockCount(inventoryRepository.countOutOfStock())
+                .overstockCount(inventoryRepository.countOverstock())
+                .reorderCandidateCount(inventoryRepository.findReorderCandidates().size())
                 .build();
+    }
+
+    /** Products at or below their configured reorder point — used by the Alert Center (Phase 6). */
+    public List<Inventory> getReorderCandidates() {
+        return inventoryRepository.findReorderCandidates();
+    }
+
+    /** Sets the maximum-stock-level threshold for overstock detection; called from ProductService when the product form saves it. */
+    @Transactional
+    public void updateMaxStockLevel(Long productId, Integer maxStockLevel) {
+        inventoryRepository.findByProductId(productId).ifPresent(inv -> {
+            inv.setMaxStockLevel(maxStockLevel);
+            inventoryRepository.save(inv);
+        });
     }
 
     // ---- stock history ----

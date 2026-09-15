@@ -15,6 +15,8 @@ import {
   BarChart3,
   ShieldCheck,
   ArrowRight,
+  CreditCard,
+  CalendarCheck,
 } from 'lucide-react';
 import { accountingReportApi } from '../../api/accountingApi';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
@@ -74,6 +76,34 @@ export default function AccountingHub() {
       description: 'Account-wise debit and credit balances, verifying the engine stays balanced.',
       icon: Scale,
       path: '/accounting/trial-balance',
+    },
+    {
+      key: 'expenses',
+      title: 'Expenses',
+      description: 'Record operational expenses — rent, electricity, transport — posted through the same accounting engine.',
+      icon: TrendingDown,
+      path: '/accounting/expenses',
+    },
+    {
+      key: 'cash-transactions',
+      title: 'Cash Management',
+      description: 'Cash In / Cash Out entries — reflected directly in the Cash Book via the same accounting engine.',
+      icon: Wallet,
+      path: '/accounting/cash-transactions',
+    },
+    {
+      key: 'payment-methods',
+      title: 'Payment Methods',
+      description: 'Manage payment methods available across POS, Sales, Purchases, Expenses, and Cash entries.',
+      icon: CreditCard,
+      path: '/accounting/payment-methods',
+    },
+    {
+      key: 'day-closing',
+      title: 'Day Closing',
+      description: 'Reconcile expected vs. actual cash for a date, with an audited difference reason when they disagree.',
+      icon: CalendarCheck,
+      path: '/accounting/day-closing',
     },
     {
       key: 'day-book',

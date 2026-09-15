@@ -90,6 +90,8 @@ export interface SaleItemPayload {
 }
 
 export interface SaleCreatePayload {
+  /** Idempotency key (Phase 6): the SAME value resent on a retry/double-click returns the original Sale instead of creating a duplicate. */
+  clientRequestId?: string;
   customerId: number | null;
   saleDate: string;
   gstType: GstType;

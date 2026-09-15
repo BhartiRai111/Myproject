@@ -188,7 +188,8 @@ public class AccountingService {
         }
     }
 
-    private SystemAccountCode resolveCashOrBank(PaymentMode mode) {
+    /** The one place that maps a payment mode to a system account; reused by ExpenseService/CashTransactionService (Phase 6) so no caller duplicates this mapping. */
+    public SystemAccountCode resolveCashOrBank(PaymentMode mode) {
         return mode == PaymentMode.CASH ? SystemAccountCode.CASH : SystemAccountCode.BANK;
     }
 

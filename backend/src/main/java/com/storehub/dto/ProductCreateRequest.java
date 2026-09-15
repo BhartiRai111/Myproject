@@ -42,6 +42,21 @@ public class ProductCreateRequest {
     @Min(value = 0, message = "Minimum stock level cannot be negative")
     private Integer minStockLevel;
 
+    @Min(value = 0, message = "Reorder level cannot be negative")
+    private Integer reorderLevel;
+
+    @Min(value = 0, message = "Reorder quantity cannot be negative")
+    private Integer reorderQuantity;
+
+    @Min(value = 0, message = "Maximum stock level cannot be negative")
+    private Integer maxStockLevel;
+
+    @DecimalMin(value = "0", message = "MRP must be greater than or equal to 0")
+    private BigDecimal mrp;
+
+    @DecimalMin(value = "0", message = "Wholesale price must be greater than or equal to 0")
+    private BigDecimal wholesalePrice;
+
     private String description;
 
     private String manualCode;

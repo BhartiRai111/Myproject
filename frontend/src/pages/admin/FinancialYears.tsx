@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CalendarRange, MoreHorizontal, Plus, Star, Lock, Unlock } from 'lucide-react';
 import { financialYearApi } from '../../api/financialYearApi';
@@ -25,7 +24,6 @@ const money = (n: number) => `₹${(n ?? 0).toLocaleString('en-IN', { minimumFra
 const EMPTY: FinancialYearCreatePayload = { startDate: '', endDate: '', name: '', code: '' };
 
 export default function FinancialYears() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 

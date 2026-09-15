@@ -26,6 +26,11 @@ public class ProductResponse {
     private BigDecimal sellingPrice;
     private BigDecimal tax;
     private Integer minStockLevel;
+    private Integer reorderLevel;
+    private Integer reorderQuantity;
+    private Integer maxStockLevel;
+    private BigDecimal mrp;
+    private BigDecimal wholesalePrice;
     private Integer stockQuantity;
     private ProductStatus status;
     private String description;
@@ -50,6 +55,10 @@ public class ProductResponse {
     private LocalDateTime updatedAt;
 
     public static ProductResponse fromEntity(Product product, int currentStock) {
+        return fromEntity(product, currentStock, null);
+    }
+
+    public static ProductResponse fromEntity(Product product, int currentStock, Integer maxStockLevel) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -63,6 +72,11 @@ public class ProductResponse {
                 .sellingPrice(product.getSellingPrice())
                 .tax(product.getTax())
                 .minStockLevel(product.getMinStockLevel())
+                .reorderLevel(product.getReorderLevel())
+                .reorderQuantity(product.getReorderQuantity())
+                .maxStockLevel(maxStockLevel)
+                .mrp(product.getMrp())
+                .wholesalePrice(product.getWholesalePrice())
                 .stockQuantity(currentStock)
                 .status(product.getStatus())
                 .description(product.getDescription())

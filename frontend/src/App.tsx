@@ -6,6 +6,7 @@ import MainLayout from './components/layout/MainLayout';
 import { AuthProvider } from './context/AuthContext';
 import ComingSoon from './pages/ComingSoon';
 import Dashboard from './pages/Dashboard';
+import AlertsCenter from './pages/AlertsCenter';
 import InventoryPage from './pages/Inventory';
 import Login from './pages/Login';
 import ProductForm from './pages/ProductForm';
@@ -25,6 +26,7 @@ import Payments from './pages/purchases/Payments';
 import PaymentForm from './pages/purchases/PaymentForm';
 import PaymentDetail from './pages/purchases/PaymentDetail';
 import SalesHub from './pages/sales/SalesHub';
+import Pos from './pages/sales/Pos';
 import SalesOrders from './pages/sales/SalesOrders';
 import SalesOrderForm from './pages/sales/SalesOrderForm';
 import SalesOrderDetail from './pages/sales/SalesOrderDetail';
@@ -53,6 +55,14 @@ import HsnMaster from './pages/masters/HsnMaster';
 import EmployeeMaster from './pages/masters/EmployeeMaster';
 import PartyMaster from './pages/masters/PartyMaster';
 import AccountingHub from './pages/accounting/AccountingHub';
+import Expenses from './pages/accounting/Expenses';
+import ExpenseForm from './pages/accounting/ExpenseForm';
+import ExpenseDetail from './pages/accounting/ExpenseDetail';
+import CashTransactions from './pages/accounting/CashTransactions';
+import CashTransactionForm from './pages/accounting/CashTransactionForm';
+import CashTransactionDetail from './pages/accounting/CashTransactionDetail';
+import PaymentMethods from './pages/accounting/PaymentMethods';
+import DayClosingPage from './pages/accounting/DayClosingPage';
 import AccountMaster from './pages/accounting/AccountMaster';
 import Journals from './pages/accounting/Journals';
 import JournalEntryForm from './pages/accounting/JournalEntryForm';
@@ -102,6 +112,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/alerts" element={<AlertsCenter />} />
 
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
@@ -137,6 +148,7 @@ export default function App() {
             </Route>
 
             <Route path="/sales" element={<SalesHub />} />
+            <Route path="/sales/pos" element={<Pos />} />
 
             <Route path="/sales/orders" element={<SalesOrders />} />
             <Route path="/sales/orders/new" element={<SalesOrderForm />} />
@@ -172,6 +184,14 @@ export default function App() {
               <Route path="/accounting/accounts" element={<AccountMaster />} />
               <Route path="/accounting/journals" element={<Journals />} />
               <Route path="/accounting/trial-balance" element={<TrialBalance />} />
+              <Route path="/accounting/expenses" element={<Expenses />} />
+              <Route path="/accounting/expenses/new" element={<ExpenseForm />} />
+              <Route path="/accounting/expenses/:id" element={<ExpenseDetail />} />
+              <Route path="/accounting/cash-transactions" element={<CashTransactions />} />
+              <Route path="/accounting/cash-transactions/new" element={<CashTransactionForm />} />
+              <Route path="/accounting/cash-transactions/:id" element={<CashTransactionDetail />} />
+              <Route path="/accounting/payment-methods" element={<PaymentMethods />} />
+              <Route path="/accounting/day-closing" element={<DayClosingPage />} />
               <Route element={<AdminRoute />}>
                 <Route path="/accounting/journals/new" element={<JournalEntryForm />} />
               </Route>

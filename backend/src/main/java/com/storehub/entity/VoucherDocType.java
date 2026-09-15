@@ -21,7 +21,9 @@ public enum VoucherDocType {
     RECEIPT("REC"),
     PAYMENT("PAY"),
     CREDIT_NOTE("CN"),
-    DEBIT_NOTE("DN");
+    DEBIT_NOTE("DN"),
+    EXPENSE("EXP"),
+    CASH_TRANSACTION("CT");
 
     private final String prefix;
 

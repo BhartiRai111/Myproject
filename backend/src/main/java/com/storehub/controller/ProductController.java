@@ -1,5 +1,6 @@
 package com.storehub.controller;
 
+import com.storehub.dto.ImportResultResponse;
 import com.storehub.dto.PagedResponse;
 import com.storehub.dto.ProductCreateRequest;
 import com.storehub.dto.ProductResponse;
@@ -8,10 +9,17 @@ import com.storehub.entity.ProductStatus;
 import com.storehub.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/products")
@@ -60,5 +68,25 @@ public class ProductController {
     @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable Long id) {
         return ResponseEntity.ok(productService.setStatus(id, ProductStatus.INACTIVE));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<byte[]> exportProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) ProductStatus status) {
+        String csv = productService.exportCsv(search, categoryId, status);
+        String filename = "products-" + LocalDate.now() + ".csv";
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(filename).build().toString())
+                .body(csv.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @PostMapping("/import")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<ImportResultResponse> importProducts(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(productService.importCsv(file));
     }
 }

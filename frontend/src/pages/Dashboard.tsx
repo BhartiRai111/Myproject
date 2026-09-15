@@ -3,11 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowRight,
+  BellRing,
   Contact,
+  FileBarChart,
+  Landmark,
   Package,
   Receipt,
   ShoppingCart,
   Truck,
+  Users,
+  Wallet,
   Lock,
 } from 'lucide-react';
 import {
@@ -25,8 +30,14 @@ import { customerApi } from '@/api/customerApi';
 import { supplierApi } from '@/api/supplierApi';
 import { saleApi } from '@/api/saleApi';
 import { purchaseApi } from '@/api/purchaseApi';
+import { accountingReportApi } from '@/api/accountingApi';
+import { gstReportApi } from '@/api/gstReportApi';
+import { alertApi } from '@/api/alertApi';
 import { Product } from '@/types/product';
 import { Sale } from '@/types/sale';
+import { AccountingDashboardSummary } from '@/types/accounting';
+import { AlertItem } from '@/types/alert';
+import { currentReturnPeriod } from './gst/gstFormat';
 import { getStockStatus } from '@/utils/stockStatus';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -120,6 +131,9 @@ export default function Dashboard() {
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [salesChartRows, setSalesChartRows] = useState<{ date: string; amount: number }[]>([]);
   const [purchaseChartRows, setPurchaseChartRows] = useState<{ date: string; amount: number }[]>([]);
+  const [accountingSummary, setAccountingSummary] = useState<AccountingDashboardSummary | null>(null);
+  const [gstLiability, setGstLiability] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,14 +153,20 @@ export default function Dashboard() {
           saleApi.list({ fromDate: from, toDate: today, size: 200 }),
         ]);
 
-      const [purchaseCountRes, chartPurchaseRes] = canSeePurchases
+      const [purchaseCountRes, chartPurchaseRes, accountingSummaryRes, gstLiabilityRes] = canSeePurchases
         ? await Promise.allSettled([
             purchaseApi.list({ size: 1 }),
             purchaseApi.list({ fromDate: from, toDate: today, size: 200 }),
+            accountingReportApi.dashboard(),
+            gstReportApi.liability(currentReturnPeriod()),
           ])
-        : [null, null];
+        : [null, null, null, null];
+
+      const alertsRes = await alertApi.list().catch(() => null);
 
       if (cancelled) return;
+
+      if (alertsRes) setAlerts(alertsRes.data);
 
       if (productsRes.status === 'fulfilled') {
         setProducts(productsRes.value.data.content);
@@ -182,6 +202,14 @@ export default function Dashboard() {
             .filter((p) => p.status !== 'CANCELLED')
             .map((p) => ({ date: p.purchaseDate, amount: p.totalAmount }))
         );
+      }
+
+      if (accountingSummaryRes && accountingSummaryRes.status === 'fulfilled') {
+        setAccountingSummary(accountingSummaryRes.value.data);
+      }
+
+      if (gstLiabilityRes && gstLiabilityRes.status === 'fulfilled') {
+        setGstLiability(gstLiabilityRes.value.data.netTotal);
       }
 
       setLoading(false);
@@ -260,6 +288,41 @@ export default function Dashboard() {
     },
   ];
 
+  const financialStats: StatCardData[] = canSeePurchases
+    ? [
+        {
+          key: 'cashBalance',
+          label: 'Cash + Bank Balance',
+          value: `₹${((accountingSummary?.cashBalance ?? 0) + (accountingSummary?.bankBalance ?? 0)).toFixed(2)}`,
+          hint: 'Live from accounting ledger',
+          icon: Wallet,
+        },
+        {
+          key: 'receivable',
+          label: 'Receivable',
+          value: `₹${(accountingSummary?.receivableBalance ?? 0).toFixed(2)}`,
+          hint: 'Outstanding from customers',
+          icon: Users,
+        },
+        {
+          key: 'payable',
+          label: 'Payable',
+          value: `₹${(accountingSummary?.payableBalance ?? 0).toFixed(2)}`,
+          hint: 'Outstanding to suppliers',
+          icon: Landmark,
+        },
+        {
+          key: 'gstLiability',
+          label: 'GST Liability (this period)',
+          value: `₹${(gstLiability ?? 0).toFixed(2)}`,
+          hint: 'Output GST − Input GST',
+          icon: FileBarChart,
+        },
+      ]
+    : [];
+
+  const criticalAlerts = alerts.filter((a) => a.severity === 'CRITICAL').length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -285,6 +348,63 @@ export default function Dashboard() {
               )
             )}
       </div>
+
+      {canSeePurchases && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+            : financialStats.map((stat) => (
+                <div key={stat.key} onClick={() => navigate('/accounting')} className="cursor-pointer">
+                  <StatCard data={stat} />
+                </div>
+              ))}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="flex items-center gap-2">
+            <BellRing className="h-4 w-4" /> Alerts
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {!loading && alerts.length > 0 && (
+              <Badge variant={criticalAlerts > 0 ? 'destructive' : 'warning'}>
+                {criticalAlerts > 0 ? `${criticalAlerts} critical` : `${alerts.length} warning${alerts.length === 1 ? '' : 's'}`}
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => navigate('/alerts')} className="gap-1 text-xs">
+              View all <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : alerts.length === 0 ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">No active alerts. Everything looks healthy.</div>
+          ) : (
+            <div className="divide-y divide-border">
+              {alerts.slice(0, 5).map((a, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-center justify-between gap-3 py-2.5 ${a.path ? 'cursor-pointer hover:bg-accent/50' : ''}`}
+                  onClick={() => a.path && navigate(a.path)}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-muted-foreground">{a.category}</p>
+                    <p className="truncate text-sm">{a.message}</p>
+                  </div>
+                  <Badge variant={a.severity === 'CRITICAL' ? 'destructive' : 'warning'}>{a.severity}</Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className={`grid grid-cols-1 gap-4 ${canSeePurchases ? 'lg:grid-cols-2' : ''}`}>
         <Card>

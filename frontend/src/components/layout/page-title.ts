@@ -1,5 +1,6 @@
 export function getPageTitle(pathname: string): { title: string; parent?: string } {
   if (pathname === '/dashboard') return { title: 'Dashboard' };
+  if (pathname === '/alerts') return { title: 'Alert Center' };
   if (pathname === '/users') return { title: 'User Management' };
 
   if (pathname === '/purchases') return { title: 'Purchases' };

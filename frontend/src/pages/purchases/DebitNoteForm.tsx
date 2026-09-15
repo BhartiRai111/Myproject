@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
 import { purchaseApi } from '../../api/purchaseApi';
@@ -24,6 +24,7 @@ const NOTE_TYPES: DebitNoteType[] = ['PURCHASE_RETURN', 'SUPPLIER_DEBIT', 'PRICE
 
 export default function DebitNoteForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
@@ -57,6 +58,16 @@ export default function DebitNoteForm() {
     setCandidates([]);
     setQuantities({});
   };
+
+  useEffect(() => {
+    const purchaseId = searchParams.get('purchaseId');
+    if (!purchaseId) return;
+    purchaseApi
+      .getById(Number(purchaseId))
+      .then((res) => selectPurchase(res.data))
+      .catch((err) => toast.error(parseApiError(err, 'Failed to load purchase').message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const setQty = (purchaseItemId: number, qty: number) => {
     setQuantities((prev) => ({ ...prev, [purchaseItemId]: qty }));

@@ -19,6 +19,9 @@ import java.util.List;
 @Setter
 public class SaleCreateRequest {
 
+    /** Optional idempotency key (Phase 6 spec section 39) — see {@code Sale.clientRequestId}. */
+    private String clientRequestId;
+
     private Long customerId;
 
     @NotNull(message = "Sale date is required")

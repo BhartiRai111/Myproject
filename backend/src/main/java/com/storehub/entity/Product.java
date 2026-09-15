@@ -54,6 +54,18 @@ public class Product {
     @Column(name = "min_stock_level")
     private Integer minStockLevel;
 
+    @Column(name = "reorder_level")
+    private Integer reorderLevel;
+
+    @Column(name = "reorder_quantity")
+    private Integer reorderQuantity;
+
+    @Column(name = "mrp", precision = 12, scale = 2)
+    private BigDecimal mrp;
+
+    @Column(name = "wholesale_price", precision = 12, scale = 2)
+    private BigDecimal wholesalePrice;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private ProductStatus status;

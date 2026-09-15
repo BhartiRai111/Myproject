@@ -1,14 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Eye, FolderCog, MoreHorizontal, Package, Pencil, Plus, Power, PowerOff, Search } from 'lucide-react';
+import {
+  Download,
+  Eye,
+  FolderCog,
+  MoreHorizontal,
+  Package,
+  Pencil,
+  Plus,
+  Power,
+  PowerOff,
+  Search,
+  Upload,
+} from 'lucide-react';
 import { productApi } from '../api/productApi';
 import { categoryApi } from '../api/categoryApi';
 import ProductViewModal from '../components/ProductViewModal';
 import CategoryManagerDialog from '../components/CategoryManagerDialog';
 import { parseApiError } from '../utils/apiError';
+import { downloadBlob } from '../utils/download';
 import { getStockStatus, stockStatusLabel, stockStatusVariant, StockStatus } from '../utils/stockStatus';
 import { Product, ProductStatus, Category } from '../types/product';
+import { ImportResult } from '../types/importResult';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
@@ -34,6 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const PAGE_SIZE = 10;
 const ALL = '__all__';
@@ -67,6 +82,12 @@ export default function Products() {
   const [deactivating, setDeactivating] = useState(false);
   const [activatingId, setActivatingId] = useState<number | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+
+  const [exporting, setExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [sortBy, sortDir] = sort.split('-') as [string, 'asc' | 'desc'];
 
@@ -147,13 +168,65 @@ export default function Products() {
     ? products.filter((p) => getStockStatus(p) === stockFilter)
     : products;
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await productApi.exportCsv({
+        search,
+        categoryId: categoryFilter ? Number(categoryFilter) : undefined,
+        status: statusFilter || undefined,
+      });
+      downloadBlob(res.data, `products-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to export products').message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openImport = () => {
+    setImportResult(null);
+    setImportOpen(true);
+  };
+
+  const handleImportFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await productApi.importCsv(file);
+      setImportResult(res.data);
+      if (res.data.created > 0 || res.data.updated > 0) {
+        toast.success(`Imported: ${res.data.created} created, ${res.data.updated} updated`);
+        loadProducts();
+      }
+      if (res.data.skipped > 0) {
+        toast.warning(`${res.data.skipped} row(s) skipped — see details below`);
+      }
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to import products').message);
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Products"
         description="Manage your product catalog, pricing, and stock levels."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" loading={exporting} onClick={handleExport}>
+              <Download className="h-4 w-4" /> Export
+            </Button>
+            {canManage && (
+              <Button variant="outline" onClick={openImport}>
+                <Upload className="h-4 w-4" /> Import
+              </Button>
+            )}
             {canManage && (
               <Button variant="outline" onClick={() => setShowCategoryManager(true)}>
                 <FolderCog className="h-4 w-4" /> Categories
@@ -372,6 +445,56 @@ export default function Products() {
             </Button>
             <Button variant="destructive" loading={deactivating} onClick={handleDeactivateConfirm}>
               Deactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={(open) => !open && setImportOpen(false)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Products from CSV</DialogTitle>
+            <DialogDescription>
+              Header row required. Columns: name, sku, category, purchasePrice, sellingPrice (required); barcode,
+              brand, unit, tax, minStockLevel, reorderLevel, reorderQuantity, maxStockLevel, mrp, wholesalePrice,
+              openingStock, description (optional). Matching an existing SKU updates that product without touching
+              its current stock. Opening stock applies only to newly-created products, via a normal stock-in
+              movement — never a direct write.
+            </DialogDescription>
+          </DialogHeader>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={handleImportFileSelected}
+          />
+          <Button variant="outline" loading={importing} onClick={() => fileInputRef.current?.click()}>
+            <Upload className="h-4 w-4" /> Choose CSV File
+          </Button>
+
+          {importResult && (
+            <div className="space-y-3">
+              <Alert>
+                <AlertDescription>
+                  {importResult.totalRows} row(s) processed — {importResult.created} created, {importResult.updated}{' '}
+                  updated, {importResult.skipped} skipped.
+                </AlertDescription>
+              </Alert>
+              {importResult.errors.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
+                  {importResult.errors.map((err, idx) => (
+                    <p key={idx}>{err}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

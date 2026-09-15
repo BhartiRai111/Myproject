@@ -15,6 +15,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Query("SELECT p.id FROM Payment p")
     List<Long> findAllIds();
 
+    @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.paymentDate = :date")
+    java.math.BigDecimal sumAmountForDate(@Param("date") LocalDate date);
+
     @Query("SELECT p FROM Payment p LEFT JOIN p.supplier s WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.paymentNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

@@ -14,6 +14,7 @@ import {
   FileSpreadsheet,
   CalendarRange,
   ShieldAlert,
+  ScanBarcode,
   type LucideIcon,
 } from 'lucide-react';
 import { Role } from '@/types/user';
@@ -28,6 +29,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, enabled: true },
+  { label: 'POS', path: '/sales/pos', icon: ScanBarcode, enabled: true },
   { label: 'Users', path: '/users', icon: Users, enabled: true, allowedRoles: ['ADMIN'] },
   { label: 'Products', path: '/products', icon: Package, enabled: true },
   { label: 'Inventory', path: '/inventory', icon: Boxes, enabled: true },

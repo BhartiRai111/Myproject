@@ -60,4 +60,13 @@ export const inventoryApi = {
         size: query.size ?? 10,
       },
     }),
+  exportCsv: (query: InventoryQuery = {}) =>
+    api.get<Blob>('/inventory/export', {
+      responseType: 'blob',
+      params: {
+        search: query.search || undefined,
+        categoryId: query.categoryId || undefined,
+        stockStatus: query.stockStatus || undefined,
+      },
+    }),
 };

@@ -1,4 +1,4 @@
-export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+export type StockStatus = 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'OVERSTOCK';
 
 export type StockMovementType =
   | 'PURCHASE'
@@ -24,6 +24,8 @@ export interface Inventory {
   currentStock: number;
   minStockLevel: number;
   maxStockLevel?: number;
+  reorderLevel?: number;
+  reorderQuantity?: number;
   stockStatus: StockStatus;
   lastUpdated: string;
   createdAt: string;
@@ -60,4 +62,6 @@ export interface InventorySummary {
   totalStockUnits: number;
   lowStockCount: number;
   outOfStockCount: number;
+  overstockCount: number;
+  reorderCandidateCount: number;
 }

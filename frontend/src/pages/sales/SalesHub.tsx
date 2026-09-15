@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack, FileMinus2 } from 'lucide-react';
+import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack, FileMinus2, ScanBarcode } from 'lucide-react';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
 import { SalesSummary } from '../../types/receipt';
 import { PageHeader } from '@/components/PageHeader';
@@ -31,6 +31,13 @@ export default function SalesHub() {
   ];
 
   const sections = [
+    {
+      key: 'pos',
+      title: 'POS / Counter Sale',
+      description: 'Fast retail billing — scan a barcode, add items, take payment, print a receipt.',
+      icon: ScanBarcode,
+      path: '/sales/pos',
+    },
     {
       key: 'orders',
       title: 'Sales Order',

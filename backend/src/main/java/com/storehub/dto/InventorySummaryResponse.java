@@ -12,4 +12,6 @@ public class InventorySummaryResponse {
     private long totalStockUnits;
     private long lowStockCount;
     private long outOfStockCount;
+    private long overstockCount;
+    private long reorderCandidateCount;
 }

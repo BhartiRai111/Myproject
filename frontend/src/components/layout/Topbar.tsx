@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, LogOut, Menu, Moon, Sun } from 'lucide-react';
+import { AlertTriangle, Bell, LogOut, Menu, Moon, OctagonAlert, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/components/theme-provider';
+import { alertApi } from '../../api/alertApi';
+import { AlertItem } from '../../types/alert';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +20,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPageTitle } from './page-title';
 import GlobalSearch from './GlobalSearch';
+
+const ALERT_POLL_MS = 60000;
 
 function formatRole(role: string) {
   return role
@@ -39,6 +44,24 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { title, parent } = getPageTitle(location.pathname);
+
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+
+  useEffect(() => {
+    const load = () => {
+      alertApi
+        .list()
+        .then((res) => setAlerts(res.data))
+        .catch(() => {
+          // Alert Center is a convenience surface; a failed fetch should not disrupt navigation.
+        });
+    };
+    load();
+    const interval = setInterval(load, ALERT_POLL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
+  const criticalCount = alerts.filter((a) => a.severity === 'CRITICAL').length;
 
   const handleLogout = async () => {
     await logout();
@@ -67,14 +90,60 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Notifications">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
               <Bell className="h-[18px] w-[18px]" />
+              {alerts.length > 0 && (
+                <span
+                  className={`absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold text-white ${
+                    criticalCount > 0 ? 'bg-destructive' : 'bg-amber-500'
+                  }`}
+                >
+                  {alerts.length > 9 ? '9+' : alerts.length}
+                </span>
+              )}
             </Button>
-          </TooltipTrigger>
-          <TooltipContent>No new notifications</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex items-center justify-between font-normal">
+              <span className="text-sm font-medium">Alerts</span>
+              {alerts.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {criticalCount > 0 ? `${criticalCount} critical` : `${alerts.length} warning${alerts.length === 1 ? '' : 's'}`}
+                </span>
+              )}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {alerts.length === 0 ? (
+              <div className="px-2 py-6 text-center text-sm text-muted-foreground">No active alerts</div>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {alerts.slice(0, 8).map((a, idx) => (
+                  <DropdownMenuItem
+                    key={idx}
+                    className="flex items-start gap-2 whitespace-normal py-2"
+                    onClick={() => a.path && navigate(a.path)}
+                  >
+                    {a.severity === 'CRITICAL' ? (
+                      <OctagonAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground">{a.category}</p>
+                      <p className="text-sm leading-snug">{a.message}</p>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/alerts')} className="justify-center text-sm font-medium">
+              View All Alerts
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Tooltip>
           <TooltipTrigger asChild>

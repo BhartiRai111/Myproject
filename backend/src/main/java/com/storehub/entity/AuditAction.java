@@ -16,5 +16,6 @@ public enum AuditAction {
     REVERSE,
     FY_CLOSE,
     FY_OPEN,
-    PERMISSION_CHANGE
+    PERMISSION_CHANGE,
+    DAY_CLOSE
 }

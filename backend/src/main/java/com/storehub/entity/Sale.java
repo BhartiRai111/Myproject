@@ -29,6 +29,16 @@ public class Sale {
     @Column(name = "invoice_number", unique = true, length = 30)
     private String invoiceNumber;
 
+    /**
+     * Idempotency key (Phase 6 spec section 39): an optional caller-supplied token — the
+     * POS screen generates one per cart before the first submit attempt and resends the
+     * SAME token on any retry (double-click, refresh, network timeout). A unique DB
+     * constraint means a retry can never create a second Sale; {@code SaleService.createSale}
+     * looks this up first and returns the original Sale instead of re-posting.
+     */
+    @Column(name = "client_request_id", unique = true, length = 100)
+    private String clientRequestId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id")
     private Customer customer;

@@ -15,6 +15,9 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
     @Query("SELECT r.id FROM Receipt r")
     List<Long> findAllIds();
 
+    @Query("SELECT COALESCE(SUM(r.amount), 0) FROM Receipt r WHERE r.receiptDate = :date")
+    java.math.BigDecimal sumAmountForDate(@Param("date") LocalDate date);
+
     @Query("SELECT r FROM Receipt r LEFT JOIN r.customer c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(r.receiptNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

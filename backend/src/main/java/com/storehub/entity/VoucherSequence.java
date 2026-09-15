@@ -19,7 +19,7 @@ public class VoucherSequence {
     private Long id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "doc_type", nullable = false, length = 20)
+    @Column(name = "doc_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private VoucherDocType docType;
 
     @Column(name = "financial_year_id", nullable = false)

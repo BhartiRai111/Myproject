@@ -79,6 +79,15 @@ public class SaleService {
 
     @Transactional
     public SaleResponse createSale(SaleCreateRequest request) {
+        if (request.getClientRequestId() != null && !request.getClientRequestId().isBlank()) {
+            var existing = saleRepository.findByClientRequestId(request.getClientRequestId());
+            if (existing.isPresent()) {
+                Sale sale = existing.get();
+                boolean hasReceipts = !receiptAllocationRepository.findBySaleId(sale.getId()).isEmpty();
+                return SaleResponse.fromEntity(sale, hasReceipts);
+            }
+        }
+
         if (request.getGstType() == GstType.GST && request.getTaxMode() == null) {
             throw new BadRequestException("Tax mode (Intra-State or Inter-State) is required for a GST sale");
         }
@@ -98,6 +107,8 @@ public class SaleService {
         }
 
         Sale sale = Sale.builder()
+                .clientRequestId(request.getClientRequestId() != null && !request.getClientRequestId().isBlank()
+                        ? request.getClientRequestId() : null)
                 .customer(customer)
                 .saleDate(request.getSaleDate())
                 .status(draft ? SaleStatus.DRAFT : SaleStatus.COMPLETED)
@@ -117,7 +128,23 @@ public class SaleService {
         applyItems(sale, request.getItems(), Collections.emptySet());
         applyPayment(sale, request.getPaidAmount());
 
-        Sale saved = saleRepository.save(sale);
+        Sale saved;
+        try {
+            saved = saleRepository.save(sale);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // A concurrent request with the identical clientRequestId won the race (Sale.id is
+            // IDENTITY-generated, so this insert — and the unique-constraint check — happens
+            // synchronously here, not deferred to commit). Return that request's result instead
+            // of failing this one, so a genuine double-submit never surfaces as a 500.
+            if (sale.getClientRequestId() != null) {
+                var raced = saleRepository.findByClientRequestId(sale.getClientRequestId());
+                if (raced.isPresent()) {
+                    boolean hasReceipts = !receiptAllocationRepository.findBySaleId(raced.get().getId()).isEmpty();
+                    return SaleResponse.fromEntity(raced.get(), hasReceipts);
+                }
+            }
+            throw e;
+        }
         saved.setInvoiceNumber(voucherNumberService.next(
                 type == TransactionType.SALE_CHALLAN ? com.storehub.entity.VoucherDocType.SALE_CHALLAN : com.storehub.entity.VoucherDocType.SALE,
                 request.getSaleDate()));

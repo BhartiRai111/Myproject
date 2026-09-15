@@ -16,6 +16,8 @@ import java.util.List;
 
 public interface SaleRepository extends JpaRepository<Sale, Long> {
 
+    java.util.Optional<Sale> findByClientRequestId(String clientRequestId);
+
     @Query("SELECT s FROM Sale s WHERE s.customer.id = :customerId AND s.dueAmount > 0 " +
             "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED ORDER BY s.saleDate ASC, s.id ASC")
     List<Sale> findOutstandingByCustomer(@Param("customerId") Long customerId);
@@ -33,6 +35,16 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
 
     @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate = :date AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
     BigDecimal getTotalSalesForDate(@Param("date") LocalDate date);
+
+    /** For Day Closing (Phase 6 spec section 16) — sales total split by payment mode. */
+    @Query("SELECT s.paymentMode, COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate = :date " +
+            "AND s.status = com.storehub.entity.SaleStatus.COMPLETED GROUP BY s.paymentMode")
+    List<Object[]> sumByPaymentModeForDate(@Param("date") LocalDate date);
+
+    /** Sales left with an outstanding due balance on the day, i.e. sold on credit. */
+    @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate = :date " +
+            "AND s.status = com.storehub.entity.SaleStatus.COMPLETED AND s.dueAmount > 0")
+    BigDecimal sumCreditSalesForDate(@Param("date") LocalDate date);
 
     /** For the Financial Year summary — active (non-cancelled) sales within [fromDate, toDate]. */
     @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate BETWEEN :fromDate AND :toDate " +

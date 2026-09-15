@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Pencil, Printer, Send, Trash2 } from 'lucide-react';
+import { FileMinus2, Pencil, Printer, Send, Trash2 } from 'lucide-react';
 import { purchaseApi } from '../../api/purchaseApi';
 import { parseApiError } from '../../utils/apiError';
 import { Purchase, PurchaseStatus, PaymentStatus } from '../../types/purchase';
@@ -104,6 +104,11 @@ export default function KacchiPurchaseDetail() {
           {purchase.status === 'DRAFT' && (
             <Button loading={posting} onClick={handlePost}>
               <Send className="h-4 w-4" /> Post
+            </Button>
+          )}
+          {purchase.status === 'COMPLETED' && purchase.supplier && (
+            <Button variant="outline" onClick={() => navigate(`/purchases/debit-notes/new?purchaseId=${purchase.id}`)}>
+              <FileMinus2 className="h-4 w-4" /> Return
             </Button>
           )}
           {purchase.status !== 'CANCELLED' && (

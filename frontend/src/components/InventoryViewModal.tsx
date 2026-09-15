@@ -13,12 +13,14 @@ interface Props {
 function stockStatusVariant(status: StockStatus) {
   if (status === 'OUT_OF_STOCK') return 'destructive' as const;
   if (status === 'LOW_STOCK') return 'warning' as const;
+  if (status === 'OVERSTOCK') return 'secondary' as const;
   return 'success' as const;
 }
 
 function stockStatusLabel(status: StockStatus) {
   if (status === 'OUT_OF_STOCK') return 'Out of Stock';
   if (status === 'LOW_STOCK') return 'Low Stock';
+  if (status === 'OVERSTOCK') return 'Overstock';
   return 'In Stock';
 }
 

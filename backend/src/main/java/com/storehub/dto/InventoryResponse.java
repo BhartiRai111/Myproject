@@ -24,6 +24,8 @@ public class InventoryResponse {
     private Integer currentStock;
     private Integer minStockLevel;
     private Integer maxStockLevel;
+    private Integer reorderLevel;
+    private Integer reorderQuantity;
     private StockStatus stockStatus;
     private LocalDateTime lastUpdated;
     private LocalDateTime createdAt;
@@ -34,11 +36,15 @@ public class InventoryResponse {
         int minStockLevel = product.getMinStockLevel() != null ? product.getMinStockLevel() : 0;
         int currentStock = inventory.getCurrentStock();
 
+        Integer maxStockLevel = inventory.getMaxStockLevel();
+
         StockStatus stockStatus;
         if (currentStock <= 0) {
             stockStatus = StockStatus.OUT_OF_STOCK;
         } else if (currentStock <= minStockLevel) {
             stockStatus = StockStatus.LOW_STOCK;
+        } else if (maxStockLevel != null && currentStock > maxStockLevel) {
+            stockStatus = StockStatus.OVERSTOCK;
         } else {
             stockStatus = StockStatus.IN_STOCK;
         }
@@ -53,7 +59,9 @@ public class InventoryResponse {
                 .unit(product.getUnit())
                 .currentStock(currentStock)
                 .minStockLevel(minStockLevel)
-                .maxStockLevel(inventory.getMaxStockLevel())
+                .maxStockLevel(maxStockLevel)
+                .reorderLevel(product.getReorderLevel())
+                .reorderQuantity(product.getReorderQuantity())
                 .stockStatus(stockStatus)
                 .lastUpdated(inventory.getUpdatedAt())
                 .createdAt(inventory.getCreatedAt())

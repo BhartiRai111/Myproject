@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { IndianRupee, Pencil, Printer, Trash2 } from 'lucide-react';
+import { FileMinus2, IndianRupee, Pencil, Printer, Trash2 } from 'lucide-react';
 import { purchaseApi } from '../../api/purchaseApi';
 import { parseApiError } from '../../utils/apiError';
 import { PaymentStatus, Purchase } from '../../types/purchase';
@@ -85,6 +85,11 @@ export default function PurchaseBillDetail() {
           {purchase.payableAmount > 0 && purchase.supplier && (
             <Button variant="outline" onClick={() => navigate(`/purchases/payments/new?supplierId=${purchase.supplier!.id}`)}>
               <IndianRupee className="h-4 w-4" /> Payment
+            </Button>
+          )}
+          {purchase.status !== 'CANCELLED' && purchase.supplier && (
+            <Button variant="outline" onClick={() => navigate(`/purchases/debit-notes/new?purchaseId=${purchase.id}`)}>
+              <FileMinus2 className="h-4 w-4" /> Return
             </Button>
           )}
           {purchase.status !== 'CANCELLED' && (

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
 import { saleApi } from '../../api/saleApi';
@@ -24,6 +24,7 @@ const NOTE_TYPES: CreditNoteType[] = ['SALES_RETURN', 'PRICE_ADJUSTMENT', 'DISCO
 
 export default function CreditNoteForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
@@ -57,6 +58,16 @@ export default function CreditNoteForm() {
     setCandidates([]);
     setQuantities({});
   };
+
+  useEffect(() => {
+    const saleId = searchParams.get('saleId');
+    if (!saleId) return;
+    saleApi
+      .getById(Number(saleId))
+      .then((res) => selectSale(res.data))
+      .catch((err) => toast.error(parseApiError(err, 'Failed to load sale').message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const setQty = (saleItemId: number, qty: number) => {
     setQuantities((p) => ({ ...p, [saleItemId]: qty }));

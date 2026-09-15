@@ -33,6 +33,11 @@ export interface Product {
   sellingPrice: number;
   tax: number;
   minStockLevel: number;
+  reorderLevel?: number;
+  reorderQuantity?: number;
+  maxStockLevel?: number;
+  mrp?: number;
+  wholesalePrice?: number;
   stockQuantity: number;
   status: ProductStatus;
   description?: string;
@@ -68,6 +73,11 @@ export interface ProductPayload {
   sellingPrice: number;
   tax?: number;
   minStockLevel?: number;
+  reorderLevel?: number;
+  reorderQuantity?: number;
+  maxStockLevel?: number;
+  mrp?: number;
+  wholesalePrice?: number;
   description?: string;
   manualCode?: string;
   itemGroupId?: number | '';

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, Boxes, Eye, History, MoreHorizontal, Package, PackageX, Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowUpCircle, Boxes, Download, Eye, History, MoreHorizontal, Package, PackageX, RotateCw, Search, SlidersHorizontal } from 'lucide-react';
 import { inventoryApi } from '../api/inventoryApi';
 import { categoryApi } from '../api/categoryApi';
 import InventoryViewModal from '../components/InventoryViewModal';
 import StockAdjustmentDialog from '../components/StockAdjustmentDialog';
 import StockHistoryModal from '../components/StockHistoryModal';
 import { parseApiError } from '../utils/apiError';
-import { Inventory, StockStatus } from '../types/inventory';
+import { downloadBlob } from '../utils/download';
+import { Inventory, InventorySummary, StockStatus } from '../types/inventory';
 import { Category } from '../types/product';
 import { useAuth } from '../context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
@@ -40,12 +41,14 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
 function stockStatusVariant(status: StockStatus) {
   if (status === 'OUT_OF_STOCK') return 'destructive' as const;
   if (status === 'LOW_STOCK') return 'warning' as const;
+  if (status === 'OVERSTOCK') return 'secondary' as const;
   return 'success' as const;
 }
 
 function stockStatusLabel(status: StockStatus) {
   if (status === 'OUT_OF_STOCK') return 'Out of Stock';
   if (status === 'LOW_STOCK') return 'Low Stock';
+  if (status === 'OVERSTOCK') return 'Overstock';
   return 'In Stock';
 }
 
@@ -95,7 +98,14 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [summaryLoading, setSummaryLoading] = useState(true);
-  const [summary, setSummary] = useState({ totalProducts: 0, totalStockUnits: 0, lowStockCount: 0, outOfStockCount: 0 });
+  const [summary, setSummary] = useState<InventorySummary>({
+    totalProducts: 0,
+    totalStockUnits: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    overstockCount: 0,
+    reorderCandidateCount: 0,
+  });
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -107,6 +117,7 @@ export default function InventoryPage() {
   const [viewItem, setViewItem] = useState<Inventory | null>(null);
   const [historyItem, setHistoryItem] = useState<Inventory | null>(null);
   const [adjustItem, setAdjustItem] = useState<Inventory | null | undefined>(undefined);
+  const [exporting, setExporting] = useState(false);
 
   const [sortBy, sortDir] = sort.split('-') as [string, 'asc' | 'desc'];
 
@@ -174,11 +185,29 @@ export default function InventoryPage() {
     loadSummary();
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await inventoryApi.exportCsv({
+        search,
+        categoryId: categoryFilter ? Number(categoryFilter) : undefined,
+        stockStatus: stockStatusFilter || undefined,
+      });
+      downloadBlob(res.data, `inventory-${new Date().toISOString().slice(0, 10)}.csv`);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to export inventory').message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const summaryCards: SummaryCardData[] = [
     { key: 'total', label: 'Total Products', value: String(summary.totalProducts), icon: Package },
     { key: 'stock', label: 'Total Stock', value: String(summary.totalStockUnits), icon: Boxes },
     { key: 'low', label: 'Low Stock', value: String(summary.lowStockCount), icon: AlertTriangle },
     { key: 'out', label: 'Out of Stock', value: String(summary.outOfStockCount), icon: PackageX },
+    { key: 'overstock', label: 'Overstock', value: String(summary.overstockCount), icon: ArrowUpCircle },
+    { key: 'reorder', label: 'Reorder Candidates', value: String(summary.reorderCandidateCount), icon: RotateCw },
   ];
 
   return (
@@ -187,17 +216,22 @@ export default function InventoryPage() {
         title="Inventory"
         description="Track current stock levels and stock movements across your catalog."
         actions={
-          canManage ? (
-            <Button onClick={() => setAdjustItem(null)}>
-              <SlidersHorizontal className="h-4 w-4" /> Adjust Stock
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" loading={exporting} onClick={handleExport}>
+              <Download className="h-4 w-4" /> Export
             </Button>
-          ) : undefined
+            {canManage && (
+              <Button onClick={() => setAdjustItem(null)}>
+                <SlidersHorizontal className="h-4 w-4" /> Adjust Stock
+              </Button>
+            )}
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {summaryLoading
-          ? Array.from({ length: 4 }).map((_, i) => <SummaryCardSkeleton key={i} />)
+          ? Array.from({ length: 6 }).map((_, i) => <SummaryCardSkeleton key={i} />)
           : summaryCards.map((card) => <SummaryCard key={card.key} data={card} />)}
       </div>
 
@@ -247,6 +281,7 @@ export default function InventoryPage() {
                 <SelectItem value="IN_STOCK">In Stock</SelectItem>
                 <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
                 <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                <SelectItem value="OVERSTOCK">Overstock</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sort} onValueChange={setSort}>

@@ -8,5 +8,7 @@ public enum VoucherType {
     PAYMENT,
     JOURNAL,
     CREDIT_NOTE,
-    DEBIT_NOTE
+    DEBIT_NOTE,
+    EXPENSE,
+    CASH_TRANSACTION
 }

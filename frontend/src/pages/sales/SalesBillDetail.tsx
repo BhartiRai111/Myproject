@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { IndianRupee, Pencil, Printer, Trash2 } from 'lucide-react';
+import { FileMinus2, IndianRupee, Pencil, Printer, Trash2 } from 'lucide-react';
 import { saleApi } from '../../api/saleApi';
 import { parseApiError } from '../../utils/apiError';
 import { PaymentStatus } from '../../types/purchase';
@@ -86,6 +86,11 @@ export default function SalesBillDetail() {
           {sale.dueAmount > 0 && sale.customer && (
             <Button variant="outline" onClick={() => navigate(`/sales/receipts/new?customerId=${sale.customer!.id}`)}>
               <IndianRupee className="h-4 w-4" /> Receipt
+            </Button>
+          )}
+          {sale.status !== 'CANCELLED' && sale.customer && (
+            <Button variant="outline" onClick={() => navigate(`/sales/credit-notes/new?saleId=${sale.id}`)}>
+              <FileMinus2 className="h-4 w-4" /> Return
             </Button>
           )}
           {sale.status !== 'CANCELLED' && (

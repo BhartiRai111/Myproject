@@ -51,6 +51,11 @@ export default function ProductForm() {
   const [sellingPrice, setSellingPrice] = useState('0');
   const [tax, setTax] = useState('0');
   const [minStockLevel, setMinStockLevel] = useState('0');
+  const [reorderLevel, setReorderLevel] = useState('');
+  const [reorderQuantity, setReorderQuantity] = useState('');
+  const [maxStockLevel, setMaxStockLevel] = useState('');
+  const [mrp, setMrp] = useState('');
+  const [wholesalePrice, setWholesalePrice] = useState('');
   const [description, setDescription] = useState('');
 
   const [manualCode, setManualCode] = useState('');
@@ -82,6 +87,11 @@ export default function ProductForm() {
       sellingPrice,
       tax,
       minStockLevel,
+      reorderLevel,
+      reorderQuantity,
+      maxStockLevel,
+      mrp,
+      wholesalePrice,
       description,
       manualCode,
       itemGroupId,
@@ -136,6 +146,11 @@ export default function ProductForm() {
       setSellingPrice(String(product.sellingPrice));
       setTax(String(product.tax));
       setMinStockLevel(String(product.minStockLevel));
+      setReorderLevel(product.reorderLevel != null ? String(product.reorderLevel) : '');
+      setReorderQuantity(product.reorderQuantity != null ? String(product.reorderQuantity) : '');
+      setMaxStockLevel(product.maxStockLevel != null ? String(product.maxStockLevel) : '');
+      setMrp(product.mrp != null ? String(product.mrp) : '');
+      setWholesalePrice(product.wholesalePrice != null ? String(product.wholesalePrice) : '');
       setDescription(product.description || '');
       setManualCode(product.manualCode || '');
       setItemGroupId(product.itemGroupId ? String(product.itemGroupId) : '');
@@ -173,6 +188,11 @@ export default function ProductForm() {
     if (toNumber(sellingPrice) < 0) return 'Selling price must be greater than or equal to 0';
     if (toNumber(tax) < 0) return 'Tax must be greater than or equal to 0';
     if (toNumber(minStockLevel) < 0) return 'Minimum stock level cannot be negative';
+    if (reorderLevel && toNumber(reorderLevel) < 0) return 'Reorder level cannot be negative';
+    if (reorderQuantity && toNumber(reorderQuantity) < 0) return 'Reorder quantity cannot be negative';
+    if (maxStockLevel && toNumber(maxStockLevel) < 0) return 'Maximum stock level cannot be negative';
+    if (mrp && toNumber(mrp) < 0) return 'MRP must be greater than or equal to 0';
+    if (wholesalePrice && toNumber(wholesalePrice) < 0) return 'Wholesale price must be greater than or equal to 0';
     return null;
   };
 
@@ -198,6 +218,11 @@ export default function ProductForm() {
       sellingPrice: toNumber(sellingPrice),
       tax: toNumber(tax),
       minStockLevel: toNumber(minStockLevel),
+      reorderLevel: reorderLevel ? toNumber(reorderLevel) : undefined,
+      reorderQuantity: reorderQuantity ? toNumber(reorderQuantity) : undefined,
+      maxStockLevel: maxStockLevel ? toNumber(maxStockLevel) : undefined,
+      mrp: mrp ? toNumber(mrp) : undefined,
+      wholesalePrice: wholesalePrice ? toNumber(wholesalePrice) : undefined,
       description: description || undefined,
       manualCode: manualCode || undefined,
       itemGroupId: itemGroupId ? Number(itemGroupId) : undefined,
@@ -374,6 +399,32 @@ export default function ProductForm() {
               />
               {fieldErrors.tax && <p className="text-xs text-destructive">{fieldErrors.tax}</p>}
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mrp">MRP (optional)</Label>
+              <Input
+                id="mrp"
+                type="number"
+                min={0}
+                step="0.01"
+                value={mrp}
+                onChange={(e) => setMrp(e.target.value)}
+                invalid={!!fieldErrors.mrp}
+              />
+              {fieldErrors.mrp && <p className="text-xs text-destructive">{fieldErrors.mrp}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wholesalePrice">Wholesale Price (optional)</Label>
+              <Input
+                id="wholesalePrice"
+                type="number"
+                min={0}
+                step="0.01"
+                value={wholesalePrice}
+                onChange={(e) => setWholesalePrice(e.target.value)}
+                invalid={!!fieldErrors.wholesalePrice}
+              />
+              {fieldErrors.wholesalePrice && <p className="text-xs text-destructive">{fieldErrors.wholesalePrice}</p>}
+            </div>
           </CardContent>
         </Card>
 
@@ -394,6 +445,18 @@ export default function ProductForm() {
               />
               {fieldErrors.minStockLevel && <p className="text-xs text-destructive">{fieldErrors.minStockLevel}</p>}
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="maxStockLevel">Maximum Stock Level (optional)</Label>
+              <Input
+                id="maxStockLevel"
+                type="number"
+                min={0}
+                value={maxStockLevel}
+                onChange={(e) => setMaxStockLevel(e.target.value)}
+                invalid={!!fieldErrors.maxStockLevel}
+              />
+              {fieldErrors.maxStockLevel && <p className="text-xs text-destructive">{fieldErrors.maxStockLevel}</p>}
+            </div>
             {isEdit && (
               <div className="space-y-1.5">
                 <Label>Current Stock</Label>
@@ -402,6 +465,31 @@ export default function ProductForm() {
                 </p>
               </div>
             )}
+            <div className="space-y-1.5">
+              <Label htmlFor="reorderLevel">Reorder Level (optional)</Label>
+              <Input
+                id="reorderLevel"
+                type="number"
+                min={0}
+                value={reorderLevel}
+                onChange={(e) => setReorderLevel(e.target.value)}
+                invalid={!!fieldErrors.reorderLevel}
+              />
+              {fieldErrors.reorderLevel && <p className="text-xs text-destructive">{fieldErrors.reorderLevel}</p>}
+              <p className="text-xs text-muted-foreground">Stock at or below this triggers a reorder alert.</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reorderQuantity">Reorder Quantity (optional)</Label>
+              <Input
+                id="reorderQuantity"
+                type="number"
+                min={0}
+                value={reorderQuantity}
+                onChange={(e) => setReorderQuantity(e.target.value)}
+                invalid={!!fieldErrors.reorderQuantity}
+              />
+              {fieldErrors.reorderQuantity && <p className="text-xs text-destructive">{fieldErrors.reorderQuantity}</p>}
+            </div>
           </CardContent>
         </Card>
 
