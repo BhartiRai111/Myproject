@@ -5,7 +5,9 @@ import com.storehub.dto.HealthCheckFinding;
 import com.storehub.entity.AccountingPartyType;
 import com.storehub.entity.HealthCheckStatus;
 import com.storehub.entity.VoucherType;
+import com.storehub.repository.CreditNoteRepository;
 import com.storehub.repository.CustomerLedgerEntryRepository;
+import com.storehub.repository.DebitNoteRepository;
 import com.storehub.repository.JournalDetailRepository;
 import com.storehub.repository.JournalHeaderRepository;
 import com.storehub.repository.PaymentRepository;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +46,8 @@ public class AccountingHealthCheckService {
     private final PaymentRepository paymentRepository;
     private final CustomerLedgerEntryRepository customerLedgerEntryRepository;
     private final SupplierLedgerEntryRepository supplierLedgerEntryRepository;
+    private final CreditNoteRepository creditNoteRepository;
+    private final DebitNoteRepository debitNoteRepository;
 
     @Transactional(readOnly = true)
     public AccountingHealthCheckResponse runHealthCheck() {
@@ -52,6 +57,8 @@ public class AccountingHealthCheckService {
         findings.add(checkSourcePosting());
         findings.add(checkOrphanJournals());
         findings.add(checkLedgerMismatch());
+        findings.add(checkFinancialYearCoverage());
+        findings.add(checkNotePosting());
 
         HealthCheckStatus overall = HealthCheckStatus.PASS;
         for (HealthCheckFinding f : findings) {
@@ -173,6 +180,20 @@ public class AccountingHealthCheckService {
             }
         }
 
+        Set<Long> creditNoteIds = new HashSet<>(creditNoteRepository.findAllIds());
+        for (Long voucherId : journalHeaderRepository.findDistinctVoucherIds(VoucherType.CREDIT_NOTE)) {
+            if (!creditNoteIds.contains(voucherId)) {
+                orphans.add("Journal(s) reference CREDIT_NOTE id=" + voucherId + ", which no longer exists");
+            }
+        }
+
+        Set<Long> debitNoteIds = new HashSet<>(debitNoteRepository.findAllIds());
+        for (Long voucherId : journalHeaderRepository.findDistinctVoucherIds(VoucherType.DEBIT_NOTE)) {
+            if (!debitNoteIds.contains(voucherId)) {
+                orphans.add("Journal(s) reference DEBIT_NOTE id=" + voucherId + ", which no longer exists");
+            }
+        }
+
         if (orphans.isEmpty()) {
             return pass("Orphan Journal", "Every journal's source reference still exists.");
         }
@@ -213,6 +234,48 @@ public class AccountingHealthCheckService {
             return pass("Party Ledger Match", "Every customer/supplier's operational ledger balance matches the accounting journal.");
         }
         return warning("Party Ledger Match", mismatches.size() + " part(y/ies) have a mismatch between the operational ledger and the accounting journal.", mismatches);
+    }
+
+    /**
+     * WARNING for any POSTED journal dated outside every defined Financial Year. Should not occur
+     * going forward — {@code AccountingService.buildAndSaveJournal}/{@code reverseJournal} resolve a
+     * Financial Year for the posting date before saving anything — so a non-empty result means data
+     * predates the Financial Year feature, or a FY covering that date was later deleted.
+     */
+    private HealthCheckFinding checkFinancialYearCoverage() {
+        List<LocalDate> uncovered = journalHeaderRepository.findPostedDatesWithoutFinancialYear();
+        if (uncovered.isEmpty()) {
+            return pass("Financial Year Coverage", "Every posted journal falls within a defined financial year.");
+        }
+        List<String> details = new ArrayList<>();
+        for (LocalDate date : uncovered) {
+            details.add("Posted journal(s) dated " + date + " fall outside every defined financial year");
+        }
+        return warning("Financial Year Coverage", uncovered.size() + " posted journal date(s) are not covered by any financial year.", details);
+    }
+
+    /** WARNING for any POSTED CreditNote/DebitNote missing its expected active accounting journal — mirrors {@link #checkSourcePosting()} for notes. */
+    private HealthCheckFinding checkNotePosting() {
+        List<String> missing = new ArrayList<>();
+
+        Set<Long> creditNoteJournalIds = new HashSet<>(journalHeaderRepository.findActivePostedVoucherIds(VoucherType.CREDIT_NOTE));
+        for (Long id : creditNoteRepository.findPostedIds()) {
+            if (!creditNoteJournalIds.contains(id)) {
+                missing.add("CREDIT_NOTE id=" + id + " is POSTED but has no active accounting journal");
+            }
+        }
+
+        Set<Long> debitNoteJournalIds = new HashSet<>(journalHeaderRepository.findActivePostedVoucherIds(VoucherType.DEBIT_NOTE));
+        for (Long id : debitNoteRepository.findPostedIds()) {
+            if (!debitNoteJournalIds.contains(id)) {
+                missing.add("DEBIT_NOTE id=" + id + " is POSTED but has no active accounting journal");
+            }
+        }
+
+        if (missing.isEmpty()) {
+            return pass("Note Posting", "Every POSTED credit/debit note has its expected accounting journal.");
+        }
+        return warning("Note Posting", missing.size() + " note(s) are missing their expected accounting journal.", missing);
     }
 
     private HealthCheckFinding pass(String name, String message) {

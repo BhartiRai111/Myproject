@@ -12,6 +12,8 @@ import {
   Landmark,
   BookText,
   FileSpreadsheet,
+  CalendarRange,
+  ShieldAlert,
   type LucideIcon,
 } from 'lucide-react';
 import { Role } from '@/types/user';
@@ -35,6 +37,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Accounting', path: '/accounting', icon: BookText, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'GST Reports', path: '/gst-reports', icon: FileSpreadsheet, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
   { label: 'Masters', path: '/masters', icon: Landmark, enabled: true, allowedRoles: ['ADMIN', 'STORE_MANAGER'] },
+  { label: 'Financial Years', path: '/admin/financial-years', icon: CalendarRange, enabled: true, allowedRoles: ['ADMIN'] },
+  { label: 'Audit Trail', path: '/admin/audit-trail', icon: ShieldAlert, enabled: true, allowedRoles: ['ADMIN'] },
   { label: 'Customers', path: '/customers', icon: Contact, enabled: false },
   { label: 'Payments', path: '/payments', icon: CreditCard, enabled: false },
   { label: 'Reports', path: '/reports', icon: BarChart3, enabled: false },

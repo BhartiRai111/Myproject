@@ -81,6 +81,14 @@ import HsnSummaryReport from './pages/gst/HsnSummaryReport';
 import TaxRateSummaryReport from './pages/gst/TaxRateSummaryReport';
 import GstLiabilityReport from './pages/gst/GstLiabilityReport';
 import GstReconciliation from './pages/gst/GstReconciliation';
+import FinancialYears from './pages/admin/FinancialYears';
+import AuditTrail from './pages/admin/AuditTrail';
+import CreditNotes from './pages/sales/CreditNotes';
+import CreditNoteForm from './pages/sales/CreditNoteForm';
+import CreditNoteDetail from './pages/sales/CreditNoteDetail';
+import DebitNotes from './pages/purchases/DebitNotes';
+import DebitNoteForm from './pages/purchases/DebitNoteForm';
+import DebitNoteDetail from './pages/purchases/DebitNoteDetail';
 
 const DISABLED_MODULES = ['customers', 'payments', 'reports'];
 
@@ -97,6 +105,8 @@ export default function App() {
 
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
+              <Route path="/admin/financial-years" element={<FinancialYears />} />
+              <Route path="/admin/audit-trail" element={<AuditTrail />} />
             </Route>
 
             <Route element={<ManagerRoute />}>
@@ -120,6 +130,10 @@ export default function App() {
               <Route path="/purchases/kacchi/new" element={<KacchiPurchaseForm />} />
               <Route path="/purchases/kacchi/:id" element={<KacchiPurchaseDetail />} />
               <Route path="/purchases/kacchi/:id/edit" element={<KacchiPurchaseForm />} />
+
+              <Route path="/purchases/debit-notes" element={<DebitNotes />} />
+              <Route path="/purchases/debit-notes/new" element={<DebitNoteForm />} />
+              <Route path="/purchases/debit-notes/:id" element={<DebitNoteDetail />} />
             </Route>
 
             <Route path="/sales" element={<SalesHub />} />
@@ -148,6 +162,10 @@ export default function App() {
             <Route element={<ManagerRoute />}>
               <Route path="/sales/kacchi/:id/edit" element={<KacchiSaleForm />} />
             </Route>
+
+            <Route path="/sales/credit-notes" element={<CreditNotes />} />
+            <Route path="/sales/credit-notes/new" element={<CreditNoteForm />} />
+            <Route path="/sales/credit-notes/:id" element={<CreditNoteDetail />} />
 
             <Route element={<ManagerRoute />}>
               <Route path="/accounting" element={<AccountingHub />} />

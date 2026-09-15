@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack } from 'lucide-react';
+import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack, FileMinus2 } from 'lucide-react';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
 import { SalesSummary } from '../../types/receipt';
 import { PageHeader } from '@/components/PageHeader';
@@ -58,6 +58,13 @@ export default function SalesHub() {
       description: 'Record payments received against outstanding sales bills.',
       icon: IndianRupee,
       path: '/sales/receipts',
+    },
+    {
+      key: 'credit-notes',
+      title: 'Credit Notes',
+      description: 'Sales returns, price/discount/tax adjustments, and customer credits against a posted sale.',
+      icon: FileMinus2,
+      path: '/sales/credit-notes',
     },
   ];
 

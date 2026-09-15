@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack } from 'lucide-react';
+import { ClipboardList, FileText, Wallet, ArrowRight, Clock, IndianRupee, TrendingUp, FileStack, FilePlus2 } from 'lucide-react';
 import { purchaseSummaryApi } from '../../api/purchaseSummaryApi';
 import { PurchaseSummary } from '../../types/payment';
 import { PageHeader } from '@/components/PageHeader';
@@ -58,6 +58,13 @@ export default function PurchaseHub() {
       description: 'Record payments made against outstanding purchase bills.',
       icon: IndianRupee,
       path: '/purchases/payments',
+    },
+    {
+      key: 'debit-notes',
+      title: 'Debit Notes',
+      description: 'Purchase returns, supplier debits, and price/tax adjustments against a posted purchase.',
+      icon: FilePlus2,
+      path: '/purchases/debit-notes',
     },
   ];
 

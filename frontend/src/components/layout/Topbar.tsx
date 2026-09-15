@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPageTitle } from './page-title';
+import GlobalSearch from './GlobalSearch';
 
 function formatRole(role: string) {
   return role
@@ -46,12 +47,12 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 sm:px-6 print:hidden">
       <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </Button>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 lg:hidden">
         {parent && (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <span>{parent}</span>
@@ -59,6 +60,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
           </div>
         )}
         <h1 className="truncate text-lg font-semibold leading-tight">{title}</h1>
+      </div>
+
+      <div className="hidden min-w-0 flex-1 lg:block">
+        <GlobalSearch />
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">

@@ -374,7 +374,13 @@ export default function Dashboard() {
             ) : (
               <div className="divide-y divide-border">
                 {recentSales.map((sale) => (
-                  <div key={sale.id} className="flex items-center justify-between gap-3 py-3">
+                  <div
+                    key={sale.id}
+                    className="flex cursor-pointer items-center justify-between gap-3 py-3 hover:bg-accent/50"
+                    onClick={() =>
+                      navigate(sale.transactionType === 'SALE_CHALLAN' ? `/sales/kacchi/${sale.id}` : `/sales/bills/${sale.id}`)
+                    }
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{sale.invoiceNumber}</p>
                       <p className="truncate text-xs text-muted-foreground">
@@ -419,7 +425,11 @@ export default function Dashboard() {
             ) : (
               <div className="divide-y divide-border">
                 {lowStockProducts.slice(0, 6).map((product) => (
-                  <div key={product.id} className="flex items-center justify-between gap-3 py-3">
+                  <div
+                    key={product.id}
+                    className="flex cursor-pointer items-center justify-between gap-3 py-3 hover:bg-accent/50"
+                    onClick={() => navigate('/inventory')}
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{product.name}</p>
                       <p className="text-xs text-muted-foreground">{product.unit}</p>

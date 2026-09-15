@@ -69,4 +69,14 @@ public interface JournalHeaderRepository extends JpaRepository<JournalHeader, Lo
     /** Every distinct (voucherType, voucherId) a journal exists for, for a given source voucherType — used by the orphan-journal Health Check. */
     @Query("SELECT DISTINCT j.voucherId FROM JournalHeader j WHERE j.voucherType = :voucherType AND j.voucherId IS NOT NULL")
     List<Long> findDistinctVoucherIds(@Param("voucherType") VoucherType voucherType);
+
+    /**
+     * Every distinct date a POSTED journal exists on that no defined FinancialYear covers.
+     * Should be empty going forward since AccountingService.buildAndSaveJournal/reverseJournal
+     * resolve a FinancialYear for every posting date before it can be saved; a non-empty result
+     * means historical data predates the Financial Year feature, or a FY was deleted after posting.
+     */
+    @Query("SELECT DISTINCT j.journalDate FROM JournalHeader j WHERE j.status = com.storehub.entity.JournalStatus.POSTED " +
+            "AND NOT EXISTS (SELECT 1 FROM FinancialYear f WHERE j.journalDate BETWEEN f.startDate AND f.endDate)")
+    List<LocalDate> findPostedDatesWithoutFinancialYear();
 }

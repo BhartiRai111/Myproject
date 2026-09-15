@@ -22,4 +22,10 @@ public interface CreditNoteRepository extends JpaRepository<CreditNote, Long> {
             "AND (:toDate IS NULL OR c.noteDate <= :toDate)")
     Page<CreditNote> search(@Param("search") String search, @Param("status") NoteStatus status,
                              @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, Pageable pageable);
+
+    @Query("SELECT c.id FROM CreditNote c WHERE c.status = com.storehub.entity.NoteStatus.POSTED")
+    java.util.List<Long> findPostedIds();
+
+    @Query("SELECT c.id FROM CreditNote c")
+    java.util.List<Long> findAllIds();
 }

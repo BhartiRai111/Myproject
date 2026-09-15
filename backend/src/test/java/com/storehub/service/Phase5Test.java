@@ -100,6 +100,8 @@ class Phase5Test {
     private ReceivablePayableService receivablePayableService;
     @Autowired
     private AuditLogRepository auditLogRepository;
+    @Autowired
+    private AccountingHealthCheckService accountingHealthCheckService;
 
     private Customer newCustomer() {
         return customerRepository.save(Customer.builder()
@@ -322,6 +324,38 @@ class Phase5Test {
         assertThat(cancelledAgain.getStatus()).isEqualTo(NoteStatus.CANCELLED);
         Inventory invAfterSecondCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow();
         assertThat(invAfterSecondCancel.getCurrentStock()).isEqualTo(stockAfterSale);
+    }
+
+    @Test
+    void healthCheck_notePostingAndFinancialYearCoverage_passAfterPostedCreditNote() {
+        Customer customer = newCustomer();
+        Product product = newProduct(new BigDecimal("1000"), 10);
+        SaleResponse sale = saleService.createSale(saleRequest(TransactionType.SALE, customer.getId(),
+                List.of(saleItemReq(product.getId(), 5, new BigDecimal("1000"), new BigDecimal("18")))));
+        SaleItem saleItem = saleItemRepository.findAll().stream()
+                .filter(i -> i.getSale().getId().equals(sale.getId())).findFirst().orElseThrow();
+
+        CreditNoteCreateRequest request = new CreditNoteCreateRequest();
+        request.setSourceSaleId(sale.getId());
+        request.setNoteType(CreditNoteType.SALES_RETURN);
+        request.setNoteDate(LocalDate.now());
+        request.setStockImpact(StockImpactType.STOCK_RETURN);
+        CreditNoteItemRequest itemReq = new CreditNoteItemRequest();
+        itemReq.setSaleItemId(saleItem.getId());
+        itemReq.setQuantity(1);
+        request.setItems(List.of(itemReq));
+        request.setPost(true);
+        creditNoteService.create(request);
+
+        var healthCheck = accountingHealthCheckService.runHealthCheck();
+
+        var notePosting = healthCheck.getFindings().stream()
+                .filter(f -> "Note Posting".equals(f.getCheckName())).findFirst().orElseThrow();
+        assertThat(notePosting.getStatus()).isEqualTo(com.storehub.entity.HealthCheckStatus.PASS);
+
+        var fyCoverage = healthCheck.getFindings().stream()
+                .filter(f -> "Financial Year Coverage".equals(f.getCheckName())).findFirst().orElseThrow();
+        assertThat(fyCoverage.getStatus()).isEqualTo(com.storehub.entity.HealthCheckStatus.PASS);
     }
 
     @Test

@@ -21,4 +21,10 @@ public interface DebitNoteRepository extends JpaRepository<DebitNote, Long> {
             "AND (:toDate IS NULL OR d.noteDate <= :toDate)")
     Page<DebitNote> search(@Param("search") String search, @Param("status") NoteStatus status,
                             @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, Pageable pageable);
+
+    @Query("SELECT d.id FROM DebitNote d WHERE d.status = com.storehub.entity.NoteStatus.POSTED")
+    java.util.List<Long> findPostedIds();
+
+    @Query("SELECT d.id FROM DebitNote d")
+    java.util.List<Long> findAllIds();
 }

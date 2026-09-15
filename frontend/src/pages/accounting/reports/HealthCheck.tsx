@@ -52,7 +52,7 @@ export default function HealthCheck() {
 
       <PageHeader
         title="Accounting Health Check"
-        description="Journal balance, duplicate posting, source posting, orphan journals, and party ledger reconciliation — every mismatch is reported, never hidden."
+        description="Journal balance, duplicate posting, source posting, orphan journals, party ledger reconciliation, financial year coverage, and credit/debit note posting — every mismatch is reported, never hidden."
         actions={
           <Button type="button" variant="outline" onClick={load}>
             <RefreshCcw className="h-4 w-4" /> Re-run
