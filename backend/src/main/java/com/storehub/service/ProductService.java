@@ -216,6 +216,7 @@ public class ProductService {
         List<Product> products = productRepository.search(search, categoryId, status, Sort.by("name").ascending());
         List<Long> productIds = products.stream().map(Product::getId).toList();
         Map<Long, Integer> stockByProductId = inventoryService.getCurrentStockBulk(productIds);
+        Map<Long, Integer> maxStockByProductId = inventoryService.getMaxStockLevelBulk(productIds);
 
         StringBuilder csv = new StringBuilder();
         csv.append(CsvUtil.row(EXPORT_HEADER.toArray()));
@@ -223,7 +224,7 @@ public class ProductService {
             csv.append(CsvUtil.row(
                     p.getName(), p.getSku(), p.getBarcode(), p.getCategory() != null ? p.getCategory().getName() : "",
                     p.getBrand(), p.getUnit(), p.getPurchasePrice(), p.getSellingPrice(), p.getTax(),
-                    p.getMinStockLevel(), p.getReorderLevel(), p.getReorderQuantity(), inventoryService.getMaxStockLevel(p.getId()),
+                    p.getMinStockLevel(), p.getReorderLevel(), p.getReorderQuantity(), maxStockByProductId.get(p.getId()),
                     p.getMrp(), p.getWholesalePrice(), stockByProductId.getOrDefault(p.getId(), 0),
                     p.getStatus(), p.getDescription()));
         }

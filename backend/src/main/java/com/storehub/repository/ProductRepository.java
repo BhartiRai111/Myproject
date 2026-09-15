@@ -38,7 +38,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                           @Param("status") ProductStatus status,
                           Pageable pageable);
 
-    @Query("SELECT p FROM Product p WHERE " +
+    // Export-only variant: LEFT JOIN FETCH avoids one lazy-load query per row for p.category
+    // when the caller (ProductService.exportCsv) iterates the whole unpaged result set.
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

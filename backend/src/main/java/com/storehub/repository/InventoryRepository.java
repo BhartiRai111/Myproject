@@ -33,7 +33,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
                             @Param("stockStatus") String stockStatus,
                             Pageable pageable);
 
-    @Query("SELECT i FROM Inventory i JOIN i.product p LEFT JOIN p.category c WHERE " +
+    // Export-only variant: LEFT JOIN FETCH avoids one lazy-load query per row for
+    // i.product/p.category when the caller (InventoryService.exportCsv) iterates the whole
+    // unpaged result set.
+    @Query("SELECT i FROM Inventory i JOIN FETCH i.product p LEFT JOIN FETCH p.category c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))) " +
@@ -65,4 +68,9 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT i FROM Inventory i JOIN i.product p WHERE p.reorderLevel IS NOT NULL AND i.currentStock <= p.reorderLevel " +
             "AND p.status = com.storehub.entity.ProductStatus.ACTIVE ORDER BY i.currentStock ASC")
     List<Inventory> findReorderCandidates();
+
+    /** Count-only counterpart to {@link #findReorderCandidates()} — used by AlertService/getSummary, which only need the count. */
+    @Query("SELECT COUNT(i) FROM Inventory i JOIN i.product p WHERE p.reorderLevel IS NOT NULL AND i.currentStock <= p.reorderLevel " +
+            "AND p.status = com.storehub.entity.ProductStatus.ACTIVE")
+    long countReorderCandidates();
 }

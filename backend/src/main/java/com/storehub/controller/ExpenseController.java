@@ -18,6 +18,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/expenses")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class ExpenseController {
 
     private final ExpenseService expenseService;
@@ -40,19 +41,16 @@ public class ExpenseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<ExpenseResponse> create(@Valid @RequestBody ExpenseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.create(request));
     }
 
     @PostMapping("/{id}/post")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<ExpenseResponse> post(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.post(id));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<ExpenseResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.cancel(id));
     }

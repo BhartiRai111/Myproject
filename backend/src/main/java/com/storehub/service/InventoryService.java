@@ -71,6 +71,22 @@ public class InventoryService {
         return inventoryRepository.findByProductId(productId).map(Inventory::getMaxStockLevel).orElse(null);
     }
 
+    /**
+     * Bulk equivalent of {@link #getMaxStockLevel} — avoids one query per product for CSV export
+     * over a full catalog. maxStockLevel is nullable (unset by default), so entries build up via a
+     * plain loop rather than {@code Collectors.toMap}, which throws on a null value.
+     */
+    public Map<Long, Integer> getMaxStockLevelBulk(List<Long> productIds) {
+        if (productIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Integer> result = new HashMap<>();
+        for (Inventory inv : inventoryRepository.findByProductIdIn(productIds)) {
+            result.put(inv.getProduct().getId(), inv.getMaxStockLevel());
+        }
+        return result;
+    }
+
     public Map<Long, Integer> getCurrentStockBulk(List<Long> productIds) {
         if (productIds.isEmpty()) {
             return Map.of();
@@ -123,7 +139,7 @@ public class InventoryService {
                 .lowStockCount(inventoryRepository.countLowStock())
                 .outOfStockCount(inventoryRepository.countOutOfStock())
                 .overstockCount(inventoryRepository.countOverstock())
-                .reorderCandidateCount(inventoryRepository.findReorderCandidates().size())
+                .reorderCandidateCount(inventoryRepository.countReorderCandidates())
                 .build();
     }
 

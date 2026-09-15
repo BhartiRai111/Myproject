@@ -19,6 +19,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/cash-transactions")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class CashTransactionController {
 
     private final CashTransactionService cashTransactionService;
@@ -41,19 +42,16 @@ public class CashTransactionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<CashTransactionResponse> create(@Valid @RequestBody CashTransactionCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(cashTransactionService.create(request));
     }
 
     @PostMapping("/{id}/post")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<CashTransactionResponse> post(@PathVariable Long id) {
         return ResponseEntity.ok(cashTransactionService.post(id));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<CashTransactionResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(cashTransactionService.cancel(id));
     }

@@ -12,11 +12,20 @@ public final class CsvUtil {
     private CsvUtil() {
     }
 
+    private static final String FORMULA_TRIGGER_CHARS = "=+-@\t\r";
+
     public static String escape(Object value) {
         if (value == null) {
             return "";
         }
         String s = value.toString();
+        // Neutralize spreadsheet formula injection: a cell that Excel/LibreOffice/Sheets would
+        // otherwise interpret as a formula (=, +, -, @, or leading tab/CR) gets a literal-text
+        // prefix before the normal RFC4180 quoting below. Guards against a product name/category
+        // planted by one user (e.g. STORE_MANAGER) executing in another user's spreadsheet on export.
+        if (!s.isEmpty() && FORMULA_TRIGGER_CHARS.indexOf(s.charAt(0)) >= 0) {
+            s = "'" + s;
+        }
         if (s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
             return "\"" + s.replace("\"", "\"\"") + "\"";
         }

@@ -56,7 +56,7 @@ public class AlertService {
                     .path("/inventory?stockStatus=LOW_STOCK").build());
         }
 
-        int reorderCandidates = inventoryRepository.findReorderCandidates().size();
+        long reorderCandidates = inventoryRepository.countReorderCandidates();
         if (reorderCandidates > 0) {
             alerts.add(AlertItem.builder().severity("WARNING").category("Inventory")
                     .message(reorderCandidates + " product(s) have reached their reorder point")
