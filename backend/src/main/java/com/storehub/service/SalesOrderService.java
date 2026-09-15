@@ -35,6 +35,7 @@ public class SalesOrderService {
     private final SalesOrderItemRepository salesOrderItemRepository;
     private final ProductService productService;
     private final CustomerService customerService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<SalesOrderResponse> search(String search, Long customerId, SalesOrderStatus status,
                                                       LocalDate fromDate, LocalDate toDate, int page, int size) {
@@ -70,7 +71,7 @@ public class SalesOrderService {
         applyItems(order, request.getItems());
 
         SalesOrder saved = salesOrderRepository.save(order);
-        saved.setOrderNumber(String.format("SO-%06d", saved.getId()));
+        saved.setOrderNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.SALES_ORDER, saved.getOrderDate()));
         saved = salesOrderRepository.save(saved);
 
         return SalesOrderResponse.fromEntity(saved);

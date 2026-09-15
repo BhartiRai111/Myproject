@@ -1,6 +1,8 @@
 package com.storehub.service;
 
 import com.storehub.entity.AccountingPartyType;
+import com.storehub.entity.CreditNote;
+import com.storehub.entity.DebitNote;
 import com.storehub.entity.GstTransaction;
 import com.storehub.entity.GstTransactionStatus;
 import com.storehub.entity.Purchase;
@@ -105,6 +107,76 @@ public class GstTransactionSyncService {
     @Transactional
     public void reversePurchase(Purchase purchase) {
         gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.PURCHASE, purchase.getId())
+                .ifPresent(txn -> {
+                    txn.setStatus(GstTransactionStatus.REVERSED);
+                    gstTransactionRepository.save(txn);
+                });
+    }
+
+    /** Creates or refreshes the ACTIVE reporting row for a POSTED, GST-reportable Credit Note. A note against a non-eligible (Kacchi) sale is a no-op. */
+    @Transactional
+    public void syncCreditNote(CreditNote note) {
+        if (!GstReportingEligibility.isEligibleForGstReporting(note)) {
+            return;
+        }
+        GstTransaction txn = findOrNew(VoucherType.CREDIT_NOTE, note.getId());
+        String gstin = note.getSourceSale().getCustomerGstin();
+        String partyName = (note.getCustomer().getFirstName() + " " + nullToEmpty(note.getCustomer().getLastName())).trim();
+
+        txn.setVoucherNumber(note.getVoucherNumber());
+        txn.setVoucherDate(note.getNoteDate());
+        txn.setPartyType(AccountingPartyType.CUSTOMER);
+        txn.setPartyId(note.getCustomer().getId());
+        txn.setPartyName(partyName);
+        txn.setPartyGstin(gstin);
+        txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
+        txn.setB2b(GstinValidator.isValid(gstin));
+        applyAmounts(txn, note.getTaxableAmount(), note.getCgstAmount(), note.getSgstAmount(), note.getIgstAmount(), note.getTotalAmount());
+        txn.setReturnPeriod(note.getNoteDate().format(RETURN_PERIOD_FORMAT));
+        txn.setStatus(GstTransactionStatus.ACTIVE);
+        txn.setCreatedBy(currentUsername());
+
+        gstTransactionRepository.save(txn);
+    }
+
+    @Transactional
+    public void reverseCreditNote(CreditNote note) {
+        gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.CREDIT_NOTE, note.getId())
+                .ifPresent(txn -> {
+                    txn.setStatus(GstTransactionStatus.REVERSED);
+                    gstTransactionRepository.save(txn);
+                });
+    }
+
+    /** Creates or refreshes the ACTIVE reporting row for a POSTED, GST-reportable Debit Note. A note against a non-eligible (Kacchi) purchase is a no-op. */
+    @Transactional
+    public void syncDebitNote(DebitNote note) {
+        if (!GstReportingEligibility.isEligibleForGstReporting(note)) {
+            return;
+        }
+        GstTransaction txn = findOrNew(VoucherType.DEBIT_NOTE, note.getId());
+        String gstin = note.getSourcePurchase().getSupplierGstin();
+        String partyName = note.getSupplier().getName();
+
+        txn.setVoucherNumber(note.getVoucherNumber());
+        txn.setVoucherDate(note.getNoteDate());
+        txn.setPartyType(AccountingPartyType.SUPPLIER);
+        txn.setPartyId(note.getSupplier().getId());
+        txn.setPartyName(partyName);
+        txn.setPartyGstin(gstin);
+        txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
+        txn.setB2b(GstinValidator.isValid(gstin));
+        applyAmounts(txn, note.getTaxableAmount(), note.getCgstAmount(), note.getSgstAmount(), note.getIgstAmount(), note.getTotalAmount());
+        txn.setReturnPeriod(note.getNoteDate().format(RETURN_PERIOD_FORMAT));
+        txn.setStatus(GstTransactionStatus.ACTIVE);
+        txn.setCreatedBy(currentUsername());
+
+        gstTransactionRepository.save(txn);
+    }
+
+    @Transactional
+    public void reverseDebitNote(DebitNote note) {
+        gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.DEBIT_NOTE, note.getId())
                 .ifPresent(txn -> {
                     txn.setStatus(GstTransactionStatus.REVERSED);
                     gstTransactionRepository.save(txn);

@@ -37,6 +37,7 @@ public class ReceiptService {
     private final CustomerService customerService;
     private final LedgerService ledgerService;
     private final AccountingService accountingService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<ReceiptResponse> search(String search, Long customerId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -75,7 +76,7 @@ public class ReceiptService {
                 .build();
 
         Receipt saved = receiptRepository.save(receipt);
-        saved.setReceiptNumber(String.format("RCPT-%06d", saved.getId()));
+        saved.setReceiptNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.RECEIPT, saved.getReceiptDate()));
 
         allocate(saved, request.getAllocations(), customer.getId());
 
@@ -100,7 +101,7 @@ public class ReceiptService {
                 .build();
 
         Receipt saved = receiptRepository.save(receipt);
-        saved.setReceiptNumber(String.format("RCPT-%06d", saved.getId()));
+        saved.setReceiptNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.RECEIPT, saved.getReceiptDate()));
         saved.addAllocation(ReceiptAllocation.builder().sale(sale).amountApplied(sale.getPaidAmount()).build());
         saved = receiptRepository.save(saved);
 

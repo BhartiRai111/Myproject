@@ -15,19 +15,15 @@ import com.storehub.entity.Purchase;
 import com.storehub.entity.Receipt;
 import com.storehub.entity.Sale;
 import com.storehub.entity.SystemAccountCode;
-import com.storehub.entity.User;
 import com.storehub.entity.VoucherType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.JournalNotFoundException;
 import com.storehub.repository.JournalHeaderRepository;
-import com.storehub.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +50,7 @@ public class AccountingService {
 
     private final AccountService accountService;
     private final JournalHeaderRepository journalHeaderRepository;
+    private final FinancialYearService financialYearService;
 
     // ---- Sale ----
 
@@ -251,6 +248,7 @@ public class AccountingService {
 
     private JournalHeader buildAndSaveJournal(VoucherType voucherType, Long voucherId, String voucherNumber,
                                                LocalDate journalDate, String narration, List<ResolvedLine> lines) {
+        financialYearService.resolveOpenForPosting(journalDate);
         if (voucherId != null && journalHeaderRepository
                 .existsByVoucherTypeAndVoucherIdAndStatusAndReversalOfJournalIsNull(voucherType, voucherId, JournalStatus.POSTED)) {
             throw new BadRequestException("An accounting journal has already been posted for this " + voucherType.name().toLowerCase());
@@ -309,6 +307,7 @@ public class AccountingService {
             return;
         }
         JournalHeader original = originalOpt.get();
+        financialYearService.resolveOpenForPosting(LocalDate.now());
 
         String user = currentUsername();
         JournalHeader reversal = JournalHeader.builder()
@@ -418,12 +417,6 @@ public class AccountingService {
     }
 
     private String currentUsername() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
-            User user = principal.getUser();
-            String lastName = user.getLastName() != null ? user.getLastName() : "";
-            return (user.getFirstName() + " " + lastName).trim();
-        }
-        return "System";
+        return com.storehub.util.SecurityUtil.currentUsername();
     }
 }

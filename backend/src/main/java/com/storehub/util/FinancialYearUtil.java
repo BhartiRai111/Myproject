@@ -4,9 +4,10 @@ import java.time.LocalDate;
 
 /**
  * Indian financial year convention (1 April → 31 March), computed purely
- * from a date — there is no persisted FinancialYear/Company/Branch entity
- * anywhere in this app (confirmed absent in Phase 3/4 inspection), so this
- * is a report-level convention only, never a stored setting.
+ * from a date. Used to auto-seed and validate {@link com.storehub.entity.FinancialYear}
+ * rows (Phase 5) — this class only knows the calendar rule, never whether a
+ * year is OPEN/CLOSED/current, which is what the persisted entity and
+ * {@link com.storehub.service.FinancialYearService} are for.
  */
 public final class FinancialYearUtil {
 
@@ -28,5 +29,11 @@ public final class FinancialYearUtil {
     public static String label(LocalDate date) {
         LocalDate start = startOf(date);
         return start.getYear() + "-" + String.format("%02d", (start.getYear() + 1) % 100);
+    }
+
+    /** Short code such as "26-27", as used in voucher numbers (SALE/26-27/000001). */
+    public static String shortCode(LocalDate date) {
+        LocalDate start = startOf(date);
+        return String.format("%02d", start.getYear() % 100) + "-" + String.format("%02d", (start.getYear() + 1) % 100);
     }
 }

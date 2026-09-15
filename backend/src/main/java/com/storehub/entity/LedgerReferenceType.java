@@ -4,5 +4,7 @@ public enum LedgerReferenceType {
     SALE,
     RECEIPT,
     PURCHASE,
-    PAYMENT
+    PAYMENT,
+    CREDIT_NOTE,
+    DEBIT_NOTE
 }

@@ -36,6 +36,7 @@ public class PurchaseOrderService {
     private final PurchaseOrderItemRepository purchaseOrderItemRepository;
     private final ProductService productService;
     private final SupplierService supplierService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<PurchaseOrderResponse> search(String search, Long supplierId, PurchaseOrderStatus status,
                                                          LocalDate fromDate, LocalDate toDate, int page, int size) {
@@ -72,7 +73,7 @@ public class PurchaseOrderService {
         applyItems(order, request.getItems());
 
         PurchaseOrder saved = purchaseOrderRepository.save(order);
-        saved.setOrderNumber(String.format("PO-%06d", saved.getId()));
+        saved.setOrderNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.PURCHASE_ORDER, saved.getOrderDate()));
         saved = purchaseOrderRepository.save(saved);
 
         return PurchaseOrderResponse.fromEntity(saved);

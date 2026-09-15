@@ -295,4 +295,58 @@ public class LedgerService {
     public BigDecimal getTotalPayables() {
         return supplierLedgerEntryRepository.getTotalOutstanding();
     }
+
+    /** A Sales Credit Note always REDUCES what the customer owes — the opposite polarity of {@link #recordSaleDebit}. */
+    @Transactional
+    public void recordCreditNoteEntry(CreditNote note) {
+        customerLedgerEntryRepository.save(CustomerLedgerEntry.builder()
+                .customer(note.getCustomer())
+                .entryType(LedgerEntryType.CREDIT)
+                .amount(note.getTotalAmount())
+                .referenceType(LedgerReferenceType.CREDIT_NOTE)
+                .referenceId(note.getId())
+                .description("Credit Note " + note.getVoucherNumber())
+                .entryDate(note.getNoteDate())
+                .build());
+    }
+
+    @Transactional
+    public void reverseCreditNoteEntry(CreditNote note, String reason) {
+        customerLedgerEntryRepository.save(CustomerLedgerEntry.builder()
+                .customer(note.getCustomer())
+                .entryType(LedgerEntryType.DEBIT)
+                .amount(note.getTotalAmount())
+                .referenceType(LedgerReferenceType.CREDIT_NOTE)
+                .referenceId(note.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
+    /** A Purchase Debit Note always REDUCES what is owed to the supplier — the opposite polarity of {@link #recordPurchaseCredit}. */
+    @Transactional
+    public void recordDebitNoteEntry(DebitNote note) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(note.getSupplier())
+                .entryType(LedgerEntryType.DEBIT)
+                .amount(note.getTotalAmount())
+                .referenceType(LedgerReferenceType.DEBIT_NOTE)
+                .referenceId(note.getId())
+                .description("Debit Note " + note.getVoucherNumber())
+                .entryDate(note.getNoteDate())
+                .build());
+    }
+
+    @Transactional
+    public void reverseDebitNoteEntry(DebitNote note, String reason) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(note.getSupplier())
+                .entryType(LedgerEntryType.CREDIT)
+                .amount(note.getTotalAmount())
+                .referenceType(LedgerReferenceType.DEBIT_NOTE)
+                .referenceId(note.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
 }

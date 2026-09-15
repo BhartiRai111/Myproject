@@ -27,7 +27,7 @@ public class StockHistory {
     private Product product;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "movement_type", nullable = false, length = 20)
+    @Column(name = "movement_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private StockMovementType movementType;
 
     @Column(nullable = false)
@@ -43,7 +43,7 @@ public class StockHistory {
     private String reason;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "reference_type", length = 20)
+    @Column(name = "reference_type", columnDefinition = "VARCHAR(20)")
     private ReferenceType referenceType;
 
     @Column(name = "reference_id")

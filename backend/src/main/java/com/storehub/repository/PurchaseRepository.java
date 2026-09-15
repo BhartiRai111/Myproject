@@ -36,6 +36,15 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
             "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED")
     java.math.BigDecimal getTotalPurchasesForDate(@Param("date") LocalDate date);
 
+    /** For the Financial Year summary — active (non-cancelled) purchases within [fromDate, toDate]. */
+    @Query("SELECT COALESCE(SUM(p.totalAmount), 0) FROM Purchase p WHERE p.purchaseDate BETWEEN :fromDate AND :toDate " +
+            "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED")
+    java.math.BigDecimal sumTotalAmountByDateRange(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
+    @Query("SELECT COUNT(p) FROM Purchase p WHERE p.purchaseDate BETWEEN :fromDate AND :toDate " +
+            "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED")
+    long countByDateRange(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
     @Query("SELECT p FROM Purchase p WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.purchaseNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

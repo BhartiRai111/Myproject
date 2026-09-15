@@ -7,5 +7,7 @@ public enum StockMovementType {
     STOCK_OUT,
     ADJUSTMENT,
     SALE_CANCEL,
-    PURCHASE_CANCEL
+    PURCHASE_CANCEL,
+    SALES_RETURN,
+    PURCHASE_RETURN
 }

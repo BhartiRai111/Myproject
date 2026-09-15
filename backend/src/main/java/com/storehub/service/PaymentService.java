@@ -37,6 +37,7 @@ public class PaymentService {
     private final SupplierService supplierService;
     private final LedgerService ledgerService;
     private final AccountingService accountingService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<PaymentResponse> search(String search, Long supplierId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -75,7 +76,7 @@ public class PaymentService {
                 .build();
 
         Payment saved = paymentRepository.save(payment);
-        saved.setPaymentNumber(String.format("PAY-%06d", saved.getId()));
+        saved.setPaymentNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.PAYMENT, saved.getPaymentDate()));
 
         allocate(saved, request.getAllocations(), supplier.getId());
 
@@ -100,7 +101,7 @@ public class PaymentService {
                 .build();
 
         Payment saved = paymentRepository.save(payment);
-        saved.setPaymentNumber(String.format("PAY-%06d", saved.getId()));
+        saved.setPaymentNumber(voucherNumberService.next(com.storehub.entity.VoucherDocType.PAYMENT, saved.getPaymentDate()));
         saved.addAllocation(PaymentAllocation.builder().purchase(purchase).amountApplied(purchase.getPaidAmount()).build());
         saved = paymentRepository.save(saved);
 

@@ -58,6 +58,7 @@ public class SaleService {
     private final ReceiptService receiptService;
     private final ReceiptAllocationRepository receiptAllocationRepository;
     private final GstTransactionSyncService gstTransactionSyncService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
@@ -116,7 +117,9 @@ public class SaleService {
         applyPayment(sale, request.getPaidAmount());
 
         Sale saved = saleRepository.save(sale);
-        saved.setInvoiceNumber(String.format("%s-%06d", type == TransactionType.SALE_CHALLAN ? "SC" : "INV", saved.getId()));
+        saved.setInvoiceNumber(voucherNumberService.next(
+                type == TransactionType.SALE_CHALLAN ? com.storehub.entity.VoucherDocType.SALE_CHALLAN : com.storehub.entity.VoucherDocType.SALE,
+                request.getSaleDate()));
         saved = saleRepository.save(saved);
 
         if (!draft) {

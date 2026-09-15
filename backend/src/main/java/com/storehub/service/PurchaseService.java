@@ -59,6 +59,7 @@ public class PurchaseService {
     private final PaymentService paymentService;
     private final PaymentAllocationRepository paymentAllocationRepository;
     private final GstTransactionSyncService gstTransactionSyncService;
+    private final VoucherNumberService voucherNumberService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
@@ -118,7 +119,9 @@ public class PurchaseService {
         applyPayment(purchase, request.getPaidAmount());
 
         Purchase saved = purchaseRepository.save(purchase);
-        saved.setPurchaseNumber(String.format("%s-%06d", type == TransactionType.PURCHASE_CHALLAN ? "PC" : "PUR", saved.getId()));
+        saved.setPurchaseNumber(voucherNumberService.next(
+                type == TransactionType.PURCHASE_CHALLAN ? com.storehub.entity.VoucherDocType.PURCHASE_CHALLAN : com.storehub.entity.VoucherDocType.PURCHASE,
+                request.getPurchaseDate()));
         saved = purchaseRepository.save(saved);
 
         if (!draft) {

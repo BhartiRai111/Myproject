@@ -1,5 +1,8 @@
 package com.storehub.service;
 
+import com.storehub.entity.CreditNote;
+import com.storehub.entity.DebitNote;
+import com.storehub.entity.NoteStatus;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseStatus;
 import com.storehub.entity.Sale;
@@ -30,5 +33,18 @@ public final class GstReportingEligibility {
     public static boolean isEligibleForGstReporting(Purchase purchase) {
         return Boolean.TRUE.equals(purchase.getGstReportingApplicable())
                 && purchase.getStatus() == PurchaseStatus.COMPLETED;
+    }
+
+    /**
+     * Same rule, for a Credit Note (Phase 5): {@code gstReportingApplicable} is copied
+     * verbatim from the source Sale at creation time (never re-derived here), so a note
+     * against a Kacchi sale stays excluded exactly like its source.
+     */
+    public static boolean isEligibleForGstReporting(CreditNote note) {
+        return Boolean.TRUE.equals(note.getGstReportingApplicable()) && note.getStatus() == NoteStatus.POSTED;
+    }
+
+    public static boolean isEligibleForGstReporting(DebitNote note) {
+        return Boolean.TRUE.equals(note.getGstReportingApplicable()) && note.getStatus() == NoteStatus.POSTED;
     }
 }

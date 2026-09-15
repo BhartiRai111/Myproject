@@ -99,6 +99,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(FinancialYearNotFoundException.class)
+    public ResponseEntity<ApiError> handleFinancialYearNotFound(FinancialYearNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(NoteNotFoundException.class)
+    public ResponseEntity<ApiError> handleNoteNotFound(NoteNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(JournalNotFoundException.class)
     public ResponseEntity<ApiError> handleJournalNotFound(JournalNotFoundException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);

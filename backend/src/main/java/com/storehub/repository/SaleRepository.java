@@ -34,6 +34,15 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate = :date AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
     BigDecimal getTotalSalesForDate(@Param("date") LocalDate date);
 
+    /** For the Financial Year summary — active (non-cancelled) sales within [fromDate, toDate]. */
+    @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate BETWEEN :fromDate AND :toDate " +
+            "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
+    BigDecimal sumTotalAmountByDateRange(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
+    @Query("SELECT COUNT(s) FROM Sale s WHERE s.saleDate BETWEEN :fromDate AND :toDate " +
+            "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
+    long countByDateRange(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
     @Query("SELECT s FROM Sale s LEFT JOIN s.customer c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(s.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
