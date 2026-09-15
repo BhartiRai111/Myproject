@@ -330,6 +330,23 @@ class AccountingReportsTest {
         assertThat(row.getClosingOutstanding()).isEqualByComparingTo(expected);
     }
 
+    // ---- Regression: a cancelled Sale's reversal must net to zero transactionAmount, not double-count ----
+    @Test
+    void receivable_cancelledSale_doesNotInflateTransactionAmount() {
+        Customer customer = newCustomer();
+        Product product = newProduct(new BigDecimal("11800"), 10);
+
+        SaleResponse sale = saleService.createSale(saleRequest(TransactionType.SALE, customer.getId(), BigDecimal.ZERO,
+                List.of(saleItem(product.getId(), 1, new BigDecimal("10000"), new BigDecimal("18"))), false));
+        saleService.cancelSale(sale.getId());
+
+        ReceivablePayableResponse receivable = receivablePayableService.receivable(null, null);
+        var row = receivable.getRows().stream().filter(r -> r.getPartyId().equals(customer.getId())).findFirst().orElseThrow();
+
+        assertThat(row.getTransactionAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(row.getClosingOutstanding()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
     // ---- Test 14: Outstanding Bill report reconciles with Sale.dueAmount ----
     @Test
     void outstandingBillReport_matchesSaleDueAmount() {

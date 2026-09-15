@@ -88,8 +88,12 @@ public class ReceivablePayableService {
             BigDecimal[] txn = activity.getOrDefault(transactionRef, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
             BigDecimal[] pay = activity.getOrDefault(paymentRef, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
 
-            BigDecimal transactionAmount = creditIncreases ? txn[1] : txn[0];
-            BigDecimal paymentAmount = creditIncreases ? pay[0] : pay[1];
+            // Net both sides of each bucket, not just the "increasing" side: a reversed Sale/Purchase
+            // posts its offsetting entry as the opposite side of the SAME referenceType bucket (see
+            // AccountingService.reverseJournal), so reading only one side would keep counting a
+            // cancelled voucher's original amount forever.
+            BigDecimal transactionAmount = creditIncreases ? txn[1].subtract(txn[0]) : txn[0].subtract(txn[1]);
+            BigDecimal paymentAmount = creditIncreases ? pay[0].subtract(pay[1]) : pay[1].subtract(pay[0]);
             BigDecimal closing = openingSigned.add(transactionAmount).subtract(paymentAmount);
 
             rows.add(ReceivablePayableRow.builder()
