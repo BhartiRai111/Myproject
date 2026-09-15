@@ -91,9 +91,10 @@ export default function TrialBalance() {
           </Table>
 
           {!loading && report && (
-            <div className="flex items-center justify-end gap-6 border-t border-border p-4 text-sm font-semibold">
+            <div className="flex flex-wrap items-center justify-end gap-6 border-t border-border p-4 text-sm font-semibold">
               <span>Total Debit: ₹{money(report.totalDebit)}</span>
               <span>Total Credit: ₹{money(report.totalCredit)}</span>
+              <span>Difference: ₹{money(report.difference)}</span>
               <Badge variant={report.balanced ? 'success' : 'destructive'}>
                 {report.balanced ? 'Balanced' : 'Out of Balance'}
               </Badge>

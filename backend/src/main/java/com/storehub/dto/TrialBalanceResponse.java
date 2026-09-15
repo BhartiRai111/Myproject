@@ -16,5 +16,6 @@ public class TrialBalanceResponse {
     private List<TrialBalanceRow> rows;
     private BigDecimal totalDebit;
     private BigDecimal totalCredit;
+    private BigDecimal difference;
     private boolean balanced;
 }

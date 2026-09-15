@@ -20,6 +20,17 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED ORDER BY s.saleDate ASC, s.id ASC")
     List<Sale> findOutstandingByCustomer(@Param("customerId") Long customerId);
 
+    /** Every outstanding bill across all customers, for the Outstanding Bill / Ageing report — never DRAFT/CANCELLED. */
+    @Query("SELECT s FROM Sale s WHERE s.customer IS NOT NULL AND s.dueAmount > 0 " +
+            "AND s.status = com.storehub.entity.SaleStatus.COMPLETED ORDER BY s.saleDate ASC, s.id ASC")
+    List<Sale> findAllOutstanding();
+
+    @Query("SELECT s.id FROM Sale s WHERE s.status = com.storehub.entity.SaleStatus.COMPLETED")
+    List<Long> findCompletedIds();
+
+    @Query("SELECT s.id FROM Sale s")
+    List<Long> findAllIds();
+
     @Query("SELECT COALESCE(SUM(s.totalAmount), 0) FROM Sale s WHERE s.saleDate = :date AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
     BigDecimal getTotalSalesForDate(@Param("date") LocalDate date);
 

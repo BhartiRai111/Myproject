@@ -21,6 +21,17 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
             "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED ORDER BY p.purchaseDate ASC, p.id ASC")
     List<Purchase> findOutstandingBySupplier(@Param("supplierId") Long supplierId);
 
+    /** Every outstanding bill across all suppliers, for the Outstanding Bill / Ageing report — never DRAFT/CANCELLED. */
+    @Query("SELECT p FROM Purchase p WHERE p.payableAmount > 0 " +
+            "AND p.status = com.storehub.entity.PurchaseStatus.COMPLETED ORDER BY p.purchaseDate ASC, p.id ASC")
+    List<Purchase> findAllOutstanding();
+
+    @Query("SELECT p.id FROM Purchase p WHERE p.status = com.storehub.entity.PurchaseStatus.COMPLETED")
+    List<Long> findCompletedIds();
+
+    @Query("SELECT p.id FROM Purchase p")
+    List<Long> findAllIds();
+
     @Query("SELECT COALESCE(SUM(p.totalAmount), 0) FROM Purchase p WHERE p.purchaseDate = :date " +
             "AND p.status <> com.storehub.entity.PurchaseStatus.CANCELLED")
     java.math.BigDecimal getTotalPurchasesForDate(@Param("date") LocalDate date);

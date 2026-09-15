@@ -8,8 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
+
+    @Query("SELECT r.id FROM Receipt r")
+    List<Long> findAllIds();
 
     @Query("SELECT r FROM Receipt r LEFT JOIN r.customer c WHERE " +
             "(:search IS NULL OR :search = '' OR " +

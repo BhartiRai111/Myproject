@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { BookText, Eye, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { journalApi } from '../../api/accountingApi';
 import { parseApiError } from '../../utils/apiError';
-import { JournalHeader, VoucherType } from '../../types/accounting';
+import { JournalHeader, JournalStatus, VoucherType } from '../../types/accounting';
 import { useAuth } from '@/context/AuthContext';
 import { BackButton } from '@/components/BackButton';
 import { PageHeader } from '@/components/PageHeader';
@@ -24,6 +24,7 @@ const PAGE_SIZE = 20;
 const ALL = '__all__';
 
 const VOUCHER_TYPES: VoucherType[] = ['SALE', 'PURCHASE', 'RECEIPT', 'PAYMENT', 'JOURNAL', 'CREDIT_NOTE', 'DEBIT_NOTE'];
+const JOURNAL_STATUSES: JournalStatus[] = ['DRAFT', 'POSTED', 'REVERSED'];
 
 const money = (n: number) => (n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -42,6 +43,7 @@ export default function Journals() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [voucherType, setVoucherType] = useState<VoucherType | ''>('');
+  const [status, setStatus] = useState<JournalStatus | ''>('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [viewJournal, setViewJournal] = useState<JournalHeader | null>(null);
@@ -49,7 +51,7 @@ export default function Journals() {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await journalApi.list({ search, voucherType: voucherType || undefined, page, size: PAGE_SIZE });
+      const res = await journalApi.list({ search, voucherType: voucherType || undefined, status: status || undefined, page, size: PAGE_SIZE });
       setJournals(res.data.content);
       setTotalPages(res.data.totalPages);
     } catch (err) {
@@ -62,7 +64,7 @@ export default function Journals() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, voucherType]);
+  }, [page, voucherType, status]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +128,25 @@ export default function Journals() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={status || ALL}
+              onValueChange={(v) => {
+                setPage(0);
+                setStatus(v === ALL ? '' : (v as JournalStatus));
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All Statuses</SelectItem>
+                {JOURNAL_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button type="submit" variant="secondary" className="sm:w-auto">
               Search
             </Button>
@@ -145,11 +166,13 @@ export default function Journals() {
                 <TableHead>Debit</TableHead>
                 <TableHead>Credit</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Posted By</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={8} />
+              <TableSkeleton columns={10} />
             ) : (
               <TableBody>
                 {journals.map((j) => (
@@ -166,6 +189,8 @@ export default function Journals() {
                     <TableCell>
                       <Badge variant={statusVariant(j.status)}>{j.status}</Badge>
                     </TableCell>
+                    <TableCell className="text-muted-foreground">{j.createdBy || '—'}</TableCell>
+                    <TableCell className="text-muted-foreground">{j.postedBy || '—'}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

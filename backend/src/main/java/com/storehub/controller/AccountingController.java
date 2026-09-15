@@ -3,6 +3,7 @@ package com.storehub.controller;
 import com.storehub.dto.JournalCreateRequest;
 import com.storehub.dto.JournalHeaderResponse;
 import com.storehub.dto.PagedResponse;
+import com.storehub.entity.JournalStatus;
 import com.storehub.entity.VoucherType;
 import com.storehub.service.AccountingService;
 import jakarta.validation.Valid;
@@ -25,12 +26,13 @@ public class AccountingController {
     @GetMapping
     public ResponseEntity<PagedResponse<JournalHeaderResponse>> search(
             @RequestParam(required = false) VoucherType voucherType,
+            @RequestParam(required = false) JournalStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(accountingService.searchJournals(voucherType, fromDate, toDate, search, page, size));
+        return ResponseEntity.ok(accountingService.searchJournals(voucherType, status, fromDate, toDate, search, page, size));
     }
 
     @GetMapping("/{id}")

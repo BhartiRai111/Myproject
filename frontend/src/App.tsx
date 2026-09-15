@@ -57,6 +57,20 @@ import AccountMaster from './pages/accounting/AccountMaster';
 import Journals from './pages/accounting/Journals';
 import JournalEntryForm from './pages/accounting/JournalEntryForm';
 import TrialBalance from './pages/accounting/TrialBalance';
+import DayBook from './pages/accounting/reports/DayBook';
+import AccountLedger from './pages/accounting/reports/AccountLedger';
+import CashBook from './pages/accounting/reports/CashBook';
+import BankBook from './pages/accounting/reports/BankBook';
+import PartyLedger from './pages/accounting/reports/PartyLedger';
+import Receivable from './pages/accounting/reports/Receivable';
+import Payable from './pages/accounting/reports/Payable';
+import Outstanding from './pages/accounting/reports/Outstanding';
+import ProfitLoss from './pages/accounting/reports/ProfitLoss';
+import BalanceSheet from './pages/accounting/reports/BalanceSheet';
+import AccountSummary from './pages/accounting/reports/AccountSummary';
+import ExpenseSummary from './pages/accounting/reports/ExpenseSummary';
+import IncomeSummary from './pages/accounting/reports/IncomeSummary';
+import HealthCheck from './pages/accounting/reports/HealthCheck';
 import GstReportsHub from './pages/gst/GstReportsHub';
 import Gstr1Report from './pages/gst/Gstr1Report';
 import PurchaseGstReport from './pages/gst/PurchaseGstReport';
@@ -143,6 +157,20 @@ export default function App() {
               <Route element={<AdminRoute />}>
                 <Route path="/accounting/journals/new" element={<JournalEntryForm />} />
               </Route>
+              <Route path="/accounting/reports/day-book" element={<DayBook />} />
+              <Route path="/accounting/reports/account-ledger" element={<AccountLedger />} />
+              <Route path="/accounting/reports/cash-book" element={<CashBook />} />
+              <Route path="/accounting/reports/bank-book" element={<BankBook />} />
+              <Route path="/accounting/reports/party-ledger" element={<PartyLedger />} />
+              <Route path="/accounting/reports/receivable" element={<Receivable />} />
+              <Route path="/accounting/reports/payable" element={<Payable />} />
+              <Route path="/accounting/reports/outstanding" element={<Outstanding />} />
+              <Route path="/accounting/reports/profit-loss" element={<ProfitLoss />} />
+              <Route path="/accounting/reports/balance-sheet" element={<BalanceSheet />} />
+              <Route path="/accounting/reports/account-summary" element={<AccountSummary />} />
+              <Route path="/accounting/reports/expense-summary" element={<ExpenseSummary />} />
+              <Route path="/accounting/reports/income-summary" element={<IncomeSummary />} />
+              <Route path="/accounting/reports/health-check" element={<HealthCheck />} />
             </Route>
 
             <Route element={<ManagerRoute />}>

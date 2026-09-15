@@ -16,7 +16,10 @@ import java.math.BigDecimal;
  * cannot reliably add CHECK constraints across MySQL versions).
  */
 @Entity
-@Table(name = "journal_details")
+@Table(name = "journal_details", indexes = {
+        @Index(name = "idx_journal_details_account", columnList = "account_id"),
+        @Index(name = "idx_journal_details_party", columnList = "party_type, party_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

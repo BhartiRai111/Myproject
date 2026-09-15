@@ -171,8 +171,14 @@ public class AccountingService {
     @Transactional(readOnly = true)
     public PagedResponse<JournalHeaderResponse> searchJournals(VoucherType voucherType, LocalDate fromDate, LocalDate toDate,
                                                                  String search, int page, int size) {
+        return searchJournals(voucherType, null, fromDate, toDate, search, page, size);
+    }
+
+    /** Journal Register: same search, with an optional status filter (DRAFT/POSTED/REVERSED). */
+    public PagedResponse<JournalHeaderResponse> searchJournals(VoucherType voucherType, JournalStatus status, LocalDate fromDate, LocalDate toDate,
+                                                                 String search, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("journalDate").descending().and(Sort.by("id").descending()));
-        Page<JournalHeaderResponse> result = journalHeaderRepository.search(voucherType, fromDate, toDate, search, pageable)
+        Page<JournalHeaderResponse> result = journalHeaderRepository.search(voucherType, status, fromDate, toDate, search, pageable)
                 .map(JournalHeaderResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }

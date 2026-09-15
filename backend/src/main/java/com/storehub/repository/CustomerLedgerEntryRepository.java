@@ -23,4 +23,9 @@ public interface CustomerLedgerEntryRepository extends JpaRepository<CustomerLed
 
     List<CustomerLedgerEntry> findByReferenceTypeAndReferenceId(
             com.storehub.entity.LedgerReferenceType referenceType, Long referenceId);
+
+    /** Per-customer outstanding, grouped — used by the Accounting Health Check to compare against the journal control account. */
+    @Query("SELECT e.customer.id, COALESCE(SUM(CASE WHEN e.entryType = com.storehub.entity.LedgerEntryType.DEBIT THEN e.amount ELSE -e.amount END), 0) " +
+            "FROM CustomerLedgerEntry e GROUP BY e.customer.id")
+    List<Object[]> sumByCustomer();
 }

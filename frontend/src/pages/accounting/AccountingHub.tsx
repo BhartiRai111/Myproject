@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Landmark, Users, Truck, TrendingUp, TrendingDown, BookText, Scale, ArrowRight } from 'lucide-react';
+import {
+  Wallet,
+  Landmark,
+  Users,
+  Truck,
+  TrendingUp,
+  TrendingDown,
+  BookText,
+  BookOpen,
+  Scale,
+  Receipt,
+  FileBarChart,
+  BarChart3,
+  ShieldCheck,
+  ArrowRight,
+} from 'lucide-react';
 import { accountingReportApi } from '../../api/accountingApi';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
 import { purchaseSummaryApi } from '../../api/purchaseSummaryApi';
@@ -59,6 +74,104 @@ export default function AccountingHub() {
       description: 'Account-wise debit and credit balances, verifying the engine stays balanced.',
       icon: Scale,
       path: '/accounting/trial-balance',
+    },
+    {
+      key: 'day-book',
+      title: 'Day Book',
+      description: 'Every POSTED voucher for a date range — Kacchi transactions are included.',
+      icon: BookOpen,
+      path: '/accounting/reports/day-book',
+    },
+    {
+      key: 'account-ledger',
+      title: 'Account Ledger',
+      description: 'Running-balance statement for any account in the Chart of Accounts.',
+      icon: BookOpen,
+      path: '/accounting/reports/account-ledger',
+    },
+    {
+      key: 'cash-book',
+      title: 'Cash Book',
+      description: 'Opening cash, receipts, payments, and closing cash for a date range.',
+      icon: Wallet,
+      path: '/accounting/reports/cash-book',
+    },
+    {
+      key: 'bank-book',
+      title: 'Bank Book',
+      description: 'Opening bank balance, receipts, payments, and closing balance for a date range.',
+      icon: Landmark,
+      path: '/accounting/reports/bank-book',
+    },
+    {
+      key: 'party-ledger',
+      title: 'Party Ledger',
+      description: 'Unified running-balance statement for one customer or supplier.',
+      icon: Users,
+      path: '/accounting/reports/party-ledger',
+    },
+    {
+      key: 'receivable',
+      title: 'Receivable',
+      description: 'Outstanding customer balances: opening + credit sales − receipts.',
+      icon: Users,
+      path: '/accounting/reports/receivable',
+    },
+    {
+      key: 'payable',
+      title: 'Payable',
+      description: 'Outstanding supplier balances: opening + purchases − payments.',
+      icon: Truck,
+      path: '/accounting/reports/payable',
+    },
+    {
+      key: 'outstanding',
+      title: 'Outstanding Bills',
+      description: 'Bill-wise outstanding with ageing buckets, for customers and suppliers.',
+      icon: Receipt,
+      path: '/accounting/reports/outstanding',
+    },
+    {
+      key: 'profit-loss',
+      title: 'Profit & Loss',
+      description: 'Income vs. Expenses from the Chart of Accounts, for a date range.',
+      icon: FileBarChart,
+      path: '/accounting/reports/profit-loss',
+    },
+    {
+      key: 'balance-sheet',
+      title: 'Balance Sheet',
+      description: 'Assets = Liabilities + Equity, as of a date.',
+      icon: Scale,
+      path: '/accounting/reports/balance-sheet',
+    },
+    {
+      key: 'account-summary',
+      title: 'Account Summary',
+      description: 'Opening, debit/credit, and closing balance for every active account.',
+      icon: BarChart3,
+      path: '/accounting/reports/account-summary',
+    },
+    {
+      key: 'expense-summary',
+      title: 'Expense Summary',
+      description: 'Every expense account grouped with its posted vouchers.',
+      icon: TrendingDown,
+      path: '/accounting/reports/expense-summary',
+    },
+    {
+      key: 'income-summary',
+      title: 'Income Summary',
+      description: 'Every income account grouped with its posted vouchers.',
+      icon: TrendingUp,
+      path: '/accounting/reports/income-summary',
+    },
+    {
+      key: 'health-check',
+      title: 'Accounting Health Check',
+      description: 'Journal balance, duplicate posting, orphan journals, and ledger reconciliation.',
+      icon: ShieldCheck,
+      path: '/accounting/reports/health-check',
     },
   ];
 

@@ -19,7 +19,11 @@ import java.util.List;
  * and this header's own status moves to REVERSED for audit visibility.
  */
 @Entity
-@Table(name = "journal_headers")
+@Table(name = "journal_headers", indexes = {
+        @Index(name = "idx_journal_headers_date", columnList = "journal_date"),
+        @Index(name = "idx_journal_headers_voucher", columnList = "voucher_type, voucher_id"),
+        @Index(name = "idx_journal_headers_status", columnList = "status")
+})
 @Getter
 @Setter
 @NoArgsConstructor

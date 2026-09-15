@@ -41,7 +41,12 @@ public class AccountingReportService {
 
     @Transactional(readOnly = true)
     public DayBookResponse dayBook(LocalDate fromDate, LocalDate toDate) {
-        List<Object[]> rawRows = journalDetailRepository.dayBookRows(fromDate, toDate);
+        return dayBook(null, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
+    public DayBookResponse dayBook(VoucherType voucherType, LocalDate fromDate, LocalDate toDate) {
+        List<Object[]> rawRows = journalDetailRepository.dayBookRows(voucherType, fromDate, toDate);
 
         BigDecimal totalDebit = BigDecimal.ZERO;
         BigDecimal totalCredit = BigDecimal.ZERO;
@@ -59,6 +64,7 @@ public class AccountingReportService {
                     .narration((String) r[5])
                     .debit(debit)
                     .credit(credit)
+                    .status((com.storehub.entity.JournalStatus) r[8])
                     .build());
             totalDebit = totalDebit.add(debit);
             totalCredit = totalCredit.add(credit);
@@ -184,6 +190,7 @@ public class AccountingReportService {
                 .rows(rows)
                 .totalDebit(totalDebit)
                 .totalCredit(totalCredit)
+                .difference(totalDebit.subtract(totalCredit))
                 .balanced(totalDebit.compareTo(totalCredit) == 0)
                 .build();
     }

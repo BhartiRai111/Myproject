@@ -8,8 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
+
+    @Query("SELECT p.id FROM Payment p")
+    List<Long> findAllIds();
 
     @Query("SELECT p FROM Payment p LEFT JOIN p.supplier s WHERE " +
             "(:search IS NULL OR :search = '' OR " +

@@ -22,4 +22,9 @@ public interface SupplierLedgerEntryRepository extends JpaRepository<SupplierLed
 
     List<SupplierLedgerEntry> findByReferenceTypeAndReferenceId(
             com.storehub.entity.LedgerReferenceType referenceType, Long referenceId);
+
+    /** Per-supplier outstanding, grouped — used by the Accounting Health Check to compare against the journal control account. */
+    @Query("SELECT e.supplier.id, COALESCE(SUM(CASE WHEN e.entryType = com.storehub.entity.LedgerEntryType.CREDIT THEN e.amount ELSE -e.amount END), 0) " +
+            "FROM SupplierLedgerEntry e GROUP BY e.supplier.id")
+    List<Object[]> sumBySupplier();
 }

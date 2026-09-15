@@ -1,5 +1,6 @@
 package com.storehub.dto;
 
+import com.storehub.entity.JournalStatus;
 import com.storehub.entity.VoucherType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,4 +21,5 @@ public class DayBookRow {
     private String narration;
     private BigDecimal debit;
     private BigDecimal credit;
+    private JournalStatus status;
 }
