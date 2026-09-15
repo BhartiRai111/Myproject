@@ -38,6 +38,7 @@ public class FinancialYearService {
     private final FinancialYearRepository financialYearRepository;
     private final SaleRepository saleRepository;
     private final PurchaseRepository purchaseRepository;
+    private final AuditService auditService;
 
     /** Idempotent: ensures at least one FinancialYear row exists, covering "today", on first startup. */
     @PostConstruct
@@ -127,7 +128,10 @@ public class FinancialYearService {
                 .status(FinancialYearStatus.OPEN)
                 .current(false)
                 .build();
-        return FinancialYearResponse.fromEntity(financialYearRepository.save(fy));
+        FinancialYear saved = financialYearRepository.save(fy);
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "ADMIN", "FinancialYear", saved.getId(),
+                saved.getCode(), null, null, "Financial year " + saved.getName() + " created");
+        return FinancialYearResponse.fromEntity(saved);
     }
 
     @Transactional
@@ -136,8 +140,13 @@ public class FinancialYearService {
         if (fy.isCurrent() && status == FinancialYearStatus.CLOSED) {
             throw new BadRequestException("Cannot close the current financial year. Mark another year current first.");
         }
+        FinancialYearStatus oldStatus = fy.getStatus();
         fy.setStatus(status);
-        return FinancialYearResponse.fromEntity(financialYearRepository.save(fy));
+        FinancialYear saved = financialYearRepository.save(fy);
+        auditService.log(status == FinancialYearStatus.CLOSED ? com.storehub.entity.AuditAction.FY_CLOSE : com.storehub.entity.AuditAction.FY_OPEN,
+                "ADMIN", "FinancialYear", saved.getId(), saved.getCode(), oldStatus.name(), status.name(),
+                "Financial year " + saved.getName() + " status changed from " + oldStatus + " to " + status);
+        return FinancialYearResponse.fromEntity(saved);
     }
 
     /** Marks one FY current, unmarking any other — never more than one current row at a time. */
@@ -154,7 +163,10 @@ public class FinancialYearService {
             }
         });
         target.setCurrent(true);
-        return FinancialYearResponse.fromEntity(financialYearRepository.save(target));
+        FinancialYear saved = financialYearRepository.save(target);
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "ADMIN", "FinancialYear", saved.getId(),
+                saved.getCode(), null, null, "Financial year " + saved.getName() + " marked as current");
+        return FinancialYearResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)

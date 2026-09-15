@@ -34,7 +34,10 @@ import com.storehub.entity.SupplierStatus;
 import com.storehub.entity.TaxMode;
 import com.storehub.entity.TransactionType;
 import com.storehub.entity.VoucherType;
+import com.storehub.entity.AuditAction;
+import com.storehub.entity.AuditLog;
 import com.storehub.exception.BadRequestException;
+import com.storehub.repository.AuditLogRepository;
 import com.storehub.repository.CustomerRepository;
 import com.storehub.repository.GstTransactionRepository;
 import com.storehub.repository.InventoryRepository;
@@ -95,6 +98,8 @@ class Phase5Test {
     private PurchaseItemRepository purchaseItemRepository;
     @Autowired
     private ReceivablePayableService receivablePayableService;
+    @Autowired
+    private AuditLogRepository auditLogRepository;
 
     private Customer newCustomer() {
         return customerRepository.save(Customer.builder()
@@ -545,5 +550,52 @@ class Phase5Test {
         assertThat(row.getCreditNoteAmount()).isEqualByComparingTo(note.getTotalAmount());
         // closing = transactionAmount(sale total) - creditNoteAmount, since nothing was paid/opened
         assertThat(row.getClosingOutstanding()).isEqualByComparingTo(sale.getTotalAmount().subtract(note.getTotalAmount()));
+    }
+
+    // ---- Audit Trail ----
+
+    @Test
+    void creditNoteLifecycle_writesCreateAndPostAndCancelAuditEntries() {
+        Customer customer = newCustomer();
+        Product product = newProduct(new BigDecimal("1000"), 10);
+        SaleResponse sale = saleService.createSale(saleRequest(TransactionType.SALE, customer.getId(),
+                List.of(saleItemReq(product.getId(), 3, new BigDecimal("1000"), new BigDecimal("18")))));
+        SaleItem saleItem = saleItemRepository.findAll().stream()
+                .filter(i -> i.getSale().getId().equals(sale.getId())).findFirst().orElseThrow();
+
+        CreditNoteCreateRequest request = new CreditNoteCreateRequest();
+        request.setSourceSaleId(sale.getId());
+        request.setNoteType(CreditNoteType.SALES_RETURN);
+        request.setNoteDate(LocalDate.now());
+        request.setStockImpact(StockImpactType.STOCK_RETURN);
+        CreditNoteItemRequest itemReq = new CreditNoteItemRequest();
+        itemReq.setSaleItemId(saleItem.getId());
+        itemReq.setQuantity(1);
+        request.setItems(List.of(itemReq));
+        request.setPost(true);
+
+        CreditNoteResponse note = creditNoteService.create(request);
+        creditNoteService.cancel(note.getId());
+
+        List<AuditLog> entries = auditLogRepository.findAll().stream()
+                .filter(a -> "CreditNote".equals(a.getEntityType()) && a.getEntityId().equals(note.getId()))
+                .toList();
+        assertThat(entries).extracting(AuditLog::getAction)
+                .contains(AuditAction.CREATE, AuditAction.POST, AuditAction.CANCEL);
+        assertThat(entries).allMatch(a -> a.getUsername() != null && a.getTimestamp() != null);
+    }
+
+    @Test
+    void financialYearStatusChange_writesFyCloseAuditEntry() {
+        FinancialYearRequest fyReq = new FinancialYearRequest();
+        fyReq.setStartDate(LocalDate.of(2018, 4, 1));
+        fyReq.setEndDate(LocalDate.of(2019, 3, 31));
+        FinancialYearResponse fy = financialYearService.create(fyReq);
+        financialYearService.setStatus(fy.getId(), FinancialYearStatus.CLOSED);
+
+        List<AuditLog> entries = auditLogRepository.findAll().stream()
+                .filter(a -> "FinancialYear".equals(a.getEntityType()) && a.getEntityId().equals(fy.getId()))
+                .toList();
+        assertThat(entries).extracting(AuditLog::getAction).contains(AuditAction.CREATE, AuditAction.FY_CLOSE);
     }
 }

@@ -59,6 +59,7 @@ public class SaleService {
     private final ReceiptAllocationRepository receiptAllocationRepository;
     private final GstTransactionSyncService gstTransactionSyncService;
     private final VoucherNumberService voucherNumberService;
+    private final AuditService auditService;
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
@@ -125,6 +126,9 @@ public class SaleService {
         if (!draft) {
             applyPostingEffects(saved);
         }
+
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "SALES", "Sale", saved.getId(), saved.getInvoiceNumber(),
+                null, null, "Sale " + saved.getInvoiceNumber() + (draft ? " saved as draft" : " created and posted"));
 
         boolean hasReceipts = !receiptAllocationRepository.findBySaleId(saved.getId()).isEmpty();
         return SaleResponse.fromEntity(saved, hasReceipts);
@@ -271,8 +275,12 @@ public class SaleService {
         reverseSaleEffects(sale, "Sale cancelled: " + sale.getInvoiceNumber());
         sale.setStatus(SaleStatus.CANCELLED);
         sale.setDueAmount(BigDecimal.ZERO);
+        Sale saved = saleRepository.save(sale);
 
-        return SaleResponse.fromEntity(saleRepository.save(sale), false);
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "Sale", saved.getId(), saved.getInvoiceNumber(),
+                null, null, "Sale " + saved.getInvoiceNumber() + " cancelled: stock, ledger, accounting and GST effects reversed");
+
+        return SaleResponse.fromEntity(saved, false);
     }
 
     /** Hard delete: fully reverses every side effect, then removes the record. */

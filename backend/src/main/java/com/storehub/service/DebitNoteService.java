@@ -54,6 +54,7 @@ public class DebitNoteService {
     private final InventoryService inventoryService;
     private final LedgerService ledgerService;
     private final GstTransactionSyncService gstTransactionSyncService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public PagedResponse<DebitNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, int page, int size) {
@@ -160,6 +161,10 @@ public class DebitNoteService {
         saved.setVoucherNumber(voucherNumberService.next(VoucherDocType.DEBIT_NOTE, request.getNoteDate()));
         saved = debitNoteRepository.save(saved);
 
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "PURCHASE", "DebitNote", saved.getId(),
+                saved.getVoucherNumber(), null, null,
+                "Debit Note " + saved.getVoucherNumber() + " created against purchase " + purchase.getPurchaseNumber());
+
         if (request.isPost()) {
             return post(saved.getId());
         }
@@ -202,7 +207,12 @@ public class DebitNoteService {
 
         // Must run after the status flip: GstReportingEligibility checks status == POSTED.
         gstTransactionSyncService.syncDebitNote(note);
-        return DebitNoteResponse.fromEntity(debitNoteRepository.save(note));
+        DebitNote posted = debitNoteRepository.save(note);
+
+        auditService.log(com.storehub.entity.AuditAction.POST, "PURCHASE", "DebitNote", posted.getId(),
+                posted.getVoucherNumber(), null, null,
+                "Debit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied");
+        return DebitNoteResponse.fromEntity(posted);
     }
 
     @Transactional
@@ -228,7 +238,11 @@ public class DebitNoteService {
         note.setStatus(NoteStatus.CANCELLED);
         note.setCancelledBy(SecurityUtil.currentUsername());
         note.setCancelledAt(LocalDateTime.now());
-        return DebitNoteResponse.fromEntity(debitNoteRepository.save(note));
+        DebitNote cancelled = debitNoteRepository.save(note);
+
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "DebitNote", cancelled.getId(),
+                cancelled.getVoucherNumber(), null, null, reason);
+        return DebitNoteResponse.fromEntity(cancelled);
     }
 
     private BigDecimal proportion(BigDecimal totalForLine, BigDecimal returnedQty, BigDecimal purchasedQty) {

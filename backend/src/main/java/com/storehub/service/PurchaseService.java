@@ -60,6 +60,7 @@ public class PurchaseService {
     private final PaymentAllocationRepository paymentAllocationRepository;
     private final GstTransactionSyncService gstTransactionSyncService;
     private final VoucherNumberService voucherNumberService;
+    private final AuditService auditService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
@@ -127,6 +128,9 @@ public class PurchaseService {
         if (!draft) {
             applyPostingEffects(saved);
         }
+
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "PURCHASE", "Purchase", saved.getId(), saved.getPurchaseNumber(),
+                null, null, "Purchase " + saved.getPurchaseNumber() + (draft ? " saved as draft" : " created and posted"));
 
         boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
         return PurchaseResponse.fromEntity(saved, hasPayments);
@@ -256,8 +260,12 @@ public class PurchaseService {
         reversePurchaseEffects(purchase, "Purchase cancelled: " + purchase.getPurchaseNumber());
         purchase.setStatus(PurchaseStatus.CANCELLED);
         purchase.setPayableAmount(BigDecimal.ZERO);
+        Purchase saved = purchaseRepository.save(purchase);
 
-        return PurchaseResponse.fromEntity(purchaseRepository.save(purchase), false);
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "Purchase", saved.getId(), saved.getPurchaseNumber(),
+                null, null, "Purchase " + saved.getPurchaseNumber() + " cancelled: stock, ledger, accounting and GST effects reversed");
+
+        return PurchaseResponse.fromEntity(saved, false);
     }
 
     /** Hard delete: fully reverses every side effect, then removes the record. */

@@ -51,6 +51,7 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final StockHistoryRepository stockHistoryRepository;
     private final ProductRepository productRepository;
+    private final AuditService auditService;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -163,6 +164,10 @@ public class InventoryService {
                 .notes(request.getNotes())
                 .createdBy(currentUsername())
                 .build());
+
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "INVENTORY", "Product", product.getId(), product.getSku(),
+                String.valueOf(previousStock), String.valueOf(newStock),
+                "Stock adjustment (" + request.getMovementType() + ") on '" + product.getName() + "': " + request.getReason());
 
         return InventoryResponse.fromEntity(inventory);
     }

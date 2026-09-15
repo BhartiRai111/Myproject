@@ -38,6 +38,7 @@ public class ReceiptService {
     private final LedgerService ledgerService;
     private final AccountingService accountingService;
     private final VoucherNumberService voucherNumberService;
+    private final AuditService auditService;
 
     public PagedResponse<ReceiptResponse> search(String search, Long customerId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -85,6 +86,9 @@ public class ReceiptService {
         ledgerService.recordCashEntry(saved);
         accountingService.postReceiptJournal(saved);
 
+        auditService.log(com.storehub.entity.AuditAction.RECEIPT, "SALES", "Receipt", saved.getId(), saved.getReceiptNumber(),
+                null, null, "Receipt " + saved.getReceiptNumber() + " of " + saved.getAmount() + " recorded for customer " + customer.getId());
+
         return ReceiptResponse.fromEntity(saved);
     }
 
@@ -118,7 +122,11 @@ public class ReceiptService {
             throw new BadRequestException("This receipt was auto-generated with its sales bill. "
                     + "Delete the sales bill instead to reverse it.");
         }
+        String receiptNumber = receipt.getReceiptNumber();
+        Long receiptId = receipt.getId();
         reverseAndRemove(receipt);
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "Receipt", receiptId, receiptNumber,
+                null, null, "Receipt " + receiptNumber + " deleted: allocations and ledger/accounting effects reversed");
     }
 
     /** Used only by SaleService when reversing a sale that has its own auto-generated receipt. */

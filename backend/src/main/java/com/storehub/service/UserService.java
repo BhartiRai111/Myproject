@@ -26,6 +26,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     public PagedResponse<UserResponse> getUsers(String search, Role role, UserStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -54,7 +55,10 @@ public class UserService {
                 .status(request.getStatus() != null ? request.getStatus() : UserStatus.ACTIVE)
                 .build();
 
-        return UserResponse.fromEntity(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "ADMIN", "User", saved.getId(), saved.getEmail(),
+                null, null, "User " + saved.getEmail() + " created with role " + saved.getRole());
+        return UserResponse.fromEntity(saved);
     }
 
     @Transactional
@@ -66,6 +70,7 @@ public class UserService {
             throw new DuplicateEmailException(request.getEmail());
         }
 
+        String oldRole = user.getRole().name();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
@@ -73,14 +78,26 @@ public class UserService {
         user.setRole(request.getRole());
         user.setStatus(request.getStatus());
 
-        return UserResponse.fromEntity(userRepository.save(user));
+        User saved = userRepository.save(user);
+        if (!oldRole.equals(saved.getRole().name())) {
+            auditService.log(com.storehub.entity.AuditAction.PERMISSION_CHANGE, "ADMIN", "User", saved.getId(), saved.getEmail(),
+                    oldRole, saved.getRole().name(), "User " + saved.getEmail() + " role changed from " + oldRole + " to " + saved.getRole());
+        } else {
+            auditService.log(com.storehub.entity.AuditAction.UPDATE, "ADMIN", "User", saved.getId(), saved.getEmail(),
+                    null, null, "User " + saved.getEmail() + " updated");
+        }
+        return UserResponse.fromEntity(saved);
     }
 
     @Transactional
     public UserResponse updateStatus(Long id, UserStatusUpdateRequest request) {
         User user = findUserOrThrow(id);
+        UserStatus oldStatus = user.getStatus();
         user.setStatus(request.getStatus());
-        return UserResponse.fromEntity(userRepository.save(user));
+        User saved = userRepository.save(user);
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "ADMIN", "User", saved.getId(), saved.getEmail(),
+                oldStatus.name(), saved.getStatus().name(), "User " + saved.getEmail() + " status changed to " + saved.getStatus());
+        return UserResponse.fromEntity(saved);
     }
 
     private User findUserOrThrow(Long id) {

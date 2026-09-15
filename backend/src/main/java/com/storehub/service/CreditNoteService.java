@@ -62,6 +62,7 @@ public class CreditNoteService {
     private final InventoryService inventoryService;
     private final LedgerService ledgerService;
     private final GstTransactionSyncService gstTransactionSyncService;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public PagedResponse<CreditNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, int page, int size) {
@@ -171,6 +172,10 @@ public class CreditNoteService {
         saved.setVoucherNumber(voucherNumberService.next(VoucherDocType.CREDIT_NOTE, request.getNoteDate()));
         saved = creditNoteRepository.save(saved);
 
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "SALES", "CreditNote", saved.getId(),
+                saved.getVoucherNumber(), null, null,
+                "Credit Note " + saved.getVoucherNumber() + " created against sale " + sale.getInvoiceNumber());
+
         if (request.isPost()) {
             return post(saved.getId());
         }
@@ -213,7 +218,12 @@ public class CreditNoteService {
 
         // Must run after the status flip: GstReportingEligibility checks status == POSTED.
         gstTransactionSyncService.syncCreditNote(note);
-        return CreditNoteResponse.fromEntity(creditNoteRepository.save(note));
+        CreditNote posted = creditNoteRepository.save(note);
+
+        auditService.log(com.storehub.entity.AuditAction.POST, "SALES", "CreditNote", posted.getId(),
+                posted.getVoucherNumber(), null, null,
+                "Credit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied");
+        return CreditNoteResponse.fromEntity(posted);
     }
 
     /** Idempotent: cancelling an already-CANCELLED note is a no-op that returns its current state. */
@@ -240,7 +250,11 @@ public class CreditNoteService {
         note.setStatus(NoteStatus.CANCELLED);
         note.setCancelledBy(SecurityUtil.currentUsername());
         note.setCancelledAt(LocalDateTime.now());
-        return CreditNoteResponse.fromEntity(creditNoteRepository.save(note));
+        CreditNote cancelled = creditNoteRepository.save(note);
+
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "CreditNote", cancelled.getId(),
+                cancelled.getVoucherNumber(), null, null, reason);
+        return CreditNoteResponse.fromEntity(cancelled);
     }
 
     private BigDecimal proportion(BigDecimal totalForLine, BigDecimal returnedQty, BigDecimal soldQty) {

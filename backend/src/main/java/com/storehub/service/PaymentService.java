@@ -38,6 +38,7 @@ public class PaymentService {
     private final LedgerService ledgerService;
     private final AccountingService accountingService;
     private final VoucherNumberService voucherNumberService;
+    private final AuditService auditService;
 
     public PagedResponse<PaymentResponse> search(String search, Long supplierId, LocalDate fromDate, LocalDate toDate,
                                                   int page, int size) {
@@ -85,6 +86,9 @@ public class PaymentService {
         ledgerService.recordCashEntryOut(saved);
         accountingService.postPaymentJournal(saved);
 
+        auditService.log(com.storehub.entity.AuditAction.PAYMENT, "PURCHASE", "Payment", saved.getId(), saved.getPaymentNumber(),
+                null, null, "Payment " + saved.getPaymentNumber() + " of " + saved.getAmount() + " recorded for supplier " + supplier.getId());
+
         return PaymentResponse.fromEntity(saved);
     }
 
@@ -118,7 +122,11 @@ public class PaymentService {
             throw new BadRequestException("This payment was auto-generated with its purchase bill. "
                     + "Delete the purchase bill instead to reverse it.");
         }
+        String paymentNumber = payment.getPaymentNumber();
+        Long paymentId = payment.getId();
         reverseAndRemove(payment);
+        auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "Payment", paymentId, paymentNumber,
+                null, null, "Payment " + paymentNumber + " deleted: allocations and ledger/accounting effects reversed");
     }
 
     /** Used only by PurchaseService when reversing a purchase that has its own auto-generated payment. */
