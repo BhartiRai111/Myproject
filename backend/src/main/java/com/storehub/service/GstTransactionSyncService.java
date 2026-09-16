@@ -3,6 +3,7 @@ package com.storehub.service;
 import com.storehub.entity.AccountingPartyType;
 import com.storehub.entity.CreditNote;
 import com.storehub.entity.DebitNote;
+import com.storehub.entity.Expense;
 import com.storehub.entity.GstTransaction;
 import com.storehub.entity.GstTransactionStatus;
 import com.storehub.entity.Purchase;
@@ -177,6 +178,48 @@ public class GstTransactionSyncService {
     @Transactional
     public void reverseDebitNote(DebitNote note) {
         gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.DEBIT_NOTE, note.getId())
+                .ifPresent(txn -> {
+                    txn.setStatus(GstTransactionStatus.REVERSED);
+                    gstTransactionRepository.save(txn);
+                });
+    }
+
+    /**
+     * Creates or refreshes the ACTIVE reporting row for a POSTED, GST-applicable Expense. Unlike Sale/Purchase,
+     * {@code b2b} here is not a GSTIN-validity proxy — it is set directly to {@code expense.isItcEligible()}, the
+     * expense's own explicit ITC flag, so ITC-side reports naturally include only what the user actually marked
+     * eligible. A non-GST expense (no taxMode) is never synced.
+     */
+    @Transactional
+    public void syncExpense(Expense expense) {
+        if (!GstReportingEligibility.isEligibleForGstReporting(expense)) {
+            return;
+        }
+        GstTransaction txn = findOrNew(VoucherType.EXPENSE, expense.getId());
+        String gstin = expense.getSupplier() != null ? expense.getSupplier().getGstNumber() : null;
+        String partyName = expense.getSupplier() != null ? expense.getSupplier().getName()
+                : (expense.getVendorName() != null && !expense.getVendorName().isBlank() ? expense.getVendorName() : "N/A");
+
+        txn.setVoucherNumber(expense.getExpenseNumber());
+        txn.setVoucherDate(expense.getExpenseDate());
+        txn.setPartyType(expense.getSupplier() != null ? AccountingPartyType.SUPPLIER : null);
+        txn.setPartyId(expense.getSupplier() != null ? expense.getSupplier().getId() : null);
+        txn.setPartyName(partyName);
+        txn.setPartyGstin(gstin);
+        txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
+        txn.setB2b(expense.isItcEligible());
+        applyAmounts(txn, expense.getTaxableAmount(), expense.getCgstAmount(), expense.getSgstAmount(), expense.getIgstAmount(), expense.getTotalAmount());
+        txn.setReturnPeriod(expense.getExpenseDate().format(RETURN_PERIOD_FORMAT));
+        txn.setStatus(GstTransactionStatus.ACTIVE);
+        txn.setCreatedBy(currentUsername());
+
+        gstTransactionRepository.save(txn);
+    }
+
+    /** Flips an expense's reporting row (if any) to REVERSED in place. A never-synced (non-GST) expense is a no-op. */
+    @Transactional
+    public void reverseExpense(Expense expense) {
+        gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.EXPENSE, expense.getId())
                 .ifPresent(txn -> {
                     txn.setStatus(GstTransactionStatus.REVERSED);
                     gstTransactionRepository.save(txn);

@@ -43,8 +43,18 @@ public class Expense {
     @Column(nullable = false, length = 100)
     private String category;
 
+    /** Optional master-backed category (spec: proper Expense Category master); null on legacy free-text-category rows. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "expense_category_id")
+    private ExpenseCategory expenseCategory;
+
     @Column(name = "vendor_name", length = 150)
     private String vendorName;
+
+    /** Optional party for a credit expense (payable, settled later via the existing Payment module) — reuses Supplier, never a new vendor master. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id")
+    private Supplier supplier;
 
     @Column(name = "financial_year_id")
     private Long financialYearId;
@@ -64,6 +74,11 @@ public class Expense {
     @Builder.Default
     private boolean itcEligible = false;
 
+    /** Purely informational: amount subtracted from the gross figure by the caller before arriving at {@link #taxableAmount} (Gross - Discount = Taxable). */
+    @Column(name = "discount_amount", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
     @Column(name = "taxable_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal taxableAmount;
 
@@ -81,6 +96,25 @@ public class Expense {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "reference_number", length = 60)
+    private String referenceNumber;
+
+    @Column(columnDefinition = "TEXT")
+    private String remarks;
+
+    /** Cash/bank expense: full total paid immediately. Credit (party) expense: 0 until settled via the Payment module. */
+    @Column(name = "paid_amount", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal paidAmount = BigDecimal.ZERO;
+
+    @Column(name = "payable_amount", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal payableAmount = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", columnDefinition = "VARCHAR(10)")
+    private PaymentStatus paymentStatus;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "VARCHAR(10)")
@@ -114,6 +148,15 @@ public class Expense {
         this.updatedAt = now;
         if (this.status == null) {
             this.status = ExpenseStatus.DRAFT;
+        }
+        if (this.discountAmount == null) {
+            this.discountAmount = BigDecimal.ZERO;
+        }
+        if (this.paidAmount == null) {
+            this.paidAmount = BigDecimal.ZERO;
+        }
+        if (this.payableAmount == null) {
+            this.payableAmount = BigDecimal.ZERO;
         }
     }
 

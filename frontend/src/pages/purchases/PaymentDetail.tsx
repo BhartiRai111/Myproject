@@ -118,14 +118,14 @@ export default function PaymentDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bill</TableHead>
+                      <TableHead>Applied To</TableHead>
                       <TableHead className="text-right">Amount Applied</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payment.allocations.map((a) => (
                       <TableRow key={a.id}>
-                        <TableCell className="font-medium">{a.purchaseNumber}</TableCell>
+                        <TableCell className="font-medium">{a.purchaseNumber || a.expenseNumber}</TableCell>
                         <TableCell className="text-right">{a.amountApplied.toFixed(2)}</TableCell>
                       </TableRow>
                     ))}

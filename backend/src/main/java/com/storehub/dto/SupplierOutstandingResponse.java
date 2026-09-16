@@ -15,4 +15,5 @@ public class SupplierOutstandingResponse {
     private Long supplierId;
     private BigDecimal totalOutstanding;
     private List<OutstandingPurchaseBillResponse> bills;
+    private List<OutstandingExpenseResponse> expenses;
 }

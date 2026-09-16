@@ -11,8 +11,11 @@ import java.math.BigDecimal;
 @Setter
 public class PaymentAllocationRequest {
 
-    @NotNull(message = "Purchase bill is required")
+    /** Exactly one of purchaseId/expenseId must be set. */
     private Long purchaseId;
+
+    /** A credit (party) Expense this payment settles — reuses this same allocation mechanism as a Purchase Bill. */
+    private Long expenseId;
 
     @NotNull(message = "Amount applied is required")
     @DecimalMin(value = "0.01", message = "Amount applied must be greater than 0")

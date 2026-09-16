@@ -10,20 +10,18 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/** Edits a DRAFT expense in place — same shape as {@link ExpenseCreateRequest}; only a DRAFT can be edited. */
 @Getter
 @Setter
-public class ExpenseCreateRequest {
+public class ExpenseUpdateRequest {
 
     @NotNull(message = "Expense date is required")
     private LocalDate expenseDate;
 
-    /** Preferred: a master ExpenseCategory id. When set, its name is snapshotted into the legacy {@code category} string. */
     private Long categoryId;
 
-    /** Legacy free-text category name; still accepted when categoryId is not sent (kept for API/back-compat). */
     private String category;
 
-    /** Optional party (Supplier) for a credit expense — when set, the expense books to Supplier Payable instead of Cash/Bank. */
     private Long supplierId;
 
     private String vendorName;
@@ -38,13 +36,11 @@ public class ExpenseCreateRequest {
 
     private boolean itcEligible;
 
-    /** Optional: when sent together with discountAmount, taxableAmount is computed server-side as grossAmount - discountAmount. */
     private BigDecimal grossAmount;
 
     @DecimalMin(value = "0", message = "Discount cannot be negative")
     private BigDecimal discountAmount;
 
-    /** Required only when grossAmount is not sent; otherwise computed server-side and this value is ignored. */
     private BigDecimal taxableAmount;
 
     private String description;

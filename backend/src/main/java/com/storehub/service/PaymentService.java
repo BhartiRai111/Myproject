@@ -6,14 +6,17 @@ import com.storehub.dto.PaymentAllocationRequest;
 import com.storehub.dto.PaymentRequest;
 import com.storehub.dto.PaymentResponse;
 import com.storehub.dto.SupplierOutstandingResponse;
+import com.storehub.entity.Expense;
 import com.storehub.entity.PaymentAllocation;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Payment;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.Supplier;
 import com.storehub.exception.BadRequestException;
+import com.storehub.exception.ExpenseNotFoundException;
 import com.storehub.exception.PaymentNotFoundException;
 import com.storehub.exception.PurchaseNotFoundException;
+import com.storehub.repository.ExpenseRepository;
 import com.storehub.repository.PaymentRepository;
 import com.storehub.repository.PurchaseRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,14 +29,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Every Supplier payment — whether settling a Purchase Bill or a credit
+ * (party) Expense — goes through this one module. A credit Expense's later
+ * payment reuses this exact allocation mechanism (see
+ * {@link PaymentAllocation#getExpense()}) rather than a parallel
+ * expense-payment path.
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PurchaseRepository purchaseRepository;
+    private final ExpenseRepository expenseRepository;
     private final SupplierService supplierService;
     private final LedgerService ledgerService;
     private final AccountingService accountingService;
@@ -56,10 +69,14 @@ public class PaymentService {
         supplierService.findSupplierOrThrow(supplierId);
         List<Purchase> outstanding = purchaseRepository.findOutstandingBySupplier(supplierId);
         BigDecimal total = outstanding.stream().map(Purchase::getPayableAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        List<Expense> outstandingExpenseList = expenseRepository.findOutstandingBySupplier(supplierId);
+        BigDecimal outstandingExpenses = outstandingExpenseList.stream()
+                .map(Expense::getPayableAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
         return SupplierOutstandingResponse.builder()
                 .supplierId(supplierId)
-                .totalOutstanding(total)
+                .totalOutstanding(total.add(outstandingExpenses))
                 .bills(outstanding.stream().map(OutstandingPurchaseBillResponse::fromEntity).toList())
+                .expenses(outstandingExpenseList.stream().map(com.storehub.dto.OutstandingExpenseResponse::fromEntity).toList())
                 .build();
     }
 
@@ -138,11 +155,19 @@ public class PaymentService {
 
     private void reverseAndRemove(Payment payment) {
         for (PaymentAllocation allocation : payment.getAllocations()) {
-            Purchase purchase = allocation.getPurchase();
-            purchase.setPaidAmount(purchase.getPaidAmount().subtract(allocation.getAmountApplied()));
-            purchase.setPayableAmount(purchase.getPayableAmount().add(allocation.getAmountApplied()));
-            purchase.setPaymentStatus(derivePaymentStatus(purchase.getPaidAmount(), purchase.getTotalAmount()));
-            purchaseRepository.save(purchase);
+            if (allocation.getPurchase() != null) {
+                Purchase purchase = allocation.getPurchase();
+                purchase.setPaidAmount(purchase.getPaidAmount().subtract(allocation.getAmountApplied()));
+                purchase.setPayableAmount(purchase.getPayableAmount().add(allocation.getAmountApplied()));
+                purchase.setPaymentStatus(derivePaymentStatus(purchase.getPaidAmount(), purchase.getTotalAmount()));
+                purchaseRepository.save(purchase);
+            } else if (allocation.getExpense() != null) {
+                Expense expense = allocation.getExpense();
+                expense.setPaidAmount(expense.getPaidAmount().subtract(allocation.getAmountApplied()));
+                expense.setPayableAmount(expense.getPayableAmount().add(allocation.getAmountApplied()));
+                expense.setPaymentStatus(derivePaymentStatus(expense.getPaidAmount(), expense.getTotalAmount()));
+                expenseRepository.save(expense);
+            }
         }
         String reason = (payment.isSystemGenerated() ? "Purchase reversed: " : "Payment deleted: ")
                 + payment.getPaymentNumber();
@@ -158,16 +183,36 @@ public class PaymentService {
         if (explicit != null && !explicit.isEmpty()) {
             BigDecimal totalExplicit = BigDecimal.ZERO;
             for (PaymentAllocationRequest allocationRequest : explicit) {
-                Purchase purchase = purchaseRepository.findById(allocationRequest.getPurchaseId())
-                        .orElseThrow(() -> new PurchaseNotFoundException(allocationRequest.getPurchaseId()));
-                if (purchase.getSupplier() == null || !purchase.getSupplier().getId().equals(supplierId)) {
-                    throw new BadRequestException("Purchase " + purchase.getPurchaseNumber() + " does not belong to this supplier");
+                if (allocationRequest.getPurchaseId() == null && allocationRequest.getExpenseId() == null) {
+                    throw new BadRequestException("Each allocation must reference either a purchase bill or an expense");
                 }
-                if (allocationRequest.getAmountApplied().compareTo(purchase.getPayableAmount()) > 0) {
-                    throw new BadRequestException("Allocation of " + allocationRequest.getAmountApplied()
-                            + " for " + purchase.getPurchaseNumber() + " exceeds its payable amount of " + purchase.getPayableAmount());
+                if (allocationRequest.getPurchaseId() != null && allocationRequest.getExpenseId() != null) {
+                    throw new BadRequestException("An allocation cannot reference both a purchase bill and an expense");
                 }
-                applyAllocation(payment, purchase, allocationRequest.getAmountApplied());
+
+                if (allocationRequest.getPurchaseId() != null) {
+                    Purchase purchase = purchaseRepository.findById(allocationRequest.getPurchaseId())
+                            .orElseThrow(() -> new PurchaseNotFoundException(allocationRequest.getPurchaseId()));
+                    if (purchase.getSupplier() == null || !purchase.getSupplier().getId().equals(supplierId)) {
+                        throw new BadRequestException("Purchase " + purchase.getPurchaseNumber() + " does not belong to this supplier");
+                    }
+                    if (allocationRequest.getAmountApplied().compareTo(purchase.getPayableAmount()) > 0) {
+                        throw new BadRequestException("Allocation of " + allocationRequest.getAmountApplied()
+                                + " for " + purchase.getPurchaseNumber() + " exceeds its payable amount of " + purchase.getPayableAmount());
+                    }
+                    applyAllocation(payment, purchase, allocationRequest.getAmountApplied());
+                } else {
+                    Expense expense = expenseRepository.findById(allocationRequest.getExpenseId())
+                            .orElseThrow(() -> new ExpenseNotFoundException(allocationRequest.getExpenseId()));
+                    if (expense.getSupplier() == null || !expense.getSupplier().getId().equals(supplierId)) {
+                        throw new BadRequestException("Expense " + expense.getExpenseNumber() + " does not belong to this supplier");
+                    }
+                    if (allocationRequest.getAmountApplied().compareTo(expense.getPayableAmount()) > 0) {
+                        throw new BadRequestException("Allocation of " + allocationRequest.getAmountApplied()
+                                + " for " + expense.getExpenseNumber() + " exceeds its payable amount of " + expense.getPayableAmount());
+                    }
+                    applyExpenseAllocation(payment, expense, allocationRequest.getAmountApplied());
+                }
                 totalExplicit = totalExplicit.add(allocationRequest.getAmountApplied());
             }
             if (totalExplicit.compareTo(payment.getAmount()) > 0) {
@@ -175,18 +220,36 @@ public class PaymentService {
                         + ") cannot exceed the payment amount (" + payment.getAmount() + ")");
             }
         } else {
-            List<Purchase> outstanding = purchaseRepository.findOutstandingBySupplier(supplierId);
-            for (Purchase purchase : outstanding) {
+            // FIFO across both outstanding purchase bills and outstanding credit expenses for this supplier, oldest first.
+            List<Outstanding> combined = new ArrayList<>();
+            for (Purchase p : purchaseRepository.findOutstandingBySupplier(supplierId)) {
+                combined.add(new Outstanding(p.getPurchaseDate(), p, null));
+            }
+            for (Expense e : expenseRepository.findOutstandingBySupplier(supplierId)) {
+                combined.add(new Outstanding(e.getExpenseDate(), null, e));
+            }
+            combined.sort(Comparator.comparing(Outstanding::date));
+
+            for (Outstanding item : combined) {
                 if (remaining.signum() <= 0) {
                     break;
                 }
-                BigDecimal toApply = remaining.min(purchase.getPayableAmount());
-                applyAllocation(payment, purchase, toApply);
-                remaining = remaining.subtract(toApply);
+                if (item.purchase() != null) {
+                    BigDecimal toApply = remaining.min(item.purchase().getPayableAmount());
+                    applyAllocation(payment, item.purchase(), toApply);
+                    remaining = remaining.subtract(toApply);
+                } else {
+                    BigDecimal toApply = remaining.min(item.expense().getPayableAmount());
+                    applyExpenseAllocation(payment, item.expense(), toApply);
+                    remaining = remaining.subtract(toApply);
+                }
             }
             // Any amount left over is recorded as an on-account credit against the supplier
-            // (still reduces overall outstanding via the ledger DEBIT entry) rather than tied to one bill.
+            // (still reduces overall outstanding via the ledger DEBIT entry) rather than tied to one bill/expense.
         }
+    }
+
+    private record Outstanding(LocalDate date, Purchase purchase, Expense expense) {
     }
 
     private void applyAllocation(Payment payment, Purchase purchase, BigDecimal amount) {
@@ -198,6 +261,17 @@ public class PaymentService {
         purchase.setPayableAmount(purchase.getPayableAmount().subtract(amount));
         purchase.setPaymentStatus(derivePaymentStatus(purchase.getPaidAmount(), purchase.getTotalAmount()));
         purchaseRepository.save(purchase);
+    }
+
+    private void applyExpenseAllocation(Payment payment, Expense expense, BigDecimal amount) {
+        if (amount.signum() <= 0) {
+            return;
+        }
+        payment.addAllocation(PaymentAllocation.builder().expense(expense).amountApplied(amount).build());
+        expense.setPaidAmount(expense.getPaidAmount().add(amount));
+        expense.setPayableAmount(expense.getPayableAmount().subtract(amount));
+        expense.setPaymentStatus(derivePaymentStatus(expense.getPaidAmount(), expense.getTotalAmount()));
+        expenseRepository.save(expense);
     }
 
     private PaymentStatus derivePaymentStatus(BigDecimal paid, BigDecimal total) {

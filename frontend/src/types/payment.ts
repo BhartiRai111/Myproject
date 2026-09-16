@@ -3,8 +3,10 @@ import { PaymentMode } from './purchase';
 
 export interface PaymentAllocation {
   id: number;
-  purchaseId: number;
-  purchaseNumber: string;
+  purchaseId: number | null;
+  purchaseNumber: string | null;
+  expenseId: number | null;
+  expenseNumber: string | null;
   amountApplied: number;
 }
 
@@ -22,7 +24,8 @@ export interface Payment {
 }
 
 export interface PaymentAllocationPayload {
-  purchaseId: number;
+  purchaseId?: number;
+  expenseId?: number;
   amountApplied: number;
 }
 
@@ -44,10 +47,21 @@ export interface OutstandingPurchaseBill {
   payableAmount: number;
 }
 
+export interface OutstandingExpense {
+  expenseId: number;
+  expenseNumber: string;
+  expenseDate: string;
+  category: string;
+  totalAmount: number;
+  paidAmount: number;
+  payableAmount: number;
+}
+
 export interface SupplierOutstanding {
   supplierId: number;
   totalOutstanding: number;
   bills: OutstandingPurchaseBill[];
+  expenses: OutstandingExpense[];
 }
 
 export interface PurchaseSummary {

@@ -2,6 +2,8 @@ package com.storehub.service;
 
 import com.storehub.entity.CreditNote;
 import com.storehub.entity.DebitNote;
+import com.storehub.entity.Expense;
+import com.storehub.entity.ExpenseStatus;
 import com.storehub.entity.NoteStatus;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.PurchaseStatus;
@@ -46,5 +48,15 @@ public final class GstReportingEligibility {
 
     public static boolean isEligibleForGstReporting(DebitNote note) {
         return Boolean.TRUE.equals(note.getGstReportingApplicable()) && note.getStatus() == NoteStatus.POSTED;
+    }
+
+    /**
+     * An Expense has no Kacchi-equivalent "calculated but not reportable" concept, so eligibility is simply:
+     * GST was actually applied ({@code taxMode != null}) AND the expense is POSTED. {@code itcEligible} decides
+     * whether it counts toward ITC (see {@link com.storehub.service.GstTransactionSyncService#syncExpense}) — it
+     * does not gate whether the expense appears in GST reporting at all.
+     */
+    public static boolean isEligibleForGstReporting(Expense expense) {
+        return expense.getTaxMode() != null && expense.getStatus() == ExpenseStatus.POSTED;
     }
 }

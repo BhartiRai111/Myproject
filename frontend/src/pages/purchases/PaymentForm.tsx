@@ -5,7 +5,7 @@ import { supplierApi } from '../../api/supplierApi';
 import { paymentApi } from '../../api/paymentApi';
 import { parseApiError } from '../../utils/apiError';
 import { PaymentMode, Supplier } from '../../types/purchase';
-import { OutstandingPurchaseBill, PaymentPayload } from '../../types/payment';
+import { OutstandingExpense, OutstandingPurchaseBill, PaymentPayload } from '../../types/payment';
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
 import { BackButton } from '@/components/BackButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -30,6 +30,12 @@ interface AllocationRow {
   amount: string;
 }
 
+interface ExpenseAllocationRow {
+  expense: OutstandingExpense;
+  checked: boolean;
+  amount: string;
+}
+
 export default function PaymentForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -42,6 +48,7 @@ export default function PaymentForm() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('CASH');
   const [remarks, setRemarks] = useState('');
   const [outstanding, setOutstanding] = useState<AllocationRow[]>([]);
+  const [outstandingExpenses, setOutstandingExpenses] = useState<ExpenseAllocationRow[]>([]);
   const [totalOutstanding, setTotalOutstanding] = useState(0);
   const [loadingOutstanding, setLoadingOutstanding] = useState(false);
   const [error, setError] = useState('');
@@ -71,6 +78,7 @@ export default function PaymentForm() {
   useEffect(() => {
     if (!supplierId) {
       setOutstanding([]);
+      setOutstandingExpenses([]);
       setTotalOutstanding(0);
       return;
     }
@@ -80,6 +88,9 @@ export default function PaymentForm() {
       .then((res) => {
         setTotalOutstanding(res.data.totalOutstanding);
         setOutstanding(res.data.bills.map((bill) => ({ bill, checked: false, amount: String(bill.payableAmount) })));
+        setOutstandingExpenses(
+          (res.data.expenses || []).map((expense) => ({ expense, checked: false, amount: String(expense.payableAmount) }))
+        );
       })
       .finally(() => setLoadingOutstanding(false));
   }, [supplierId]);
@@ -92,7 +103,17 @@ export default function PaymentForm() {
     setOutstanding((prev) => prev.map((row, i) => (i === index ? { ...row, amount: value } : row)));
   };
 
-  const checkedTotal = outstanding.filter((r) => r.checked).reduce((sum, r) => sum + toNumber(r.amount), 0);
+  const toggleExpenseRow = (index: number) => {
+    setOutstandingExpenses((prev) => prev.map((row, i) => (i === index ? { ...row, checked: !row.checked } : row)));
+  };
+
+  const updateExpenseRowAmount = (index: number, value: string) => {
+    setOutstandingExpenses((prev) => prev.map((row, i) => (i === index ? { ...row, amount: value } : row)));
+  };
+
+  const checkedTotal =
+    outstanding.filter((r) => r.checked).reduce((sum, r) => sum + toNumber(r.amount), 0) +
+    outstandingExpenses.filter((r) => r.checked).reduce((sum, r) => sum + toNumber(r.amount), 0);
 
   const validate = (): string | null => {
     if (!supplierId) return 'Supplier is required';
@@ -104,7 +125,14 @@ export default function PaymentForm() {
         return `Allocation for ${row.bill.purchaseNumber} cannot exceed its payable amount of ${row.bill.payableAmount.toFixed(2)}`;
       }
     }
-    if (checkedRows.length > 0 && checkedTotal > toNumber(amount)) {
+    const checkedExpenseRows = outstandingExpenses.filter((r) => r.checked);
+    for (const row of checkedExpenseRows) {
+      if (toNumber(row.amount) <= 0) return `Allocation for ${row.expense.expenseNumber} must be greater than 0`;
+      if (toNumber(row.amount) > row.expense.payableAmount) {
+        return `Allocation for ${row.expense.expenseNumber} cannot exceed its payable amount of ${row.expense.payableAmount.toFixed(2)}`;
+      }
+    }
+    if ((checkedRows.length > 0 || checkedExpenseRows.length > 0) && checkedTotal > toNumber(amount)) {
       return 'Total allocated amount cannot exceed the payment amount';
     }
     return null;
@@ -120,15 +148,17 @@ export default function PaymentForm() {
     }
 
     const checkedRows = outstanding.filter((r) => r.checked);
+    const checkedExpenseRows = outstandingExpenses.filter((r) => r.checked);
     const payload: PaymentPayload = {
       supplierId: Number(supplierId),
       paymentDate,
       amount: toNumber(amount),
       paymentMode,
       remarks: remarks || undefined,
-      allocations: checkedRows.length > 0
-        ? checkedRows.map((r) => ({ purchaseId: r.bill.purchaseId, amountApplied: toNumber(r.amount) }))
-        : [],
+      allocations: [
+        ...checkedRows.map((r) => ({ purchaseId: r.bill.purchaseId, amountApplied: toNumber(r.amount) })),
+        ...checkedExpenseRows.map((r) => ({ expenseId: r.expense.expenseId, amountApplied: toNumber(r.amount) })),
+      ],
     };
 
     setSubmitting(true);
@@ -281,6 +311,63 @@ export default function PaymentForm() {
                   )}
                 </>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {supplierId && outstandingExpenses.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Outstanding Credit Expenses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Credit expenses recorded against this supplier — optionally select which one(s) this payment settles.
+              </p>
+              <div className="overflow-hidden rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10" />
+                      <TableHead>Expense</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Payable</TableHead>
+                      <TableHead className="w-32 text-right">Apply Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {outstandingExpenses.map((row, index) => (
+                      <TableRow key={row.expense.expenseId}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-input accent-primary"
+                            checked={row.checked}
+                            onChange={() => toggleExpenseRow(index)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{row.expense.expenseNumber}</TableCell>
+                        <TableCell className="text-muted-foreground">{row.expense.expenseDate}</TableCell>
+                        <TableCell className="text-right">{row.expense.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{row.expense.payableAmount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={row.expense.payableAmount}
+                            step="0.01"
+                            disabled={!row.checked}
+                            value={row.amount}
+                            onChange={(e) => updateExpenseRowAmount(index, e.target.value)}
+                            className="text-right"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}

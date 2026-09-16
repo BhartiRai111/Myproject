@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Pencil, Printer } from 'lucide-react';
 import { expenseApi } from '../../api/expenseApi';
 import { parseApiError } from '../../utils/apiError';
 import { Expense } from '../../types/expense';
@@ -19,6 +20,12 @@ const money = (n: number) => `₹${(n ?? 0).toLocaleString('en-IN', { minimumFra
 function statusVariant(status: string) {
   if (status === 'POSTED') return 'success' as const;
   if (status === 'CANCELLED') return 'destructive' as const;
+  return 'muted' as const;
+}
+
+function paymentStatusVariant(status?: string | null) {
+  if (status === 'PAID') return 'success' as const;
+  if (status === 'PARTIAL') return 'warning' as const;
   return 'muted' as const;
 }
 
@@ -94,6 +101,7 @@ export default function ExpenseDetail() {
   }
 
   const hasGst = expense.taxMode != null;
+  const isCreditExpense = !!expense.supplierId;
 
   return (
     <div className="space-y-6">
@@ -103,7 +111,15 @@ export default function ExpenseDetail() {
         title={expense.expenseNumber}
         description={`${expense.category} — dated ${expense.expenseDate}`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 print:hidden">
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+            {canManage && expense.status === 'DRAFT' && (
+              <Button variant="outline" onClick={() => navigate(`/accounting/expenses/${expense.id}/edit`)}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Button>
+            )}
             {canManage && expense.status === 'DRAFT' && <Button onClick={() => setPostConfirm(true)}>Post</Button>}
             {canManage && expense.status !== 'CANCELLED' && (
               <Button variant="destructive" onClick={() => setCancelConfirm(true)}>
@@ -125,17 +141,24 @@ export default function ExpenseDetail() {
             <p className="font-medium">{expense.category}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Vendor</p>
-            <p className="font-medium">{expense.vendorName || '—'}</p>
+            <p className="text-xs text-muted-foreground">{isCreditExpense ? 'Party (Supplier)' : 'Vendor'}</p>
+            <p className="font-medium">{isCreditExpense ? expense.vendorName : expense.vendorName || '—'}</p>
+            {isCreditExpense && expense.supplierGstin && <p className="text-xs text-muted-foreground">{expense.supplierGstin}</p>}
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Payment Mode</p>
-            <p className="font-medium">{expense.paymentMode}</p>
+            <p className="font-medium">{isCreditExpense ? 'Credit (Party Payable)' : expense.paymentMode}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">ITC Eligible</p>
             <p className="font-medium">{hasGst ? (expense.itcEligible ? 'Yes' : 'No') : '—'}</p>
           </div>
+          {isCreditExpense && (
+            <div>
+              <p className="text-xs text-muted-foreground">Payment Status</p>
+              <Badge variant={paymentStatusVariant(expense.paymentStatus)}>{expense.paymentStatus || '—'}</Badge>
+            </div>
+          )}
           <div>
             <p className="text-xs text-muted-foreground">Posted By</p>
             <p className="font-medium">{expense.postedBy || '—'}</p>
@@ -144,20 +167,57 @@ export default function ExpenseDetail() {
             <p className="text-xs text-muted-foreground">Created By</p>
             <p className="font-medium">{expense.createdBy || '—'}</p>
           </div>
+          {expense.referenceNumber && (
+            <div>
+              <p className="text-xs text-muted-foreground">Reference Number</p>
+              <p className="font-medium">{expense.referenceNumber}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {expense.description && (
+      {isCreditExpense && expense.status === 'POSTED' && (
         <Card>
-          <CardContent className="p-5 text-sm">
-            <p className="text-xs text-muted-foreground">Description</p>
-            <p>{expense.description}</p>
+          <CardContent className="flex items-center justify-between p-5 text-sm">
+            <span className="text-muted-foreground">Outstanding Payable to {expense.vendorName}</span>
+            <span className="text-base font-semibold">{money(expense.payableAmount)}</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {(expense.description || expense.remarks) && (
+        <Card>
+          <CardContent className="space-y-3 p-5 text-sm">
+            {expense.description && (
+              <div>
+                <p className="text-xs text-muted-foreground">Description</p>
+                <p>{expense.description}</p>
+              </div>
+            )}
+            {expense.remarks && (
+              <div>
+                <p className="text-xs text-muted-foreground">Remarks</p>
+                <p>{expense.remarks}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
       <Card>
         <CardContent className="flex flex-col items-end gap-1 p-5 text-sm">
+          {!!expense.discountAmount && (
+            <>
+              <div className="flex w-full max-w-xs justify-between text-muted-foreground">
+                <span>Amount</span>
+                <span>{money(expense.taxableAmount + expense.discountAmount)}</span>
+              </div>
+              <div className="flex w-full max-w-xs justify-between text-muted-foreground">
+                <span>Discount</span>
+                <span>- {money(expense.discountAmount)}</span>
+              </div>
+            </>
+          )}
           <div className="flex w-full max-w-xs justify-between text-muted-foreground">
             <span>Taxable Amount</span>
             <span>{money(expense.taxableAmount)}</span>
@@ -189,7 +249,11 @@ export default function ExpenseDetail() {
       <ConfirmDialog
         open={postConfirm}
         title={`Post Expense ${expense.expenseNumber}?`}
-        description="This will debit the Expense account (and Input GST accounts if ITC eligible) and credit Cash/Bank via the accounting journal. This cannot be undone directly — only via cancellation."
+        description={
+          isCreditExpense
+            ? 'This will debit the Expense account (and Input GST accounts if ITC eligible) and credit Supplier Payable via the accounting journal. Settle it later from Payment Entry.'
+            : 'This will debit the Expense account (and Input GST accounts if ITC eligible) and credit Cash/Bank via the accounting journal. This cannot be undone directly — only via cancellation.'
+        }
         confirmLabel={posting ? 'Posting...' : 'Post'}
         destructive={false}
         onConfirm={handlePost}
@@ -199,7 +263,7 @@ export default function ExpenseDetail() {
       <ConfirmDialog
         open={cancelConfirm}
         title={`Cancel Expense ${expense.expenseNumber}?`}
-        description="This will reverse the accounting journal if this expense was posted."
+        description="This will reverse the accounting journal (and party payable, if applicable) if this expense was posted."
         confirmLabel={cancelling ? 'Cancelling...' : 'Cancel Expense'}
         cancelLabel="Keep Expense"
         onConfirm={handleCancel}

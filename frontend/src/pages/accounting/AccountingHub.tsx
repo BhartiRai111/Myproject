@@ -190,6 +190,13 @@ export default function AccountingHub() {
       path: '/accounting/reports/expense-summary',
     },
     {
+      key: 'expense-analysis',
+      title: 'Expense Analysis',
+      description: 'Category-wise, payment-method-wise, party-wise, and GST/ITC-wise expense totals.',
+      icon: BarChart3,
+      path: '/accounting/reports/expense-analysis',
+    },
+    {
       key: 'income-summary',
       title: 'Income Summary',
       description: 'Every income account grouped with its posted vouchers.',

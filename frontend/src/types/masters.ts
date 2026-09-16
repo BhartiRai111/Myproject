@@ -276,6 +276,27 @@ export interface BusinessGstConfig {
   updatedAt: string;
 }
 
+// ---------- Expense Category ----------
+export interface ExpenseCategory {
+  id: number;
+  code: string;
+  name: string;
+  linkedAccountId: number | null;
+  linkedAccountName: string | null;
+  active: boolean;
+  status: MasterStatus;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpenseCategoryPayload {
+  code: string;
+  name: string;
+  linkedAccountId?: number | null;
+  description?: string;
+}
+
 export interface BusinessGstConfigPayload {
   legalName: string;
   tradeName?: string;

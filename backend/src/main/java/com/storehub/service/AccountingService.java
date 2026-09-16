@@ -247,6 +247,26 @@ public class AccountingService {
                                  String narration, AccountingPartyType partyType, Long partyId) {
     }
 
+    /**
+     * Posts a journal under a real source voucher (duplicate-posting protection and
+     * reversal-by-voucherId both apply, same as {@link #postJournal}), but with lines
+     * that reference accounts by id rather than {@link SystemAccountCode} — used when
+     * the posting account is configurable per source record rather than one of the
+     * fixed system accounts (e.g. an Expense Category's linked account).
+     */
+    @Transactional
+    public JournalHeader postJournalByAccountId(VoucherType voucherType, Long voucherId, String voucherNumber,
+                                                 LocalDate journalDate, String narration, List<ManualJournalLine> lines) {
+        List<ResolvedLine> resolved = lines.stream()
+                .map(line -> new ResolvedLine(resolveActiveAccountById(line.accountId()),
+                        line.debitAmount() != null ? line.debitAmount() : BigDecimal.ZERO,
+                        line.creditAmount() != null ? line.creditAmount() : BigDecimal.ZERO,
+                        line.narration(), line.partyType(), line.partyId()))
+                .toList();
+        validateResolvedLines(resolved);
+        return buildAndSaveJournal(voucherType, voucherId, voucherNumber, journalDate, narration, resolved);
+    }
+
     private JournalHeader buildAndSaveJournal(VoucherType voucherType, Long voucherId, String voucherNumber,
                                                LocalDate journalDate, String narration, List<ResolvedLine> lines) {
         financialYearService.resolveOpenForPosting(journalDate);

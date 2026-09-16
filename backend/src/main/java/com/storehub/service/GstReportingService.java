@@ -144,11 +144,14 @@ public class GstReportingService {
                 .build();
     }
 
+    /** Input GST report: Purchase AND Expense together (the generic ITC-side view — Purchase GST Report above stays Purchase-only). */
+    private static final List<VoucherType> INPUT_GST_TYPES = List.of(VoucherType.PURCHASE, VoucherType.EXPENSE);
+
     @Transactional(readOnly = true)
     public GstReportListResponse inputGstReport(LocalDate fromDate, LocalDate toDate, Pageable pageable) {
-        Page<GstTransaction> page = gstTransactionRepository.search(VoucherType.PURCHASE, null, fromDate, toDate, null, pageable);
+        Page<GstTransaction> page = gstTransactionRepository.searchByTypes(INPUT_GST_TYPES, null, fromDate, toDate, pageable);
         Page<GstTransactionRow> rows = page.map(txn -> toRow(txn, txn.isB2b()));
-        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.PURCHASE, null, fromDate, toDate));
+        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotalsByTypes(INPUT_GST_TYPES, null, fromDate, toDate));
         return GstReportListResponse.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
@@ -157,11 +160,11 @@ public class GstReportingService {
                 .build();
     }
 
-    /** GSTR-3B summary for a return period: outward supplies, Input Tax Credit (B2B purchases only), and net liability. */
+    /** GSTR-3B summary for a return period: outward supplies, Input Tax Credit (ITC-eligible Purchase + Expense rows), and net liability. */
     @Transactional(readOnly = true)
     public Gstr3bResponse gstr3bSummary(String returnPeriod) {
         GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null));
-        GstSummaryTotals itc = aggregate(gstTransactionRepository.aggregateB2bTotals(VoucherType.PURCHASE, returnPeriod, null, null));
+        GstSummaryTotals itc = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null));
         GstSummaryTotals net = netOf(outward, itc);
 
         return Gstr3bResponse.builder()
@@ -177,7 +180,7 @@ public class GstReportingService {
     @Transactional(readOnly = true)
     public GstLiabilityResponse gstLiability(String returnPeriod) {
         GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null));
-        GstSummaryTotals input = aggregate(gstTransactionRepository.aggregateB2bTotals(VoucherType.PURCHASE, returnPeriod, null, null));
+        GstSummaryTotals input = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null));
 
         return GstLiabilityResponse.builder()
                 .returnPeriod(returnPeriod)

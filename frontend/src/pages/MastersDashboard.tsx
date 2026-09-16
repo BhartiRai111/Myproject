@@ -15,6 +15,7 @@ import {
   Tags,
   Package,
   Landmark,
+  Receipt,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -29,6 +30,7 @@ import {
   hsnApi,
   employeeApi,
   partyApi,
+  expenseCategoryApi,
 } from '../api/mastersApi';
 import { categoryApi } from '../api/categoryApi';
 import { PageHeader } from '@/components/PageHeader';
@@ -149,6 +151,14 @@ const CARDS: MasterCard[] = [
     icon: Handshake,
     path: '/masters/parties',
     loadCount: () => partyApi.list({ size: 1 }).then((r) => r.data.totalElements),
+  },
+  {
+    key: 'expense-category',
+    name: 'Expense Category',
+    description: 'Business classification for expenses, optionally mapped to an account',
+    icon: Receipt,
+    path: '/masters/expense-categories',
+    loadCount: () => expenseCategoryApi.list({ size: 1 }).then((r) => r.data.totalElements),
   },
   {
     key: 'business-gst-config',

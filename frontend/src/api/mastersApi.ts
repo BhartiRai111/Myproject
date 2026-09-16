@@ -11,6 +11,8 @@ import {
   CurrencyPayload,
   Employee,
   EmployeePayload,
+  ExpenseCategory,
+  ExpenseCategoryPayload,
   Hsn,
   HsnPayload,
   ItemGroup,
@@ -131,6 +133,25 @@ export const unitApi = {
   update: (id: number, payload: UnitPayload) => api.put<Unit>(`/masters/units/${id}`, payload),
   activate: (id: number) => api.patch<Unit>(`/masters/units/${id}/activate`),
   deactivate: (id: number) => api.patch<Unit>(`/masters/units/${id}/deactivate`),
+};
+
+export const expenseCategoryApi = {
+  list: (query: MasterListQuery = {}) =>
+    api.get<PagedResponse<ExpenseCategory>>('/masters/expense-categories', {
+      params: {
+        search: query.search || undefined,
+        active: query.status === 'ACTIVE' ? true : query.status === 'INACTIVE' ? false : undefined,
+        page: query.page ?? 0,
+        size: query.size ?? 10,
+      },
+    }),
+  /** Active categories only — populates the Category dropdown on the Expense form. */
+  listActive: () => api.get<ExpenseCategory[]>('/masters/expense-categories/active'),
+  getById: (id: number) => api.get<ExpenseCategory>(`/masters/expense-categories/${id}`),
+  create: (payload: ExpenseCategoryPayload) => api.post<ExpenseCategory>('/masters/expense-categories', payload),
+  update: (id: number, payload: ExpenseCategoryPayload) => api.put<ExpenseCategory>(`/masters/expense-categories/${id}`, payload),
+  activate: (id: number) => api.patch<ExpenseCategory>(`/masters/expense-categories/${id}/activate`),
+  deactivate: (id: number) => api.patch<ExpenseCategory>(`/masters/expense-categories/${id}/deactivate`),
 };
 
 export const itemGroupApi = {

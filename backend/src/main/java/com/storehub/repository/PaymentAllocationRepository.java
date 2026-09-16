@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface PaymentAllocationRepository extends JpaRepository<PaymentAllocation, Long> {
     List<PaymentAllocation> findByPurchaseId(Long purchaseId);
+
+    List<PaymentAllocation> findByExpenseId(Long expenseId);
 }

@@ -70,6 +70,48 @@ public interface GstTransactionRepository extends JpaRepository<GstTransaction, 
                                        @Param("fromDate") LocalDate fromDate,
                                        @Param("toDate") LocalDate toDate);
 
+    /**
+     * Same as {@link #search}/{@link #aggregateTotals}, but scoped to a SET of voucher types via IN — used only by
+     * the ITC-side reports (Input GST report, GSTR-3B ITC, GST Liability input) to fold Expense rows in alongside
+     * Purchase without touching any single-type Sale/Purchase-only report or its existing behaviour.
+     */
+    @Query("SELECT g FROM GstTransaction g WHERE g.status = com.storehub.entity.GstTransactionStatus.ACTIVE " +
+            "AND g.sourceTransactionType IN :types " +
+            "AND (:returnPeriod IS NULL OR g.returnPeriod = :returnPeriod) " +
+            "AND (:fromDate IS NULL OR g.voucherDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR g.voucherDate <= :toDate) " +
+            "ORDER BY g.voucherDate ASC, g.id ASC")
+    Page<GstTransaction> searchByTypes(@Param("types") List<VoucherType> types,
+                                        @Param("returnPeriod") String returnPeriod,
+                                        @Param("fromDate") LocalDate fromDate,
+                                        @Param("toDate") LocalDate toDate,
+                                        Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(g.taxableAmount),0), COALESCE(SUM(g.cgstAmount),0), COALESCE(SUM(g.sgstAmount),0), " +
+            "COALESCE(SUM(g.igstAmount),0), COALESCE(SUM(g.totalTax),0), COALESCE(SUM(g.totalValue),0), COUNT(g) " +
+            "FROM GstTransaction g WHERE g.status = com.storehub.entity.GstTransactionStatus.ACTIVE " +
+            "AND g.sourceTransactionType IN :types " +
+            "AND (:returnPeriod IS NULL OR g.returnPeriod = :returnPeriod) " +
+            "AND (:fromDate IS NULL OR g.voucherDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR g.voucherDate <= :toDate)")
+    List<Object[]> aggregateTotalsByTypes(@Param("types") List<VoucherType> types,
+                                           @Param("returnPeriod") String returnPeriod,
+                                           @Param("fromDate") LocalDate fromDate,
+                                           @Param("toDate") LocalDate toDate);
+
+    /** Same shape as {@link #aggregateTotalsByTypes}, restricted to b2b=true rows — for Purchase this means valid-GSTIN, for Expense this means itcEligible. */
+    @Query("SELECT COALESCE(SUM(g.taxableAmount),0), COALESCE(SUM(g.cgstAmount),0), COALESCE(SUM(g.sgstAmount),0), " +
+            "COALESCE(SUM(g.igstAmount),0), COALESCE(SUM(g.totalTax),0), COALESCE(SUM(g.totalValue),0), COUNT(g) " +
+            "FROM GstTransaction g WHERE g.status = com.storehub.entity.GstTransactionStatus.ACTIVE " +
+            "AND g.sourceTransactionType IN :types AND g.b2b = true " +
+            "AND (:returnPeriod IS NULL OR g.returnPeriod = :returnPeriod) " +
+            "AND (:fromDate IS NULL OR g.voucherDate >= :fromDate) " +
+            "AND (:toDate IS NULL OR g.voucherDate <= :toDate)")
+    List<Object[]> aggregateB2bTotalsByTypes(@Param("types") List<VoucherType> types,
+                                              @Param("returnPeriod") String returnPeriod,
+                                              @Param("fromDate") LocalDate fromDate,
+                                              @Param("toDate") LocalDate toDate);
+
     /** All source ids currently having an ACTIVE reporting row, for reconciliation / duplicate detection. */
     @Query("SELECT g.sourceTransactionId, COUNT(g) FROM GstTransaction g WHERE g.sourceTransactionType = :type " +
             "AND g.status = com.storehub.entity.GstTransactionStatus.ACTIVE GROUP BY g.sourceTransactionId")

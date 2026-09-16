@@ -55,6 +55,7 @@ import HsnMaster from './pages/masters/HsnMaster';
 import EmployeeMaster from './pages/masters/EmployeeMaster';
 import PartyMaster from './pages/masters/PartyMaster';
 import BusinessGstConfigMaster from './pages/masters/BusinessGstConfigMaster';
+import ExpenseCategoryMaster from './pages/masters/ExpenseCategoryMaster';
 import AccountingHub from './pages/accounting/AccountingHub';
 import Expenses from './pages/accounting/Expenses';
 import ExpenseForm from './pages/accounting/ExpenseForm';
@@ -80,6 +81,7 @@ import ProfitLoss from './pages/accounting/reports/ProfitLoss';
 import BalanceSheet from './pages/accounting/reports/BalanceSheet';
 import AccountSummary from './pages/accounting/reports/AccountSummary';
 import ExpenseSummary from './pages/accounting/reports/ExpenseSummary';
+import ExpenseAnalysis from './pages/accounting/reports/ExpenseAnalysis';
 import IncomeSummary from './pages/accounting/reports/IncomeSummary';
 import HealthCheck from './pages/accounting/reports/HealthCheck';
 import GstReportsHub from './pages/gst/GstReportsHub';
@@ -187,6 +189,7 @@ export default function App() {
               <Route path="/accounting/trial-balance" element={<TrialBalance />} />
               <Route path="/accounting/expenses" element={<Expenses />} />
               <Route path="/accounting/expenses/new" element={<ExpenseForm />} />
+              <Route path="/accounting/expenses/:id/edit" element={<ExpenseForm />} />
               <Route path="/accounting/expenses/:id" element={<ExpenseDetail />} />
               <Route path="/accounting/cash-transactions" element={<CashTransactions />} />
               <Route path="/accounting/cash-transactions/new" element={<CashTransactionForm />} />
@@ -208,6 +211,7 @@ export default function App() {
               <Route path="/accounting/reports/balance-sheet" element={<BalanceSheet />} />
               <Route path="/accounting/reports/account-summary" element={<AccountSummary />} />
               <Route path="/accounting/reports/expense-summary" element={<ExpenseSummary />} />
+              <Route path="/accounting/reports/expense-analysis" element={<ExpenseAnalysis />} />
               <Route path="/accounting/reports/income-summary" element={<IncomeSummary />} />
               <Route path="/accounting/reports/health-check" element={<HealthCheck />} />
             </Route>
@@ -253,6 +257,7 @@ export default function App() {
               <Route path="/masters/employees" element={<EmployeeMaster />} />
               <Route path="/masters/parties" element={<PartyMaster />} />
               <Route path="/masters/business-gst-config" element={<BusinessGstConfigMaster />} />
+              <Route path="/masters/expense-categories" element={<ExpenseCategoryMaster />} />
             </Route>
 
             {DISABLED_MODULES.map((path) => (

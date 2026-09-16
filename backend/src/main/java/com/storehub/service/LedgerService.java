@@ -296,6 +296,33 @@ public class LedgerService {
         return supplierLedgerEntryRepository.getTotalOutstanding();
     }
 
+    /** A credit (party) Expense increases what is owed to the supplier — same polarity as {@link #recordPurchaseCredit}. */
+    @Transactional
+    public void recordExpenseCredit(Expense expense) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(expense.getSupplier())
+                .entryType(LedgerEntryType.CREDIT)
+                .amount(expense.getTotalAmount())
+                .referenceType(LedgerReferenceType.EXPENSE)
+                .referenceId(expense.getId())
+                .description("Expense " + expense.getExpenseNumber())
+                .entryDate(expense.getExpenseDate())
+                .build());
+    }
+
+    @Transactional
+    public void reverseExpenseCredit(Expense expense, String reason) {
+        supplierLedgerEntryRepository.save(SupplierLedgerEntry.builder()
+                .supplier(expense.getSupplier())
+                .entryType(LedgerEntryType.DEBIT)
+                .amount(expense.getTotalAmount())
+                .referenceType(LedgerReferenceType.EXPENSE)
+                .referenceId(expense.getId())
+                .description(reason)
+                .entryDate(java.time.LocalDate.now())
+                .build());
+    }
+
     /** A Sales Credit Note always REDUCES what the customer owes — the opposite polarity of {@link #recordSaleDebit}. */
     @Transactional
     public void recordCreditNoteEntry(CreditNote note) {
