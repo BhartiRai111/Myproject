@@ -1,5 +1,6 @@
 package com.storehub.controller;
 
+import com.storehub.dto.GenerateBarcodeResponse;
 import com.storehub.dto.GenerateSkuResponse;
 import com.storehub.dto.ImportResultResponse;
 import com.storehub.dto.PagedResponse;
@@ -46,10 +47,28 @@ public class ProductController {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    /**
+     * Authoritative barcode lookup for POS/Sales/Purchase scanning (Barcode
+     * Management spec section 21). Open to any authenticated user, same as
+     * {@link #getProductById}, since any staff member operating a scanner
+     * needs it. 404 when no item has this barcode, 400 when the item exists
+     * but is inactive — see {@link ProductService#findByBarcode}.
+     */
+    @GetMapping("/barcode/{barcode}")
+    public ResponseEntity<ProductResponse> getProductByBarcode(@PathVariable String barcode) {
+        return ResponseEntity.ok(productService.findByBarcode(barcode));
+    }
+
     @PostMapping("/generate-sku")
     @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
     public ResponseEntity<GenerateSkuResponse> generateSku() {
         return ResponseEntity.ok(new GenerateSkuResponse(productService.generateSku()));
+    }
+
+    @PostMapping("/generate-barcode")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<GenerateBarcodeResponse> generateBarcode() {
+        return ResponseEntity.ok(new GenerateBarcodeResponse(productService.generateBarcode()));
     }
 
     @PostMapping

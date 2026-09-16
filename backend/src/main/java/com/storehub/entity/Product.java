@@ -30,8 +30,14 @@ public class Product {
     @Column(length = 50, unique = true)
     private String sku;
 
+    /** Trimmed only (never uppercased/parsed as a number) so leading zeroes and Code128 case survive exactly. */
     @Column(length = 50, unique = true)
     private String barcode;
+
+    /** Auto-detected from the barcode's shape by BarcodeUtil.detectType — never user-selected. Null when barcode is null. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "barcode_type", length = 20)
+    private BarcodeType barcodeType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

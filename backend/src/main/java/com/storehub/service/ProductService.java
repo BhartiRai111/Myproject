@@ -6,6 +6,7 @@ import com.storehub.dto.ProductCreateRequest;
 import com.storehub.dto.ProductResponse;
 import com.storehub.dto.ProductUpdateRequest;
 import com.storehub.entity.AuditAction;
+import com.storehub.entity.BarcodeType;
 import com.storehub.entity.Category;
 import com.storehub.entity.Hsn;
 import com.storehub.entity.ItemGroup;
@@ -19,6 +20,7 @@ import com.storehub.exception.ProductNotFoundException;
 import com.storehub.repository.CategoryRepository;
 import com.storehub.repository.ProductRepository;
 import com.storehub.repository.StockHistoryRepository;
+import com.storehub.util.BarcodeUtil;
 import com.storehub.util.CsvUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -64,6 +66,7 @@ public class ProductService {
     private final StockHistoryRepository stockHistoryRepository;
     private final AuditService auditService;
     private final SkuGeneratorService skuGeneratorService;
+    private final BarcodeGeneratorService barcodeGeneratorService;
 
     public PagedResponse<ProductResponse> searchProducts(String search, Long categoryId, ProductStatus status,
                                                            int page, int size, String sortBy, String sortDir) {
@@ -96,18 +99,39 @@ public class ProductService {
         return sku == null ? null : sku.trim().toUpperCase();
     }
 
+    /**
+     * Validates a barcode's characters and, when its shape identifies it as
+     * EAN-13, its checksum (Barcode Management spec sections 10/11) — never
+     * forced on a barcode that isn't 13 digits in the first place. Runs at
+     * the service layer (not just the DTO's @Pattern) because CSV import
+     * builds a Product directly and never passes through the create/update
+     * DTOs at all.
+     */
+    private void validateBarcodeOrThrow(String barcode) {
+        if (barcode == null) {
+            return;
+        }
+        if (!BarcodeUtil.isValidCharacters(barcode)) {
+            throw new BadRequestException("Barcode can only contain letters, numbers, hyphens, underscores, and slashes");
+        }
+        if (BarcodeUtil.detectType(barcode) == BarcodeType.EAN13 && !BarcodeUtil.isValidEan13Checksum(barcode)) {
+            throw new BadRequestException("Barcode '" + barcode + "' is not a valid EAN-13 barcode (checksum failed)");
+        }
+    }
+
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request) {
         String sku = normalizeSku(request.getSku());
+        String barcode = BarcodeUtil.normalize(blankToNull(request.getBarcode()));
         if (productRepository.existsByNameIgnoreCase(request.getName())) {
             throw new BadRequestException("A product named '" + request.getName() + "' already exists");
         }
         if (productRepository.existsBySkuIgnoreCase(sku)) {
             throw new BadRequestException("SKU '" + sku + "' already exists. Please use a different SKU.");
         }
-        if (request.getBarcode() != null && !request.getBarcode().isBlank()
-                && productRepository.existsByBarcodeIgnoreCase(request.getBarcode())) {
-            throw new BadRequestException("A product with barcode '" + request.getBarcode() + "' already exists");
+        validateBarcodeOrThrow(barcode);
+        if (barcode != null && productRepository.existsByBarcodeIgnoreCase(barcode)) {
+            throw new BadRequestException("Barcode '" + barcode + "' already exists. Please use a different barcode.");
         }
 
         Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
@@ -119,7 +143,8 @@ public class ProductService {
         Product product = Product.builder()
                 .name(request.getName())
                 .sku(sku)
-                .barcode(blankToNull(request.getBarcode()))
+                .barcode(barcode)
+                .barcodeType(BarcodeUtil.detectType(barcode))
                 .category(category)
                 .brand(request.getBrand())
                 .unit(request.getUnit())
@@ -162,9 +187,15 @@ public class ProductService {
     @Transactional
     public ProductResponse updateProduct(Long id, ProductUpdateRequest request) {
         Product product = findProductOrThrow(id);
+        boolean hasTransactionHistory = stockHistoryRepository.existsByProductId(id);
+
         String oldSku = product.getSku();
         String newSku = normalizeSku(request.getSku());
         boolean skuChanging = oldSku == null || !oldSku.equalsIgnoreCase(newSku);
+
+        String oldBarcode = product.getBarcode();
+        String newBarcode = BarcodeUtil.normalize(blankToNull(request.getBarcode()));
+        boolean barcodeChanging = oldBarcode == null ? newBarcode != null : !oldBarcode.equalsIgnoreCase(newBarcode);
 
         if (!product.getName().equalsIgnoreCase(request.getName())
                 && productRepository.existsByNameIgnoreCase(request.getName())) {
@@ -173,14 +204,17 @@ public class ProductService {
         if (skuChanging && productRepository.existsBySkuIgnoreCaseAndIdNot(newSku, id)) {
             throw new BadRequestException("SKU '" + newSku + "' already exists. Please use a different SKU.");
         }
-        if (skuChanging && stockHistoryRepository.existsByProductId(id)) {
+        if (skuChanging && hasTransactionHistory) {
             throw new BadRequestException("SKU cannot be changed because this item already has recorded stock, sales, or "
                     + "purchase history. Deactivate this item and create a new one instead if a new SKU is required.");
         }
-        String newBarcode = blankToNull(request.getBarcode());
-        if (newBarcode != null && !newBarcode.equalsIgnoreCase(product.getBarcode())
-                && productRepository.existsByBarcodeIgnoreCaseAndIdNot(newBarcode, id)) {
-            throw new BadRequestException("A product with barcode '" + newBarcode + "' already exists");
+        validateBarcodeOrThrow(newBarcode);
+        if (newBarcode != null && productRepository.existsByBarcodeIgnoreCaseAndIdNot(newBarcode, id)) {
+            throw new BadRequestException("Barcode '" + newBarcode + "' already exists. Please use a different barcode.");
+        }
+        if (barcodeChanging && hasTransactionHistory) {
+            throw new BadRequestException("Barcode cannot be changed because this item already has recorded stock, sales, or "
+                    + "purchase history. Deactivate this item and create a new one instead if a new barcode is required.");
         }
 
         Category category = categoryService.findCategoryOrThrow(request.getCategoryId());
@@ -192,6 +226,7 @@ public class ProductService {
         product.setName(request.getName());
         product.setSku(newSku);
         product.setBarcode(newBarcode);
+        product.setBarcodeType(BarcodeUtil.detectType(newBarcode));
         product.setCategory(category);
         product.setBrand(request.getBrand());
         product.setUnit(request.getUnit());
@@ -224,13 +259,18 @@ public class ProductService {
         if (skuChanging) {
             auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
                     oldSku, newSku, "SKU changed for item '" + saved.getName() + "'");
-        } else {
+        }
+        if (barcodeChanging) {
+            auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
+                    oldBarcode, newBarcode, "Barcode changed for item '" + saved.getName() + "'");
+        }
+        if (!skuChanging && !barcodeChanging) {
             auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
                     null, null, "Item '" + saved.getName() + "' (SKU " + saved.getSku() + ") updated");
         }
 
         return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id), request.getMaxStockLevel(),
-                stockHistoryRepository.existsByProductId(id));
+                hasTransactionHistory);
     }
 
     @Transactional
@@ -251,6 +291,30 @@ public class ProductService {
      */
     public String generateSku() {
         return skuGeneratorService.generateNext();
+    }
+
+    /** Auto-generates the next internal barcode (Barcode Management spec sections 13/14) — same passthrough pattern as {@link #generateSku()}. */
+    public String generateBarcode() {
+        return barcodeGeneratorService.generateNext();
+    }
+
+    /**
+     * Authoritative barcode lookup (Barcode Management spec sections 20-22) —
+     * used by POS/Sales/Purchase scanning. Deliberately distinguishes "no
+     * item has this barcode at all" (404) from "the item exists but is
+     * inactive" (400, same convention as the inactive-product guard already
+     * enforced at Sale/Purchase creation time) so a scanner never silently
+     * adds an item that should not be transactable.
+     */
+    public ProductResponse findByBarcode(String barcode) {
+        String normalized = BarcodeUtil.normalize(barcode);
+        Product product = productRepository.findByBarcodeIgnoreCase(normalized)
+                .orElseThrow(() -> new ProductNotFoundException(normalized));
+        if (product.getStatus() == ProductStatus.INACTIVE) {
+            throw new BadRequestException("Item '" + product.getName() + "' is inactive and cannot be used in new transactions");
+        }
+        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(product.getId()),
+                inventoryService.getMaxStockLevel(product.getId()), stockHistoryRepository.existsByProductId(product.getId()));
     }
 
     /**
@@ -374,7 +438,8 @@ public class ProductService {
                 BigDecimal mrp = parseOptionalDecimal(field(fields, columnIndex, "mrp"));
                 BigDecimal wholesalePrice = parseOptionalDecimal(field(fields, columnIndex, "wholesalePrice"));
                 Integer openingStock = parseOptionalInt(field(fields, columnIndex, "openingStock"));
-                String barcode = blankToNull(field(fields, columnIndex, "barcode"));
+                String barcode = BarcodeUtil.normalize(blankToNull(field(fields, columnIndex, "barcode")));
+                validateBarcodeOrThrow(barcode);
                 String brand = field(fields, columnIndex, "brand");
                 String unit = field(fields, columnIndex, "unit");
                 String description = field(fields, columnIndex, "description");
@@ -408,6 +473,7 @@ public class ProductService {
                         continue;
                     }
                     existing.setBarcode(barcode);
+                    existing.setBarcodeType(BarcodeUtil.detectType(barcode));
                     Product saved = productRepository.save(existing);
                     if (maxStockLevel != null) {
                         inventoryService.updateMaxStockLevel(saved.getId(), maxStockLevel);
@@ -428,6 +494,7 @@ public class ProductService {
                             .name(name.trim())
                             .sku(normalizedSku)
                             .barcode(barcode)
+                            .barcodeType(BarcodeUtil.detectType(barcode))
                             .category(category)
                             .brand(blankToNull(brand))
                             .unit(isBlank(unit) ? "pcs" : unit.trim())

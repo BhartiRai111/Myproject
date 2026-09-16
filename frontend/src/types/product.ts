@@ -1,5 +1,7 @@
 export type ProductStatus = 'ACTIVE' | 'INACTIVE';
 
+export type BarcodeType = 'EAN13' | 'EAN8' | 'UPC' | 'INTERNAL' | 'OTHER';
+
 export type CategoryStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Category {
@@ -25,6 +27,7 @@ export interface Product {
   name: string;
   sku: string;
   barcode?: string;
+  barcodeType?: BarcodeType;
   categoryId: number;
   categoryName: string;
   brand?: string;

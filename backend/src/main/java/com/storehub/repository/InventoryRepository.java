@@ -20,7 +20,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT i FROM Inventory i JOIN i.product p LEFT JOIN p.category c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "  LOWER(p.barcode) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:categoryId IS NULL OR c.id = :categoryId) " +
             "AND (:stockStatus IS NULL OR :stockStatus = '' OR " +
             "  (:stockStatus = 'OUT_OF_STOCK' AND i.currentStock <= 0) OR " +
@@ -39,7 +40,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     @Query("SELECT i FROM Inventory i JOIN FETCH i.product p LEFT JOIN FETCH p.category c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "  LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+            "  LOWER(p.barcode) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:categoryId IS NULL OR c.id = :categoryId) " +
             "AND (:stockStatus IS NULL OR :stockStatus = '' OR " +
             "  (:stockStatus = 'OUT_OF_STOCK' AND i.currentStock <= 0) OR " +

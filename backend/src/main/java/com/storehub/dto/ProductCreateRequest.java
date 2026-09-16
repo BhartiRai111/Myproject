@@ -23,6 +23,8 @@ public class ProductCreateRequest {
     @Pattern(regexp = "^[A-Za-z0-9\\-_/]+$", message = "SKU can only contain letters, numbers, hyphens, underscores, and slashes")
     private String sku;
 
+    @Size(max = 50, message = "Barcode cannot exceed 50 characters")
+    @Pattern(regexp = "^[A-Za-z0-9\\-_/]*$", message = "Barcode can only contain letters, numbers, hyphens, underscores, and slashes")
     private String barcode;
 
     @NotNull(message = "Category is required")

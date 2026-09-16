@@ -46,6 +46,7 @@ export default function ProductViewModal({ show, product, onClose }: Props) {
               <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <InfoField label="SKU">{product.sku}</InfoField>
                 <InfoField label="Barcode">{product.barcode || '—'}</InfoField>
+                <InfoField label="Barcode Type">{product.barcode ? product.barcodeType || 'OTHER' : '—'}</InfoField>
                 <InfoField label="Category">{product.categoryName}</InfoField>
                 <InfoField label="Brand">{product.brand || '—'}</InfoField>
                 <InfoField label="Unit">{product.unit}</InfoField>

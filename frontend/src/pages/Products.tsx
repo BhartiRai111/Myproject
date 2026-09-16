@@ -322,6 +322,7 @@ export default function Products() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Brand</TableHead>
                 <TableHead className="text-right">Purchase Price</TableHead>
@@ -332,7 +333,7 @@ export default function Products() {
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={9} />
+              <TableSkeleton columns={10} />
             ) : (
               <TableBody>
                 {visibleProducts.map((p) => {
@@ -341,6 +342,7 @@ export default function Products() {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell className="text-muted-foreground">{p.sku}</TableCell>
+                      <TableCell className="text-muted-foreground">{p.barcode || '—'}</TableCell>
                       <TableCell>{p.categoryName}</TableCell>
                       <TableCell className="text-muted-foreground">{p.brand || '—'}</TableCell>
                       <TableCell className="text-right">{p.purchasePrice.toFixed(2)}</TableCell>

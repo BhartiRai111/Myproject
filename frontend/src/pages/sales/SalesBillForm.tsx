@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Scan, Trash2 } from 'lucide-react';
 import CustomerQuickAddModal from '../../components/CustomerQuickAddModal';
 import ProductQuickAddModal from '../../components/ProductQuickAddModal';
 import { productApi } from '../../api/productApi';
@@ -76,6 +76,8 @@ export default function SalesBillForm() {
   const [paidAmount, setPaidAmount] = useState('0');
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ROW }]);
+  const [scanQuery, setScanQuery] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [salesOrderId, setSalesOrderId] = useState<number | undefined>(orderId ? Number(orderId) : undefined);
   const [salesOrderNumber, setSalesOrderNumber] = useState<string | null>(null);
 
@@ -189,6 +191,42 @@ export default function SalesBillForm() {
 
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
   const removeItemRow = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
+
+  const handleScanBarcode = async () => {
+    const code = scanQuery.trim();
+    if (!code) return;
+    setScanning(true);
+    try {
+      const res = await productApi.getByBarcode(code);
+      const product = res.data;
+      setProducts((prev) => (prev.some((p) => p.id === product.id) ? prev : [...prev, product]));
+      setItems((prev) => {
+        const existingIndex = prev.findIndex((r) => r.productId === String(product.id) && !r.salesOrderItemId);
+        if (existingIndex >= 0) {
+          return prev.map((row, i) =>
+            i === existingIndex ? { ...row, quantity: String(toNumber(row.quantity) + 1) } : row
+          );
+        }
+        const newRow: ItemRow = {
+          productId: String(product.id),
+          quantity: '1',
+          sellingPrice: String(product.sellingPrice),
+          discount: '0',
+          gstPercent: String(product.tax),
+        };
+        const emptyIndex = prev.findIndex((r) => !r.productId);
+        if (emptyIndex >= 0) {
+          return prev.map((row, i) => (i === emptyIndex ? newRow : row));
+        }
+        return [...prev, newRow];
+      });
+      setScanQuery('');
+    } catch (err) {
+      toast.error(parseApiError(err, 'Item not found').message);
+    } finally {
+      setScanning(false);
+    }
+  };
 
   const taxableTotal = items.reduce((sum, row) => sum + rowCalc(row, isGst).taxable, 0);
   const gstTotal = items.reduce((sum, row) => sum + rowCalc(row, isGst).gst, 0);
@@ -417,7 +455,23 @@ export default function SalesBillForm() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <div className="relative max-w-sm">
+                <Scan className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Scan or type barcode, press Enter"
+                  className="pl-9"
+                  value={scanQuery}
+                  onChange={(e) => setScanQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleScanBarcode();
+                    }
+                  }}
+                  disabled={scanning}
+                />
+              </div>
               <div className="overflow-x-auto rounded-lg border border-border">
                 <Table>
                   <TableHeader>

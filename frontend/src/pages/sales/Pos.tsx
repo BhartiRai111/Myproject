@@ -119,22 +119,41 @@ export default function Pos() {
     searchRef.current?.focus();
   };
 
+  // Enter is what a USB/Bluetooth scanner sends after a barcode — resolve it through the
+  // authoritative barcode lookup first, so an inactive item's barcode surfaces a clear
+  // "Item is inactive" error (400) instead of silently matching nothing, and a barcode with
+  // no matching item surfaces "not found" (404) rather than falling into a fuzzy name search.
   const handleSearchKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const q = query.trim();
     if (!q) return;
+
+    try {
+      const res = await productApi.getByBarcode(q);
+      addToCart(res.data);
+      return;
+    } catch (err: any) {
+      if (err?.response?.status === 400) {
+        toast.error(parseApiError(err, 'Item is inactive').message);
+        return;
+      }
+      // 404 (no item has this barcode) falls through to a SKU/name search below.
+    }
+
     try {
       const res = await productApi.list({ search: q, status: 'ACTIVE', size: 8 });
       const items = res.data.content;
-      const exact = items.find((p) => p.barcode?.toLowerCase() === q.toLowerCase() || p.sku.toLowerCase() === q.toLowerCase());
+      const exact = items.find((p) => p.sku.toLowerCase() === q.toLowerCase());
       if (exact) {
         addToCart(exact);
       } else if (items.length === 1) {
         addToCart(items[0]);
-      } else {
+      } else if (items.length > 1) {
         setResults(items);
         setShowResults(true);
+      } else {
+        toast.error(`No item found for "${q}"`);
       }
     } catch (err) {
       toast.error(parseApiError(err, 'Product search failed').message);

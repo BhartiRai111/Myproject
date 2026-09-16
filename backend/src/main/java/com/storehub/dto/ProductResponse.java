@@ -1,5 +1,6 @@
 package com.storehub.dto;
 
+import com.storehub.entity.BarcodeType;
 import com.storehub.entity.Product;
 import com.storehub.entity.ProductStatus;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ public class ProductResponse {
     private String name;
     private String sku;
     private String barcode;
+    private BarcodeType barcodeType;
     private Long categoryId;
     private String categoryName;
     private String brand;
@@ -70,6 +72,7 @@ public class ProductResponse {
                 .name(product.getName())
                 .sku(product.getSku())
                 .barcode(product.getBarcode())
+                .barcodeType(product.getBarcodeType())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
                 .brand(product.getBrand())

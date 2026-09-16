@@ -26,6 +26,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findBySkuIgnoreCase(String sku);
 
+    Optional<Product> findByBarcodeIgnoreCase(String barcode);
+
     @Query("SELECT p FROM Product p WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

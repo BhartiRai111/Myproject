@@ -42,6 +42,7 @@ export default function ProductForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [hasTransactions, setHasTransactions] = useState(false);
   const [generatingSku, setGeneratingSku] = useState(false);
+  const [generatingBarcode, setGeneratingBarcode] = useState(false);
 
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -211,6 +212,18 @@ export default function ProductForm() {
     }
   };
 
+  const handleGenerateBarcode = async () => {
+    setGeneratingBarcode(true);
+    try {
+      const res = await productApi.generateBarcode();
+      setBarcode(res.data.barcode);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to generate barcode').message);
+    } finally {
+      setGeneratingBarcode(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -340,14 +353,40 @@ export default function ProductForm() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="barcode">Barcode</Label>
-              <Input
-                id="barcode"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                invalid={!!fieldErrors.barcode}
-              />
+              <Label htmlFor="barcode">Barcode (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="barcode"
+                  value={barcode}
+                  onChange={(e) => setBarcode(e.target.value)}
+                  invalid={!!fieldErrors.barcode}
+                  disabled={isEdit && hasTransactions}
+                  placeholder="e.g. 8901234567890"
+                />
+                {(!isEdit || !hasTransactions) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    loading={generatingBarcode}
+                    onClick={handleGenerateBarcode}
+                    title="Generate internal barcode"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {fieldErrors.barcode && <p className="text-xs text-destructive">{fieldErrors.barcode}</p>}
+              {isEdit && hasTransactions && (
+                <p className="text-xs text-muted-foreground">
+                  Barcode is locked because this item already has stock, sales, or purchase history.
+                </p>
+              )}
+              {!isEdit && (
+                <p className="text-xs text-muted-foreground">
+                  Enter the item's real retail barcode if it has one, or generate an internal placeholder.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
