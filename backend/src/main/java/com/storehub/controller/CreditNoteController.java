@@ -39,19 +39,19 @@ public class CreditNoteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CREDIT_NOTE_CREATE')")
     public ResponseEntity<CreditNoteResponse> create(@Valid @RequestBody CreditNoteCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(creditNoteService.create(request));
     }
 
     @PostMapping("/{id}/post")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CREDIT_NOTE_POST')")
     public ResponseEntity<CreditNoteResponse> post(@PathVariable Long id) {
         return ResponseEntity.ok(creditNoteService.post(id));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CREDIT_NOTE_CANCEL')")
     public ResponseEntity<CreditNoteResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(creditNoteService.cancel(id));
     }

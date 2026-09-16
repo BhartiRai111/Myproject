@@ -32,26 +32,26 @@ public class CategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CategoryCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(categoryService.createCategory(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CategoryResponse> updateCategory(@PathVariable Long id,
                                                              @Valid @RequestBody CategoryUpdateRequest request) {
         return ResponseEntity.ok(categoryService.updateCategory(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CategoryResponse> activateCategory(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.setStatus(id, CategoryStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CategoryResponse> deactivateCategory(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.setStatus(id, CategoryStatus.INACTIVE));
     }

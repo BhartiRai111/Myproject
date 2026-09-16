@@ -17,6 +17,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    Optional<User> findByEmployeeId(Long employeeId);
+
+    boolean existsByEmployeeId(Long employeeId);
+
+    boolean existsByEmployeeIdAndIdNot(Long employeeId, Long id);
+
+    long countByRoleAndStatus(Role role, UserStatus status);
+
     @Query("SELECT u FROM User u WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(u.firstName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +

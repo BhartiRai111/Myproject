@@ -10,6 +10,7 @@ import com.storehub.entity.State;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.MasterNotFoundException;
 import com.storehub.repository.EmployeeRepository;
+import com.storehub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,15 +27,24 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final CityService cityService;
     private final StateService stateService;
+    private final UserRepository userRepository;
+    private final EmployeeCodeGeneratorService employeeCodeGeneratorService;
+    private final AuditService auditService;
 
     public PagedResponse<EmployeeResponse> search(String search, EmployeeStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("name").ascending());
         Page<Employee> result = employeeRepository.search(search, status, pageable);
-        return PagedResponse.fromPage(result.map(EmployeeResponse::fromEntity));
+        return PagedResponse.fromPage(result.map(e -> EmployeeResponse.fromEntity(e, userRepository.findByEmployeeId(e.getId()).orElse(null))));
     }
 
     public EmployeeResponse getById(Long id) {
-        return EmployeeResponse.fromEntity(findOrThrow(id));
+        Employee employee = findOrThrow(id);
+        return EmployeeResponse.fromEntity(employee, userRepository.findByEmployeeId(id).orElse(null));
+    }
+
+    /** The ONLY place an auto-generated employee code is produced (spec section 5) — a manually-entered code bypasses this. */
+    public String generateCode() {
+        return employeeCodeGeneratorService.generateNext();
     }
 
     @Transactional
@@ -66,7 +76,10 @@ public class EmployeeService {
                 .notes(request.getNotes())
                 .build();
 
-        return EmployeeResponse.fromEntity(employeeRepository.save(employee));
+        Employee saved = employeeRepository.save(employee);
+        auditService.log(com.storehub.entity.AuditAction.CREATE, "MASTER", "Employee", saved.getId(), saved.getEmployeeCode(),
+                null, null, "Employee " + saved.getEmployeeCode() + " (" + saved.getName() + ") created");
+        return EmployeeResponse.fromEntity(saved);
     }
 
     @Transactional
@@ -102,14 +115,22 @@ public class EmployeeService {
         employee.setJoiningDate(request.getJoiningDate());
         employee.setNotes(request.getNotes());
 
-        return EmployeeResponse.fromEntity(employeeRepository.save(employee));
+        Employee saved = employeeRepository.save(employee);
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "MASTER", "Employee", saved.getId(), saved.getEmployeeCode(),
+                null, null, "Employee " + saved.getEmployeeCode() + " updated");
+        return EmployeeResponse.fromEntity(saved);
     }
 
+    /** Deactivating an employee never touches a linked User account (spec section 33) — that is a separate, explicit action. */
     @Transactional
     public EmployeeResponse setStatus(Long id, EmployeeStatus status) {
         Employee employee = findOrThrow(id);
+        EmployeeStatus oldStatus = employee.getStatus();
         employee.setStatus(status);
-        return EmployeeResponse.fromEntity(employeeRepository.save(employee));
+        Employee saved = employeeRepository.save(employee);
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "MASTER", "Employee", saved.getId(), saved.getEmployeeCode(),
+                oldStatus.name(), status.name(), "Employee " + saved.getEmployeeCode() + " status changed to " + status);
+        return EmployeeResponse.fromEntity(saved, userRepository.findByEmployeeId(id).orElse(null));
     }
 
     public Employee findOrThrow(Long id) {

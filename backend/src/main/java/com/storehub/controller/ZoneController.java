@@ -34,25 +34,25 @@ public class ZoneController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ZoneResponse> create(@Valid @RequestBody ZoneRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(zoneService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ZoneResponse> update(@PathVariable Long id, @Valid @RequestBody ZoneRequest request) {
         return ResponseEntity.ok(zoneService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ZoneResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(zoneService.setStatus(id, ZoneStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ZoneResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(zoneService.setStatus(id, ZoneStatus.INACTIVE));
     }

@@ -60,44 +60,44 @@ public class ProductController {
     }
 
     @PostMapping("/generate-sku")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_CREATE')")
     public ResponseEntity<GenerateSkuResponse> generateSku() {
         return ResponseEntity.ok(new GenerateSkuResponse(productService.generateSku()));
     }
 
     @PostMapping("/generate-barcode")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_CREATE')")
     public ResponseEntity<GenerateBarcodeResponse> generateBarcode() {
         return ResponseEntity.ok(new GenerateBarcodeResponse(productService.generateBarcode()));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_CREATE')")
     public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(productService.createProduct(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_EDIT')")
     public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id,
                                                            @Valid @RequestBody ProductUpdateRequest request) {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_EDIT')")
     public ResponseEntity<ProductResponse> activateProduct(@PathVariable Long id) {
         return ResponseEntity.ok(productService.setStatus(id, ProductStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_EDIT')")
     public ResponseEntity<ProductResponse> deactivateProduct(@PathVariable Long id) {
         return ResponseEntity.ok(productService.setStatus(id, ProductStatus.INACTIVE));
     }
 
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_EDIT')")
     public ResponseEntity<byte[]> exportProducts(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,
@@ -111,7 +111,7 @@ public class ProductController {
     }
 
     @PostMapping("/import")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_ITEM_CREATE')")
     public ResponseEntity<ImportResultResponse> importProducts(@RequestParam("file") MultipartFile file) {
         return ResponseEntity.ok(productService.importCsv(file));
     }

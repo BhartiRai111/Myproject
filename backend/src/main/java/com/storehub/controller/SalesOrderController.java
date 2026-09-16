@@ -40,24 +40,25 @@ public class SalesOrderController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_SALES_CREATE')")
     public ResponseEntity<SalesOrderResponse> create(@Valid @RequestBody SalesOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(salesOrderService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_EDIT')")
     public ResponseEntity<SalesOrderResponse> update(@PathVariable Long id, @Valid @RequestBody SalesOrderRequest request) {
         return ResponseEntity.ok(salesOrderService.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_EDIT')")
     public ResponseEntity<SalesOrderResponse> setStatus(@PathVariable Long id, @RequestParam SalesOrderStatus status) {
         return ResponseEntity.ok(salesOrderService.setStatus(id, status));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_CANCEL')")
     public ResponseEntity<SalesOrderResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(salesOrderService.cancel(id));
     }

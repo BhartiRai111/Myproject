@@ -1,6 +1,22 @@
-export type Role = 'ADMIN' | 'STORE_MANAGER' | 'STAFF';
+export type Role =
+  | 'ADMIN'
+  | 'STORE_MANAGER'
+  | 'STAFF'
+  | 'ACCOUNTANT'
+  | 'SALES_USER'
+  | 'PURCHASE_USER'
+  | 'INVENTORY_USER';
 
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
+
+export type Permission = string;
+
+export interface RoleInfo {
+  name: Role;
+  description: string;
+  active: boolean;
+  permissionCount: number;
+}
 
 export interface User {
   id: number;
@@ -10,6 +26,11 @@ export interface User {
   mobile: string;
   role: Role;
   status: UserStatus;
+  employeeId?: number | null;
+  employeeName?: string | null;
+  employeeCode?: string | null;
+  mustChangePassword: boolean;
+  lastLogin?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -42,6 +63,7 @@ export interface UserCreatePayload {
   password: string;
   role: Role;
   status?: UserStatus;
+  employeeId?: number | null;
 }
 
 export interface UserUpdatePayload {
@@ -51,6 +73,18 @@ export interface UserUpdatePayload {
   mobile: string;
   role: Role;
   status: UserStatus;
+  employeeId?: number | null;
+}
+
+export interface AdminPasswordResetPayload {
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface PasswordChangePayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface PagedResponse<T> {

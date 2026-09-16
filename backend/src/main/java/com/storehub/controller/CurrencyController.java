@@ -34,25 +34,25 @@ public class CurrencyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CurrencyResponse> create(@Valid @RequestBody CurrencyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(currencyService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CurrencyResponse> update(@PathVariable Long id, @Valid @RequestBody CurrencyRequest request) {
         return ResponseEntity.ok(currencyService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CurrencyResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(currencyService.setStatus(id, CurrencyStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CurrencyResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(currencyService.setStatus(id, CurrencyStatus.INACTIVE));
     }

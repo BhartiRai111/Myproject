@@ -18,12 +18,12 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/purchase-orders")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class PurchaseOrderController {
 
     private final PurchaseOrderService purchaseOrderService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_VIEW')")
     public ResponseEntity<PagedResponse<PurchaseOrderResponse>> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long supplierId,
@@ -36,26 +36,31 @@ public class PurchaseOrderController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_VIEW')")
     public ResponseEntity<PurchaseOrderResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(purchaseOrderService.getById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_CREATE')")
     public ResponseEntity<PurchaseOrderResponse> create(@Valid @RequestBody PurchaseOrderRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(purchaseOrderService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_EDIT')")
     public ResponseEntity<PurchaseOrderResponse> update(@PathVariable Long id, @Valid @RequestBody PurchaseOrderRequest request) {
         return ResponseEntity.ok(purchaseOrderService.update(id, request));
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_EDIT')")
     public ResponseEntity<PurchaseOrderResponse> setStatus(@PathVariable Long id, @RequestParam PurchaseOrderStatus status) {
         return ResponseEntity.ok(purchaseOrderService.setStatus(id, status));
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_CANCEL')")
     public ResponseEntity<PurchaseOrderResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(purchaseOrderService.cancel(id));
     }

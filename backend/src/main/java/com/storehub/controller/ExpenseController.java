@@ -21,12 +21,12 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/expenses")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class ExpenseController {
 
     private final ExpenseService expenseService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_VIEW')")
     public ResponseEntity<PagedResponse<ExpenseResponse>> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) ExpenseStatus status,
@@ -45,6 +45,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/reports/summary")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_VIEW')")
     public ResponseEntity<ExpenseSummaryReportResponse> summary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate) {
@@ -52,26 +53,31 @@ public class ExpenseController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_VIEW')")
     public ResponseEntity<ExpenseResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.getById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_CREATE')")
     public ResponseEntity<ExpenseResponse> create(@Valid @RequestBody ExpenseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.create(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_CREATE')")
     public ResponseEntity<ExpenseResponse> update(@PathVariable Long id, @Valid @RequestBody ExpenseUpdateRequest request) {
         return ResponseEntity.ok(expenseService.update(id, request));
     }
 
     @PostMapping("/{id}/post")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_POST')")
     public ResponseEntity<ExpenseResponse> post(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.post(id));
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('PERM_EXPENSE_CANCEL')")
     public ResponseEntity<ExpenseResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(expenseService.cancel(id));
     }

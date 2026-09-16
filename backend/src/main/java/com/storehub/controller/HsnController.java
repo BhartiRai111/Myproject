@@ -34,25 +34,25 @@ public class HsnController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_HSN_EDIT')")
     public ResponseEntity<HsnResponse> create(@Valid @RequestBody HsnRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(hsnService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_HSN_EDIT')")
     public ResponseEntity<HsnResponse> update(@PathVariable Long id, @Valid @RequestBody HsnRequest request) {
         return ResponseEntity.ok(hsnService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_HSN_EDIT')")
     public ResponseEntity<HsnResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(hsnService.setStatus(id, HsnStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_HSN_EDIT')")
     public ResponseEntity<HsnResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(hsnService.setStatus(id, HsnStatus.INACTIVE));
     }

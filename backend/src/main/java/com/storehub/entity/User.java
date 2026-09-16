@@ -45,6 +45,24 @@ public class User {
     @Column(nullable = false, length = 20)
     private UserStatus status;
 
+    /**
+     * Optional link to the business/person master record this login belongs to (spec
+     * section 7). Nullable: a technical/admin account need not have an Employee record,
+     * and an Employee may exist with no login at all. At most one User per Employee
+     * (enforced by the unique constraint on this column, checked explicitly in
+     * UserService before save so the failure is a clean 400, not a raw DB exception).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", unique = true)
+    private Employee employee;
+
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

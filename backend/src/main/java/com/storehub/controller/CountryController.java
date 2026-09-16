@@ -34,25 +34,25 @@ public class CountryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CountryResponse> create(@Valid @RequestBody CountryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(countryService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CountryResponse> update(@PathVariable Long id, @Valid @RequestBody CountryRequest request) {
         return ResponseEntity.ok(countryService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CountryResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(countryService.setStatus(id, CountryStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CountryResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(countryService.setStatus(id, CountryStatus.INACTIVE));
     }

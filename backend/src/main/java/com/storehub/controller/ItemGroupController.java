@@ -34,25 +34,25 @@ public class ItemGroupController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ItemGroupResponse> create(@Valid @RequestBody ItemGroupRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(itemGroupService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ItemGroupResponse> update(@PathVariable Long id, @Valid @RequestBody ItemGroupRequest request) {
         return ResponseEntity.ok(itemGroupService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ItemGroupResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(itemGroupService.setStatus(id, ItemGroupStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ItemGroupResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(itemGroupService.setStatus(id, ItemGroupStatus.INACTIVE));
     }

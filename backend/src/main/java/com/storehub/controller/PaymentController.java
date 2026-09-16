@@ -18,12 +18,12 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class PaymentController {
 
     private final PaymentService paymentService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_PAYMENT_VIEW')")
     public ResponseEntity<PagedResponse<PaymentResponse>> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long supplierId,
@@ -35,21 +35,25 @@ public class PaymentController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PAYMENT_VIEW')")
     public ResponseEntity<PaymentResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(paymentService.getById(id));
     }
 
     @GetMapping("/outstanding/{supplierId}")
+    @PreAuthorize("hasAuthority('PERM_PAYMENT_VIEW')")
     public ResponseEntity<SupplierOutstandingResponse> getOutstanding(@PathVariable Long supplierId) {
         return ResponseEntity.ok(paymentService.getOutstandingForSupplier(supplierId));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_PAYMENT_CREATE')")
     public ResponseEntity<PaymentResponse> create(@Valid @RequestBody PaymentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.create(request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PAYMENT_POST')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         paymentService.delete(id);
         return ResponseEntity.noContent().build();

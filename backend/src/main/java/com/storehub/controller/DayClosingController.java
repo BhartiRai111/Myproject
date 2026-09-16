@@ -21,20 +21,20 @@ public class DayClosingController {
     private final DayClosingService dayClosingService;
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CASH_MANAGE')")
     public ResponseEntity<DayClosingResponse> summary(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(dayClosingService.computeSummary(date));
     }
 
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CASH_MANAGE')")
     public ResponseEntity<List<DayClosingResponse>> history() {
         return ResponseEntity.ok(dayClosingService.history());
     }
 
     @PostMapping("/close")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_CASH_MANAGE')")
     public ResponseEntity<DayClosingResponse> close(@Valid @RequestBody DayClosingCloseRequest request) {
         return ResponseEntity.ok(dayClosingService.close(request));
     }

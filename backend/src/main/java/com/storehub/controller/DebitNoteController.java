@@ -39,19 +39,19 @@ public class DebitNoteController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_DEBIT_NOTE_CREATE')")
     public ResponseEntity<DebitNoteResponse> create(@Valid @RequestBody DebitNoteCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(debitNoteService.create(request));
     }
 
     @PostMapping("/{id}/post")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_DEBIT_NOTE_POST')")
     public ResponseEntity<DebitNoteResponse> post(@PathVariable Long id) {
         return ResponseEntity.ok(debitNoteService.post(id));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_DEBIT_NOTE_CANCEL')")
     public ResponseEntity<DebitNoteResponse> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(debitNoteService.cancel(id));
     }

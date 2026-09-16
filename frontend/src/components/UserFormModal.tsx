@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { parseApiError } from '../utils/apiError';
 import { Role, User, UserStatus } from '../types/user';
+import { employeeApi } from '../api/mastersApi';
+import { Employee } from '../types/masters';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +25,18 @@ export interface UserFormValues {
   password: string;
   role: Role;
   status: UserStatus;
+  employeeId: number | '';
 }
+
+const ROLE_OPTIONS: { value: Role; label: string }[] = [
+  { value: 'ADMIN', label: 'Admin' },
+  { value: 'STORE_MANAGER', label: 'Store Manager' },
+  { value: 'ACCOUNTANT', label: 'Accountant' },
+  { value: 'SALES_USER', label: 'Sales User' },
+  { value: 'PURCHASE_USER', label: 'Purchase User' },
+  { value: 'INVENTORY_USER', label: 'Inventory User' },
+  { value: 'STAFF', label: 'Staff' },
+];
 
 interface Props {
   show: boolean;
@@ -41,6 +54,7 @@ const EMPTY_FORM: UserFormValues = {
   password: '',
   role: 'STAFF',
   status: 'ACTIVE',
+  employeeId: '',
 };
 
 export default function UserFormModal({ show, mode, initialUser, onClose, onSubmit }: Props) {
@@ -48,11 +62,13 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   useEffect(() => {
     if (show) {
       setError('');
       setFieldErrors({});
+      employeeApi.list({ status: 'ACTIVE', size: 1000 }).then((res) => setEmployees(res.data.content));
       if (mode === 'edit' && initialUser) {
         setForm({
           firstName: initialUser.firstName,
@@ -62,6 +78,7 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
           password: '',
           role: initialUser.role,
           status: initialUser.status,
+          employeeId: initialUser.employeeId ?? '',
         });
       } else {
         setForm(EMPTY_FORM);
@@ -155,9 +172,11 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="STORE_MANAGER">Store Manager</SelectItem>
-                  <SelectItem value="STAFF">Staff</SelectItem>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -173,6 +192,27 @@ export default function UserFormModal({ show, mode, initialUser, onClose, onSubm
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ufEmployee">Linked Employee (optional)</Label>
+            <Select
+              value={form.employeeId ? String(form.employeeId) : '__none__'}
+              onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v === '__none__' ? '' : Number(v) }))}
+            >
+              <SelectTrigger id="ufEmployee">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">None</SelectItem>
+                {employees.map((emp) => (
+                  <SelectItem key={emp.id} value={String(emp.id)}>
+                    {emp.employeeCode} - {emp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {fieldErrors.employeeId && <p className="text-xs text-destructive">{fieldErrors.employeeId}</p>}
           </div>
 
           <DialogFooter>

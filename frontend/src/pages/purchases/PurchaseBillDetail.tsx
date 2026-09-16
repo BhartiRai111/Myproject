@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { FileMinus2, IndianRupee, Pencil, Printer, Trash2 } from 'lucide-react';
 import { purchaseApi } from '../../api/purchaseApi';
 import { parseApiError } from '../../utils/apiError';
+import { useAuth } from '../../context/AuthContext';
 import { PaymentStatus, Purchase } from '../../types/purchase';
 import { BackButton } from '@/components/BackButton';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -24,6 +25,7 @@ function paymentStatusVariant(status: PaymentStatus) {
 export default function PurchaseBillDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [purchase, setPurchase] = useState<Purchase | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -92,7 +94,7 @@ export default function PurchaseBillDetail() {
               <FileMinus2 className="h-4 w-4" /> Return
             </Button>
           )}
-          {purchase.status !== 'CANCELLED' && (
+          {purchase.status !== 'CANCELLED' && hasPermission('PURCHASE_CANCEL') && (
             <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="h-4 w-4" /> Delete
             </Button>

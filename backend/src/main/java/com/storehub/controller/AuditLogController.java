@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/audit-logs")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('PERM_AUDIT_VIEW')")
 public class AuditLogController {
 
     private final AuditLogRepository auditLogRepository;

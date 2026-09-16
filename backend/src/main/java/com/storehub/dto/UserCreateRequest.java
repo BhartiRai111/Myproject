@@ -36,4 +36,7 @@ public class UserCreateRequest {
     private Role role;
 
     private UserStatus status;
+
+    /** Optional — links this login to an existing Employee record (spec section 7). */
+    private Long employeeId;
 }

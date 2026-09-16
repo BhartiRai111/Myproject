@@ -72,13 +72,13 @@ public class InventoryController {
     }
 
     @PostMapping("/adjust")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_ADJUST')")
     public ResponseEntity<InventoryResponse> adjustStock(@Valid @RequestBody StockAdjustmentRequest request) {
         return ResponseEntity.ok(inventoryService.adjustStock(request));
     }
 
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_INVENTORY_ADJUST')")
     public ResponseEntity<byte[]> exportInventory(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long categoryId,

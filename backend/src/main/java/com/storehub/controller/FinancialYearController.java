@@ -43,25 +43,25 @@ public class FinancialYearController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_FY_MANAGE')")
     public ResponseEntity<FinancialYearResponse> create(@Valid @RequestBody FinancialYearRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(financialYearService.create(request));
     }
 
     @PatchMapping("/{id}/open")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_FY_MANAGE')")
     public ResponseEntity<FinancialYearResponse> open(@PathVariable Long id) {
         return ResponseEntity.ok(financialYearService.setStatus(id, FinancialYearStatus.OPEN));
     }
 
     @PatchMapping("/{id}/close")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_FY_MANAGE')")
     public ResponseEntity<FinancialYearResponse> close(@PathVariable Long id) {
         return ResponseEntity.ok(financialYearService.setStatus(id, FinancialYearStatus.CLOSED));
     }
 
     @PatchMapping("/{id}/mark-current")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_FY_MANAGE')")
     public ResponseEntity<FinancialYearResponse> markCurrent(@PathVariable Long id) {
         return ResponseEntity.ok(financialYearService.markCurrent(id));
     }

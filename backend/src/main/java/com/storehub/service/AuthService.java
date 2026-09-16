@@ -4,6 +4,7 @@ import com.storehub.dto.AuthResponse;
 import com.storehub.dto.LoginRequest;
 import com.storehub.dto.RegisterRequest;
 import com.storehub.dto.UserResponse;
+import com.storehub.entity.AuditAction;
 import com.storehub.entity.Role;
 import com.storehub.entity.User;
 import com.storehub.entity.UserStatus;
@@ -17,6 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -24,6 +27,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AuditService auditService;
 
     @Transactional
     public UserResponse register(RegisterRequest request) {
@@ -53,17 +57,25 @@ public class AuthService {
         return UserResponse.fromEntity(saved);
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            auditService.log(AuditAction.LOGIN, "AUTH", "User", user != null ? user.getId() : null,
+                    null, null, null, "Failed login attempt for " + request.getEmail() + ": invalid credentials");
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
         if (user.getStatus() == UserStatus.INACTIVE) {
+            auditService.log(AuditAction.LOGIN, "AUTH", "User", user.getId(), null,
+                    null, null, "Failed login attempt for " + user.getEmail() + ": account is inactive");
             throw new InvalidCredentialsException("Your account is inactive. Please contact an administrator");
         }
+
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
+        auditService.log(AuditAction.LOGIN, "AUTH", "User", user.getId(), null,
+                null, null, "User " + user.getEmail() + " logged in");
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
 

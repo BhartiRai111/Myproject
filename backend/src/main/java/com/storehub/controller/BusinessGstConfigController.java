@@ -23,7 +23,7 @@ public class BusinessGstConfigController {
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_GST_CONFIG')")
     public ResponseEntity<BusinessGstConfigResponse> update(@Valid @RequestBody BusinessGstConfigRequest request) {
         return ResponseEntity.ok(businessGstConfigService.update(request));
     }

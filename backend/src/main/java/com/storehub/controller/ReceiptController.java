@@ -44,12 +44,13 @@ public class ReceiptController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_RECEIPT_CREATE')")
     public ResponseEntity<ReceiptResponse> create(@Valid @RequestBody ReceiptRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(receiptService.create(request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_RECEIPT_POST')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         receiptService.delete(id);
         return ResponseEntity.noContent().build();

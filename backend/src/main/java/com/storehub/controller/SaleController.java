@@ -44,31 +44,32 @@ public class SaleController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_SALES_CREATE')")
     public ResponseEntity<SaleResponse> createSale(@Valid @RequestBody SaleCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(saleService.createSale(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_EDIT')")
     public ResponseEntity<SaleResponse> updateSale(@PathVariable Long id, @Valid @RequestBody SaleUpdateRequest request) {
         return ResponseEntity.ok(saleService.updateSale(id, request));
     }
 
     /** Posts a DRAFT Kacchi Sale / Sale Challan: applies stock, customer ledger, GST log, and accounting effects. */
     @PostMapping("/{id}/post")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_POST')")
     public ResponseEntity<SaleResponse> postSaleChallan(@PathVariable Long id) {
         return ResponseEntity.ok(saleService.postSaleChallan(id));
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_CANCEL')")
     public ResponseEntity<SaleResponse> cancelSale(@PathVariable Long id) {
         return ResponseEntity.ok(saleService.cancelSale(id));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_SALES_CANCEL')")
     public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
         saleService.deleteSale(id);
         return ResponseEntity.noContent().build();

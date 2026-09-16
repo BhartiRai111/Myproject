@@ -36,25 +36,25 @@ public class PartyController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_PARTY_CREATE')")
     public ResponseEntity<PartyResponse> create(@Valid @RequestBody PartyRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(partyService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_PARTY_EDIT')")
     public ResponseEntity<PartyResponse> update(@PathVariable Long id, @Valid @RequestBody PartyRequest request) {
         return ResponseEntity.ok(partyService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_PARTY_EDIT')")
     public ResponseEntity<PartyResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(partyService.setStatus(id, PartyStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_PARTY_EDIT')")
     public ResponseEntity<PartyResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(partyService.setStatus(id, PartyStatus.INACTIVE));
     }

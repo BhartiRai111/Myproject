@@ -96,6 +96,8 @@ import GstLiabilityReport from './pages/gst/GstLiabilityReport';
 import GstReconciliation from './pages/gst/GstReconciliation';
 import FinancialYears from './pages/admin/FinancialYears';
 import AuditTrail from './pages/admin/AuditTrail';
+import RolesAndPermissions from './pages/admin/RolesAndPermissions';
+import Unauthorized from './pages/Unauthorized';
 import CreditNotes from './pages/sales/CreditNotes';
 import CreditNoteForm from './pages/sales/CreditNoteForm';
 import CreditNoteDetail from './pages/sales/CreditNoteDetail';
@@ -116,14 +118,16 @@ export default function App() {
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/alerts" element={<AlertsCenter />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
             <Route element={<AdminRoute />}>
               <Route path="/users" element={<Users />} />
               <Route path="/admin/financial-years" element={<FinancialYears />} />
               <Route path="/admin/audit-trail" element={<AuditTrail />} />
+              <Route path="/admin/roles-permissions" element={<RolesAndPermissions />} />
             </Route>
 
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['PURCHASE_USER']} />}>
               <Route path="/purchases" element={<PurchaseHub />} />
 
               <Route path="/purchases/orders" element={<PurchaseOrders />} />
@@ -156,14 +160,14 @@ export default function App() {
             <Route path="/sales/orders" element={<SalesOrders />} />
             <Route path="/sales/orders/new" element={<SalesOrderForm />} />
             <Route path="/sales/orders/:id" element={<SalesOrderDetail />} />
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['SALES_USER']} />}>
               <Route path="/sales/orders/:id/edit" element={<SalesOrderForm />} />
             </Route>
 
             <Route path="/sales/bills" element={<SalesBills />} />
             <Route path="/sales/bills/new" element={<SalesBillForm />} />
             <Route path="/sales/bills/:id" element={<SalesBillDetail />} />
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['SALES_USER']} />}>
               <Route path="/sales/bills/:id/edit" element={<SalesBillForm />} />
             </Route>
 
@@ -174,7 +178,7 @@ export default function App() {
             <Route path="/sales/kacchi" element={<KacchiSales />} />
             <Route path="/sales/kacchi/new" element={<KacchiSaleForm />} />
             <Route path="/sales/kacchi/:id" element={<KacchiSaleDetail />} />
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['SALES_USER']} />}>
               <Route path="/sales/kacchi/:id/edit" element={<KacchiSaleForm />} />
             </Route>
 
@@ -182,7 +186,7 @@ export default function App() {
             <Route path="/sales/credit-notes/new" element={<CreditNoteForm />} />
             <Route path="/sales/credit-notes/:id" element={<CreditNoteDetail />} />
 
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['ACCOUNTANT']} />}>
               <Route path="/accounting" element={<AccountingHub />} />
               <Route path="/accounting/accounts" element={<AccountMaster />} />
               <Route path="/accounting/journals" element={<Journals />} />
@@ -216,7 +220,7 @@ export default function App() {
               <Route path="/accounting/reports/health-check" element={<HealthCheck />} />
             </Route>
 
-            <Route element={<ManagerRoute />}>
+            <Route element={<ManagerRoute extraRoles={['ACCOUNTANT']} />}>
               <Route path="/gst-reports" element={<GstReportsHub />} />
               <Route path="/gst-reports/gstr1" element={<Gstr1Report />} />
               <Route path="/gst-reports/purchase" element={<PurchaseGstReport />} />

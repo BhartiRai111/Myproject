@@ -178,6 +178,7 @@ export const employeeApi = {
   list: (query: MasterListQuery = {}) =>
     api.get<PagedResponse<Employee>>('/masters/employees', { params: buildParams(query) }),
   getById: (id: number) => api.get<Employee>(`/masters/employees/${id}`),
+  generateCode: () => api.post<{ employeeCode: string }>('/masters/employees/generate-code'),
   create: (payload: EmployeePayload) => api.post<Employee>('/masters/employees', payload),
   update: (id: number, payload: EmployeePayload) => api.put<Employee>(`/masters/employees/${id}`, payload),
   activate: (id: number) => api.patch<Employee>(`/masters/employees/${id}/activate`),

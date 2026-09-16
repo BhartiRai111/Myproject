@@ -21,12 +21,12 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/purchases")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
 public class PurchaseController {
 
     private final PurchaseService purchaseService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_VIEW')")
     public ResponseEntity<PagedResponse<PurchaseResponse>> getPurchases(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) PaymentStatus paymentStatus,
@@ -40,16 +40,19 @@ public class PurchaseController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_VIEW')")
     public ResponseEntity<PurchaseResponse> getPurchaseById(@PathVariable Long id) {
         return ResponseEntity.ok(purchaseService.getPurchaseById(id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_CREATE')")
     public ResponseEntity<PurchaseResponse> createPurchase(@Valid @RequestBody PurchaseCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(purchaseService.createPurchase(request));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_EDIT')")
     public ResponseEntity<PurchaseResponse> updatePurchase(@PathVariable Long id,
                                                             @Valid @RequestBody PurchaseUpdateRequest request) {
         return ResponseEntity.ok(purchaseService.updatePurchase(id, request));
@@ -57,16 +60,19 @@ public class PurchaseController {
 
     /** Posts a DRAFT Kacchi Purchase / Purchase Challan: applies stock, supplier ledger, GST log, and accounting effects. */
     @PostMapping("/{id}/post")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_POST')")
     public ResponseEntity<PurchaseResponse> postPurchaseChallan(@PathVariable Long id) {
         return ResponseEntity.ok(purchaseService.postPurchaseChallan(id));
     }
 
     @PatchMapping("/{id}/cancel")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_CANCEL')")
     public ResponseEntity<PurchaseResponse> cancelPurchase(@PathVariable Long id) {
         return ResponseEntity.ok(purchaseService.cancelPurchase(id));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERM_PURCHASE_CANCEL')")
     public ResponseEntity<Void> deletePurchase(@PathVariable Long id) {
         purchaseService.deletePurchase(id);
         return ResponseEntity.noContent().build();

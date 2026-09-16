@@ -2,6 +2,7 @@ package com.storehub.controller;
 
 import com.storehub.dto.EmployeeRequest;
 import com.storehub.dto.EmployeeResponse;
+import com.storehub.dto.GenerateEmployeeCodeResponse;
 import com.storehub.dto.PagedResponse;
 import com.storehub.entity.EmployeeStatus;
 import com.storehub.service.EmployeeService;
@@ -33,26 +34,32 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getById(id));
     }
 
+    @PostMapping("/generate-code")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_CREATE')")
+    public ResponseEntity<GenerateEmployeeCodeResponse> generateCode() {
+        return ResponseEntity.ok(new GenerateEmployeeCodeResponse(employeeService.generateCode()));
+    }
+
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_CREATE')")
     public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
     public ResponseEntity<EmployeeResponse> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.ok(employeeService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
     public ResponseEntity<EmployeeResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.setStatus(id, EmployeeStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
     public ResponseEntity<EmployeeResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.setStatus(id, EmployeeStatus.INACTIVE));
     }

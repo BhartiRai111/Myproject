@@ -36,25 +36,25 @@ public class CityController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CityResponse> create(@Valid @RequestBody CityRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(cityService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CityResponse> update(@PathVariable Long id, @Valid @RequestBody CityRequest request) {
         return ResponseEntity.ok(cityService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CityResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(cityService.setStatus(id, CityStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<CityResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(cityService.setStatus(id, CityStatus.INACTIVE));
     }

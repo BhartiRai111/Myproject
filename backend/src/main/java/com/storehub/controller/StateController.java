@@ -35,25 +35,25 @@ public class StateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<StateResponse> create(@Valid @RequestBody StateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(stateService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<StateResponse> update(@PathVariable Long id, @Valid @RequestBody StateRequest request) {
         return ResponseEntity.ok(stateService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<StateResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(stateService.setStatus(id, StateStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<StateResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(stateService.setStatus(id, StateStatus.INACTIVE));
     }

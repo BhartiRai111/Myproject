@@ -40,25 +40,25 @@ public class ExpenseCategoryController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ExpenseCategoryResponse> create(@Valid @RequestBody ExpenseCategoryRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(expenseCategoryService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ExpenseCategoryResponse> update(@PathVariable Long id, @Valid @RequestBody ExpenseCategoryRequest request) {
         return ResponseEntity.ok(expenseCategoryService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ExpenseCategoryResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(expenseCategoryService.setActive(id, true));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<ExpenseCategoryResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(expenseCategoryService.setActive(id, false));
     }

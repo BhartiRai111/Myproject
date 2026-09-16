@@ -35,25 +35,25 @@ public class NationalityController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<NationalityResponse> create(@Valid @RequestBody NationalityRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(nationalityService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<NationalityResponse> update(@PathVariable Long id, @Valid @RequestBody NationalityRequest request) {
         return ResponseEntity.ok(nationalityService.update(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<NationalityResponse> activate(@PathVariable Long id) {
         return ResponseEntity.ok(nationalityService.setStatus(id, NationalityStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<NationalityResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(nationalityService.setStatus(id, NationalityStatus.INACTIVE));
     }

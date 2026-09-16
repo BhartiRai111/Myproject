@@ -45,26 +45,26 @@ public class SupplierController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<SupplierResponse> createSupplier(@Valid @RequestBody SupplierCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(supplierService.createSupplier(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<SupplierResponse> updateSupplier(@PathVariable Long id,
                                                              @Valid @RequestBody SupplierUpdateRequest request) {
         return ResponseEntity.ok(supplierService.updateSupplier(id, request));
     }
 
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<SupplierResponse> activateSupplier(@PathVariable Long id) {
         return ResponseEntity.ok(supplierService.setStatus(id, SupplierStatus.ACTIVE));
     }
 
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    @PreAuthorize("hasAuthority('PERM_MASTER_MANAGE')")
     public ResponseEntity<SupplierResponse> deactivateSupplier(@PathVariable Long id) {
         return ResponseEntity.ok(supplierService.setStatus(id, SupplierStatus.INACTIVE));
     }

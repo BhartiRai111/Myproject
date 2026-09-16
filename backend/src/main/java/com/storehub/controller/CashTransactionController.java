@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @RestController
 @RequestMapping("/api/cash-transactions")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+@PreAuthorize("hasAuthority('PERM_CASH_MANAGE')")
 public class CashTransactionController {
 
     private final CashTransactionService cashTransactionService;

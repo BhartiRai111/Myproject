@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { UserSquare2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { RefreshCw, UserSquare2 } from 'lucide-react';
 import { cityApi, employeeApi, stateApi } from '../../api/mastersApi';
 import { City, Employee, EmployeePayload, StateMaster as StateEntity } from '../../types/masters';
+import { parseApiError } from '../../utils/apiError';
 import { MasterCrudPage } from '@/components/masters/MasterCrudPage';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +30,7 @@ const EMPTY: EmployeePayload = {
 export default function EmployeeMaster() {
   const [states, setStates] = useState<StateEntity[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   useEffect(() => {
     stateApi.list({ status: 'ACTIVE', size: 1000 }).then((res) => setStates(res.data.content));
@@ -96,6 +101,14 @@ export default function EmployeeMaster() {
           <div>
             <span className="text-muted-foreground">Notes:</span> {e.notes || '-'}
           </div>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-muted-foreground">User Login:</span>
+            {e.linkedUserId ? (
+              <Badge variant="secondary">{e.linkedUserEmail}</Badge>
+            ) : (
+              <span className="text-muted-foreground">Not linked to a user login</span>
+            )}
+          </div>
         </div>
       )}
       renderForm={(values, setValues, fieldErrors) => (
@@ -109,13 +122,35 @@ export default function EmployeeMaster() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="empCode">Employee Code</Label>
-                <Input
-                  id="empCode"
-                  required
-                  value={values.employeeCode}
-                  onChange={(e) => setValues((p) => ({ ...p, employeeCode: e.target.value }))}
-                  invalid={!!fieldErrors.employeeCode}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="empCode"
+                    required
+                    value={values.employeeCode}
+                    onChange={(e) => setValues((p) => ({ ...p, employeeCode: e.target.value }))}
+                    invalid={!!fieldErrors.employeeCode}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    loading={generatingCode}
+                    onClick={async () => {
+                      setGeneratingCode(true);
+                      try {
+                        const res = await employeeApi.generateCode();
+                        setValues((p) => ({ ...p, employeeCode: res.data.employeeCode }));
+                      } catch (err) {
+                        toast.error(parseApiError(err, 'Failed to generate employee code').message);
+                      } finally {
+                        setGeneratingCode(false);
+                      }
+                    }}
+                    title="Generate Code"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
                 {fieldErrors.employeeCode && <p className="text-xs text-destructive">{fieldErrors.employeeCode}</p>}
               </div>
               <div className="space-y-1.5">

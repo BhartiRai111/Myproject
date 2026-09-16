@@ -21,6 +21,11 @@ public class UserResponse {
     private String mobile;
     private Role role;
     private UserStatus status;
+    private Long employeeId;
+    private String employeeName;
+    private String employeeCode;
+    private boolean mustChangePassword;
+    private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -33,6 +38,11 @@ public class UserResponse {
                 .mobile(user.getMobile())
                 .role(user.getRole())
                 .status(user.getStatus())
+                .employeeId(user.getEmployee() != null ? user.getEmployee().getId() : null)
+                .employeeName(user.getEmployee() != null ? user.getEmployee().getName() : null)
+                .employeeCode(user.getEmployee() != null ? user.getEmployee().getEmployeeCode() : null)
+                .mustChangePassword(user.isMustChangePassword())
+                .lastLogin(user.getLastLogin())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

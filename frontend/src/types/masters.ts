@@ -181,6 +181,8 @@ export interface Employee {
   joiningDate?: string;
   status: MasterStatus;
   notes?: string;
+  linkedUserId?: number | null;
+  linkedUserEmail?: string | null;
   createdAt: string;
   updatedAt: string;
 }

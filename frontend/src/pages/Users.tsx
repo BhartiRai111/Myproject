@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { MoreHorizontal, Plus, Search, ShieldCheck, UserRoundX, Users as UsersIcon } from 'lucide-react';
+import { KeyRound, MoreHorizontal, Plus, Search, ShieldCheck, UserRoundX, Users as UsersIcon } from 'lucide-react';
 import { userApi } from '../api/userApi';
 import { parseApiError } from '../utils/apiError';
 import UserFormModal, { UserFormValues } from '../components/UserFormModal';
 import UserViewModal from '../components/UserViewModal';
+import ResetPasswordDialog from '../components/ResetPasswordDialog';
 import { Role, User, UserStatus } from '../types/user';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
@@ -48,6 +49,7 @@ export default function Users() {
     user: null,
   });
   const [viewUser, setViewUser] = useState<User | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -87,6 +89,7 @@ export default function Users() {
         password: values.password,
         role: values.role,
         status: values.status,
+        employeeId: values.employeeId === '' ? null : values.employeeId,
       });
       toast.success('User created successfully');
     } else if (formModal.user) {
@@ -97,6 +100,7 @@ export default function Users() {
         mobile: values.mobile,
         role: values.role,
         status: values.status,
+        employeeId: values.employeeId === '' ? null : values.employeeId,
       });
       toast.success('User updated successfully');
     }
@@ -154,6 +158,10 @@ export default function Users() {
                 <SelectItem value={ALL}>All Roles</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="STORE_MANAGER">Store Manager</SelectItem>
+                <SelectItem value="ACCOUNTANT">Accountant</SelectItem>
+                <SelectItem value="SALES_USER">Sales User</SelectItem>
+                <SelectItem value="PURCHASE_USER">Purchase User</SelectItem>
+                <SelectItem value="INVENTORY_USER">Inventory User</SelectItem>
                 <SelectItem value="STAFF">Staff</SelectItem>
               </SelectContent>
             </Select>
@@ -187,10 +195,10 @@ export default function Users() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Mobile</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Employee</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Created At</TableHead>
+                <TableHead>Last Login</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -204,15 +212,20 @@ export default function Users() {
                       {u.firstName} {u.lastName}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.mobile}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{formatRole(u.role)}</Badge>
                     </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {u.employeeCode ? `${u.employeeCode} - ${u.employeeName}` : '-'}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={u.status === 'ACTIVE' ? 'success' : 'muted'}>{u.status}</Badge>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant={u.status === 'ACTIVE' ? 'success' : 'muted'}>{u.status}</Badge>
+                        {u.mustChangePassword && <Badge variant="outline">Must change password</Badge>}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(u.createdAt).toLocaleDateString()}
+                      {u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never'}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -224,6 +237,9 @@ export default function Users() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => setViewUser(u)}>View</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditModal(u)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setResetPasswordUser(u)}>
+                            <KeyRound className="h-4 w-4" /> Reset Password
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => toggleStatus(u)}
                             variant={u.status === 'ACTIVE' ? 'destructive' : 'default'}
@@ -268,6 +284,12 @@ export default function Users() {
       />
 
       <UserViewModal show={!!viewUser} user={viewUser} onClose={() => setViewUser(null)} />
+
+      <ResetPasswordDialog
+        show={!!resetPasswordUser}
+        user={resetPasswordUser}
+        onClose={() => setResetPasswordUser(null)}
+      />
     </div>
   );
 }

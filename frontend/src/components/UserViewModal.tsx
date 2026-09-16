@@ -61,6 +61,11 @@ export default function UserViewModal({ show, user, onClose }: Props) {
               <Row label="Status">
                 <Badge variant={user.status === 'ACTIVE' ? 'success' : 'muted'}>{user.status}</Badge>
               </Row>
+              <Row label="Employee">
+                {user.employeeCode ? `${user.employeeCode} - ${user.employeeName}` : 'Not linked'}
+              </Row>
+              <Row label="Must Change Password">{user.mustChangePassword ? 'Yes' : 'No'}</Row>
+              <Row label="Last Login">{user.lastLogin ? formatDate(user.lastLogin) : 'Never'}</Row>
               <Row label="Created At">{formatDate(user.createdAt)}</Row>
               <Row label="Updated At">{formatDate(user.updatedAt)}</Row>
             </div>

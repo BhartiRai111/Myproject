@@ -32,4 +32,7 @@ public class UserUpdateRequest {
 
     @NotNull(message = "Status is required")
     private UserStatus status;
+
+    /** Optional — null clears the link. */
+    private Long employeeId;
 }
