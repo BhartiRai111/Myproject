@@ -1,5 +1,6 @@
 package com.storehub.controller;
 
+import com.storehub.dto.GenerateSkuResponse;
 import com.storehub.dto.ImportResultResponse;
 import com.storehub.dto.PagedResponse;
 import com.storehub.dto.ProductCreateRequest;
@@ -43,6 +44,12 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    @PostMapping("/generate-sku")
+    @PreAuthorize("hasAnyRole('ADMIN','STORE_MANAGER')")
+    public ResponseEntity<GenerateSkuResponse> generateSku() {
+        return ResponseEntity.ok(new GenerateSkuResponse(productService.generateSku()));
     }
 
     @PostMapping

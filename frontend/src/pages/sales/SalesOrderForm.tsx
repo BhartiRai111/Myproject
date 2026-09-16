@@ -348,7 +348,7 @@ export default function SalesOrderForm() {
                           <SelectContent>
                             {products.map((p) => (
                               <SelectItem key={p.id} value={String(p.id)}>
-                                {p.name} ({p.unit})
+                                {p.name}{p.sku ? ` [${p.sku}]` : ''} ({p.unit})
                               </SelectItem>
                             ))}
                           </SelectContent>

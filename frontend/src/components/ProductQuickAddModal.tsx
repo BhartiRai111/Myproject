@@ -37,6 +37,7 @@ export default function ProductQuickAddModal({ show, onClose, onCreated }: Props
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
 
   useEffect(() => {
     if (show) {
@@ -52,10 +53,16 @@ export default function ProductQuickAddModal({ show, onClose, onCreated }: Props
     }
   }, [show]);
 
-  const suggestSku = () => {
-    if (!name.trim()) return;
-    const base = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '-').slice(0, 20);
-    setSku(`${base}-${Date.now().toString().slice(-4)}`);
+  const generateSku = async () => {
+    setGeneratingSku(true);
+    try {
+      const res = await productApi.generateSku();
+      setSku(res.data.sku);
+    } catch (err) {
+      setError(parseApiError(err, 'Failed to generate SKU').message);
+    } finally {
+      setGeneratingSku(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +123,7 @@ export default function ProductQuickAddModal({ show, onClose, onCreated }: Props
                 onChange={(e) => setSku(e.target.value)}
                 invalid={!!fieldErrors.sku}
               />
-              <Button type="button" variant="outline" onClick={suggestSku}>
+              <Button type="button" variant="outline" loading={generatingSku} onClick={generateSku}>
                 Generate
               </Button>
             </div>

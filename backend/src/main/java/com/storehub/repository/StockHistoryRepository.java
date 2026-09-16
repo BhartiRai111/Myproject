@@ -15,6 +15,9 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Long
 
     Page<StockHistory> findByProductIdOrderByCreatedAtDesc(Long productId, Pageable pageable);
 
+    /** Used to protect SKU from casual edits once an item has any recorded stock movement (SKU Management spec section 10). */
+    boolean existsByProductId(Long productId);
+
     @Query("SELECT h FROM StockHistory h WHERE " +
             "(:productId IS NULL OR h.product.id = :productId) " +
             "AND (:movementType IS NULL OR h.movementType = :movementType) " +

@@ -58,6 +58,7 @@ export interface Product {
   partyProductName?: string;
   freeValue?: number;
   applicableProperty?: string;
+  hasTransactions: boolean;
   createdAt: string;
   updatedAt: string;
 }

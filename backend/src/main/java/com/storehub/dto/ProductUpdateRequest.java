@@ -4,6 +4,8 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +19,8 @@ public class ProductUpdateRequest {
     private String name;
 
     @NotBlank(message = "SKU is required")
+    @Size(max = 50, message = "SKU cannot exceed 50 characters")
+    @Pattern(regexp = "^[A-Za-z0-9\\-_/]+$", message = "SKU can only contain letters, numbers, hyphens, underscores, and slashes")
     private String sku;
 
     private String barcode;

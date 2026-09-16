@@ -27,6 +27,7 @@ export const productApi = {
       },
     }),
   getById: (id: number) => api.get<Product>(`/products/${id}`),
+  generateSku: () => api.post<{ sku: string }>('/products/generate-sku'),
   create: (payload: ProductPayload) => api.post<Product>('/products', payload),
   update: (id: number, payload: ProductPayload) => api.put<Product>(`/products/${id}`, payload),
   activate: (id: number) => api.patch<Product>(`/products/${id}/activate`),

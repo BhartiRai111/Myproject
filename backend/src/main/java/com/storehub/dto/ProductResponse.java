@@ -51,14 +51,20 @@ public class ProductResponse {
     private String partyProductName;
     private BigDecimal freeValue;
     private String applicableProperty;
+    /** True once this item has any recorded Sale/Purchase/Inventory movement — the frontend uses this to lock the SKU field (spec section 10). */
+    private boolean hasTransactions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static ProductResponse fromEntity(Product product, int currentStock) {
-        return fromEntity(product, currentStock, null);
+        return fromEntity(product, currentStock, null, false);
     }
 
     public static ProductResponse fromEntity(Product product, int currentStock, Integer maxStockLevel) {
+        return fromEntity(product, currentStock, maxStockLevel, false);
+    }
+
+    public static ProductResponse fromEntity(Product product, int currentStock, Integer maxStockLevel, boolean hasTransactions) {
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -97,6 +103,7 @@ public class ProductResponse {
                 .partyProductName(product.getPartyProductName())
                 .freeValue(product.getFreeValue())
                 .applicableProperty(product.getApplicableProperty())
+                .hasTransactions(hasTransactions)
                 .createdAt(product.getCreatedAt())
                 .updatedAt(product.getUpdatedAt())
                 .build();

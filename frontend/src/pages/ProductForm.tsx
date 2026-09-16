@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import CategoryQuickAddModal from '../components/CategoryQuickAddModal';
 import { productApi } from '../api/productApi';
 import { categoryApi } from '../api/categoryApi';
@@ -40,6 +40,8 @@ export default function ProductForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [hasTransactions, setHasTransactions] = useState(false);
+  const [generatingSku, setGeneratingSku] = useState(false);
 
   const [name, setName] = useState('');
   const [sku, setSku] = useState('');
@@ -138,6 +140,7 @@ export default function ProductForm() {
       const product: Product = res.data;
       setName(product.name);
       setSku(product.sku);
+      setHasTransactions(product.hasTransactions);
       setBarcode(product.barcode || '');
       setCategoryId(String(product.categoryId));
       setBrand(product.brand || '');
@@ -194,6 +197,18 @@ export default function ProductForm() {
     if (mrp && toNumber(mrp) < 0) return 'MRP must be greater than or equal to 0';
     if (wholesalePrice && toNumber(wholesalePrice) < 0) return 'Wholesale price must be greater than or equal to 0';
     return null;
+  };
+
+  const handleGenerateSku = async () => {
+    setGeneratingSku(true);
+    try {
+      const res = await productApi.generateSku();
+      setSku(res.data.sku);
+    } catch (err) {
+      toast.error(parseApiError(err, 'Failed to generate SKU').message);
+    } finally {
+      setGeneratingSku(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -301,8 +316,27 @@ export default function ProductForm() {
 
             <div className="space-y-1.5">
               <Label htmlFor="sku">SKU</Label>
-              <Input id="sku" value={sku} onChange={(e) => setSku(e.target.value)} invalid={!!fieldErrors.sku} />
+              <div className="flex gap-2">
+                <Input
+                  id="sku"
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
+                  invalid={!!fieldErrors.sku}
+                  disabled={isEdit && hasTransactions}
+                  placeholder="e.g. RICE-5KG"
+                />
+                {(!isEdit || !hasTransactions) && (
+                  <Button type="button" variant="outline" size="icon" loading={generatingSku} onClick={handleGenerateSku} title="Generate SKU">
+                    <Sparkles className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {fieldErrors.sku && <p className="text-xs text-destructive">{fieldErrors.sku}</p>}
+              {isEdit && hasTransactions && (
+                <p className="text-xs text-muted-foreground">
+                  SKU is locked because this item already has stock, sales, or purchase history.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">

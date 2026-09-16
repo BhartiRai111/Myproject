@@ -389,7 +389,7 @@ export default function KacchiPurchaseForm() {
                             <SelectContent>
                               {products.map((p) => (
                                 <SelectItem key={p.id} value={String(p.id)} disabled={p.status === 'INACTIVE'}>
-                                  {p.name} ({p.unit})
+                                  {p.name}{p.sku ? ` [${p.sku}]` : ''} ({p.unit})
                                   {p.status === 'INACTIVE' ? ' (Inactive)' : ''}
                                 </SelectItem>
                               ))}

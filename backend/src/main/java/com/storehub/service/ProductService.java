@@ -5,6 +5,7 @@ import com.storehub.dto.PagedResponse;
 import com.storehub.dto.ProductCreateRequest;
 import com.storehub.dto.ProductResponse;
 import com.storehub.dto.ProductUpdateRequest;
+import com.storehub.entity.AuditAction;
 import com.storehub.entity.Category;
 import com.storehub.entity.Hsn;
 import com.storehub.entity.ItemGroup;
@@ -17,6 +18,7 @@ import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ProductNotFoundException;
 import com.storehub.repository.CategoryRepository;
 import com.storehub.repository.ProductRepository;
+import com.storehub.repository.StockHistoryRepository;
 import com.storehub.util.CsvUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -59,6 +61,9 @@ public class ProductService {
     private final ItemGroupService itemGroupService;
     private final HsnService hsnService;
     private final UnitService unitService;
+    private final StockHistoryRepository stockHistoryRepository;
+    private final AuditService auditService;
+    private final SkuGeneratorService skuGeneratorService;
 
     public PagedResponse<ProductResponse> searchProducts(String search, Long categoryId, ProductStatus status,
                                                            int page, int size, String sortBy, String sortDir) {
@@ -76,16 +81,29 @@ public class ProductService {
 
     public ProductResponse getProductById(Long id) {
         Product product = findProductOrThrow(id);
-        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(id), inventoryService.getMaxStockLevel(id));
+        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(id), inventoryService.getMaxStockLevel(id),
+                stockHistoryRepository.existsByProductId(id));
+    }
+
+    /**
+     * Canonical SKU form used consistently across create/update/import/search
+     * (SKU Management spec section 6) — trims whitespace and uppercases so
+     * {@code "  abc-001 "} and {@code "ABC-001"} are recognized as the same
+     * SKU everywhere, not just wherever a case-insensitive DB query happens
+     * to be used.
+     */
+    private String normalizeSku(String sku) {
+        return sku == null ? null : sku.trim().toUpperCase();
     }
 
     @Transactional
     public ProductResponse createProduct(ProductCreateRequest request) {
+        String sku = normalizeSku(request.getSku());
         if (productRepository.existsByNameIgnoreCase(request.getName())) {
             throw new BadRequestException("A product named '" + request.getName() + "' already exists");
         }
-        if (productRepository.existsBySkuIgnoreCase(request.getSku())) {
-            throw new BadRequestException("A product with SKU '" + request.getSku() + "' already exists");
+        if (productRepository.existsBySkuIgnoreCase(sku)) {
+            throw new BadRequestException("SKU '" + sku + "' already exists. Please use a different SKU.");
         }
         if (request.getBarcode() != null && !request.getBarcode().isBlank()
                 && productRepository.existsByBarcodeIgnoreCase(request.getBarcode())) {
@@ -100,7 +118,7 @@ public class ProductService {
 
         Product product = Product.builder()
                 .name(request.getName())
-                .sku(request.getSku())
+                .sku(sku)
                 .barcode(blankToNull(request.getBarcode()))
                 .category(category)
                 .brand(request.getBrand())
@@ -135,20 +153,29 @@ public class ProductService {
             inventoryService.updateMaxStockLevel(saved.getId(), request.getMaxStockLevel());
         }
 
+        auditService.log(AuditAction.CREATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
+                null, null, "Item '" + saved.getName() + "' (SKU " + saved.getSku() + ") created");
+
         return ProductResponse.fromEntity(saved, 0, request.getMaxStockLevel());
     }
 
     @Transactional
     public ProductResponse updateProduct(Long id, ProductUpdateRequest request) {
         Product product = findProductOrThrow(id);
+        String oldSku = product.getSku();
+        String newSku = normalizeSku(request.getSku());
+        boolean skuChanging = oldSku == null || !oldSku.equalsIgnoreCase(newSku);
 
         if (!product.getName().equalsIgnoreCase(request.getName())
                 && productRepository.existsByNameIgnoreCase(request.getName())) {
             throw new BadRequestException("A product named '" + request.getName() + "' already exists");
         }
-        if (!product.getSku().equalsIgnoreCase(request.getSku())
-                && productRepository.existsBySkuIgnoreCaseAndIdNot(request.getSku(), id)) {
-            throw new BadRequestException("A product with SKU '" + request.getSku() + "' already exists");
+        if (skuChanging && productRepository.existsBySkuIgnoreCaseAndIdNot(newSku, id)) {
+            throw new BadRequestException("SKU '" + newSku + "' already exists. Please use a different SKU.");
+        }
+        if (skuChanging && stockHistoryRepository.existsByProductId(id)) {
+            throw new BadRequestException("SKU cannot be changed because this item already has recorded stock, sales, or "
+                    + "purchase history. Deactivate this item and create a new one instead if a new SKU is required.");
         }
         String newBarcode = blankToNull(request.getBarcode());
         if (newBarcode != null && !newBarcode.equalsIgnoreCase(product.getBarcode())
@@ -163,7 +190,7 @@ public class ProductService {
         Unit saleUnit = request.getSaleUnitId() != null ? unitService.findOrThrow(request.getSaleUnitId()) : null;
 
         product.setName(request.getName());
-        product.setSku(request.getSku());
+        product.setSku(newSku);
         product.setBarcode(newBarcode);
         product.setCategory(category);
         product.setBrand(request.getBrand());
@@ -193,7 +220,17 @@ public class ProductService {
 
         Product saved = productRepository.save(product);
         inventoryService.updateMaxStockLevel(id, request.getMaxStockLevel());
-        return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id), request.getMaxStockLevel());
+
+        if (skuChanging) {
+            auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
+                    oldSku, newSku, "SKU changed for item '" + saved.getName() + "'");
+        } else {
+            auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
+                    null, null, "Item '" + saved.getName() + "' (SKU " + saved.getSku() + ") updated");
+        }
+
+        return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id), request.getMaxStockLevel(),
+                stockHistoryRepository.existsByProductId(id));
     }
 
     @Transactional
@@ -201,7 +238,38 @@ public class ProductService {
         Product product = findProductOrThrow(id);
         product.setStatus(status);
         Product saved = productRepository.save(product);
+        auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(), null, null,
+                "Item '" + saved.getName() + "' (SKU " + saved.getSku() + ") " + status.name().toLowerCase());
         return ProductResponse.fromEntity(saved, inventoryService.getCurrentStock(id));
+    }
+
+    /**
+     * Auto-generates the next SKU (SKU Management spec section 8) — a thin
+     * passthrough so the controller doesn't depend on {@link SkuGeneratorService}
+     * directly, matching how every other cross-cutting concern in this class
+     * (inventory, categories, HSN, units) is accessed only through this service.
+     */
+    public String generateSku() {
+        return skuGeneratorService.generateNext();
+    }
+
+    /**
+     * One-time startup safety net (SKU Management spec sections 7/19): assigns
+     * an auto-generated SKU to any pre-existing product that has none, so the
+     * now-mandatory-on-save SKU field never leaves a legacy record permanently
+     * un-editable. Idempotent — a no-op once every product has a SKU.
+     */
+    @Transactional
+    public void backfillMissingSkus() {
+        for (Product product : productRepository.findAll()) {
+            if (product.getSku() == null || product.getSku().isBlank()) {
+                String sku = skuGeneratorService.generateNext();
+                product.setSku(sku);
+                productRepository.save(product);
+                auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", product.getId(), sku,
+                        null, sku, "SKU backfilled for legacy item '" + product.getName() + "' which had none");
+            }
+        }
     }
 
     public Product findProductOrThrow(Long id) {
@@ -311,7 +379,8 @@ public class ProductService {
                 String unit = field(fields, columnIndex, "unit");
                 String description = field(fields, columnIndex, "description");
 
-                Product existing = productRepository.findBySkuIgnoreCase(sku.trim()).orElse(null);
+                String normalizedSku = normalizeSku(sku);
+                Product existing = productRepository.findBySkuIgnoreCase(normalizedSku).orElse(null);
                 if (existing != null) {
                     if (!existing.getName().equalsIgnoreCase(name.trim())
                             && productRepository.existsByNameIgnoreCase(name.trim())) {
@@ -357,7 +426,7 @@ public class ProductService {
                     }
                     Product product = Product.builder()
                             .name(name.trim())
-                            .sku(sku.trim())
+                            .sku(normalizedSku)
                             .barcode(barcode)
                             .category(category)
                             .brand(blankToNull(brand))

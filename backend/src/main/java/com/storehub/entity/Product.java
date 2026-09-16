@@ -26,6 +26,7 @@ public class Product {
     @Column(nullable = false, unique = true, length = 150)
     private String name;
 
+    /** Stock-keeping identifier — always stored trimmed and uppercased (see ProductService#normalizeSku). */
     @Column(length = 50, unique = true)
     private String sku;
 
@@ -73,6 +74,7 @@ public class Product {
     @Column(length = 500)
     private String description;
 
+    /** Optional internal/business reference code — distinct from {@link #sku}, which is the stock-keeping identifier. */
     @Column(name = "manual_code", length = 50)
     private String manualCode;
 
