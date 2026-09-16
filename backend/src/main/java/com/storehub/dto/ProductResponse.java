@@ -3,6 +3,7 @@ package com.storehub.dto;
 import com.storehub.entity.BarcodeType;
 import com.storehub.entity.Product;
 import com.storehub.entity.ProductStatus;
+import com.storehub.entity.TaxTreatment;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class ProductResponse {
     private BigDecimal purchasePrice;
     private BigDecimal sellingPrice;
     private BigDecimal tax;
+    private TaxTreatment taxTreatment;
     private Integer minStockLevel;
     private Integer reorderLevel;
     private Integer reorderQuantity;
@@ -80,6 +82,7 @@ public class ProductResponse {
                 .purchasePrice(product.getPurchasePrice())
                 .sellingPrice(product.getSellingPrice())
                 .tax(product.getTax())
+                .taxTreatment(product.getTaxTreatment())
                 .minStockLevel(product.getMinStockLevel())
                 .reorderLevel(product.getReorderLevel())
                 .reorderQuantity(product.getReorderQuantity())

@@ -45,6 +45,9 @@ public class ProductUpdateRequest {
     @DecimalMin(value = "0", message = "Tax must be greater than or equal to 0")
     private BigDecimal tax;
 
+    /** Defaults to TAXABLE when not provided (see {@link com.storehub.entity.Product#taxTreatment}). */
+    private com.storehub.entity.TaxTreatment taxTreatment;
+
     @Min(value = 0, message = "Minimum stock level cannot be negative")
     private Integer minStockLevel;
 

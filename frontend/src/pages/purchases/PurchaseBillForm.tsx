@@ -8,7 +8,9 @@ import { productApi } from '../../api/productApi';
 import { supplierApi } from '../../api/supplierApi';
 import { purchaseApi } from '../../api/purchaseApi';
 import { purchaseOrderApi } from '../../api/purchaseOrderApi';
+import { businessGstConfigApi } from '../../api/mastersApi';
 import { parseApiError } from '../../utils/apiError';
+import { suggestTaxMode } from '../../utils/gst';
 import { Product } from '../../types/product';
 import { GstType, PaymentMode, Purchase, PurchaseCreatePayload, Supplier, TaxMode } from '../../types/purchase';
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
@@ -58,6 +60,7 @@ export default function PurchaseBillForm() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [sellerState, setSellerState] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(isEdit || !!orderId);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -95,12 +98,14 @@ export default function PurchaseBillForm() {
 
   useEffect(() => {
     const loadReferenceData = async () => {
-      const [supplierRes, productRes] = await Promise.all([
+      const [supplierRes, productRes, businessConfigRes] = await Promise.all([
         supplierApi.list({ size: 200 }),
         productApi.list({ size: 200, status: 'ACTIVE' }),
+        businessGstConfigApi.get(),
       ]);
       setSuppliers(supplierRes.data.content);
       setProducts(productRes.data.content);
+      setSellerState(businessConfigRes.data.stateName);
     };
 
     const loadPurchase = async () => {
@@ -194,6 +199,15 @@ export default function PurchaseBillForm() {
 
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
   const removeItemRow = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
+
+  /** Best-effort Place-of-Supply suggestion on manual supplier selection only — never overrides an already-loaded purchase/order, and the Tax Mode dropdown remains a manual override. */
+  const selectSupplier = (supplierIdValue: string, supplierList: Supplier[] = suppliers) => {
+    setSupplierId(supplierIdValue);
+    if (!isGst) return;
+    const supplier = supplierList.find((s) => String(s.id) === supplierIdValue);
+    const suggestion = suggestTaxMode(sellerState, supplier?.state);
+    if (suggestion) setTaxMode(suggestion);
+  };
 
   const handleScanBarcode = async () => {
     const code = scanQuery.trim();
@@ -397,7 +411,7 @@ export default function PurchaseBillForm() {
               <div className="space-y-1.5">
                 <Label>Supplier</Label>
                 <div className="flex gap-2">
-                  <Select value={supplierId} onValueChange={setSupplierId}>
+                  <Select value={supplierId} onValueChange={selectSupplier}>
                     <SelectTrigger className={fieldErrors.supplierId ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
@@ -672,7 +686,7 @@ export default function PurchaseBillForm() {
         onCreated={(supplier) => {
           setSuppliers((prev) => [...prev, supplier]);
           setShowSupplierModal(false);
-          setTimeout(() => setSupplierId(String(supplier.id)), 0);
+          setTimeout(() => selectSupplier(String(supplier.id), [...suppliers, supplier]), 0);
           toast.success('Supplier added');
         }}
       />

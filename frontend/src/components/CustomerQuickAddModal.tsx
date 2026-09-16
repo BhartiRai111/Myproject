@@ -26,6 +26,7 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
   const [lastName, setLastName] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
+  const [state, setState] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,6 +36,7 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
       setLastName('');
       setMobile('');
       setEmail('');
+      setState('');
       setError('');
     }
   }, [show]);
@@ -44,7 +46,7 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
     setSubmitting(true);
     setError('');
     try {
-      const res = await customerApi.create({ firstName, lastName, mobile, email });
+      const res = await customerApi.create({ firstName, lastName, mobile, email, state: state || undefined });
       onCreated(res.data);
     } catch (err) {
       setError(parseApiError(err, 'Failed to add customer').message);
@@ -83,6 +85,15 @@ export default function CustomerQuickAddModal({ show, onClose, onCreated }: Prop
           <div className="space-y-1.5">
             <Label htmlFor="cqEmail">Email</Label>
             <Input id="cqEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cqState">State (optional)</Label>
+            <Input
+              id="cqState"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              placeholder="For GST Intra/Inter-State suggestion"
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>

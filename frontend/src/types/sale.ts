@@ -8,6 +8,7 @@ export interface Customer {
   lastName?: string;
   mobile: string;
   email?: string;
+  state?: string;
   status: CustomerStatus;
   createdAt: string;
   updatedAt: string;
@@ -18,6 +19,7 @@ export interface CustomerCreatePayload {
   lastName?: string;
   mobile: string;
   email?: string;
+  state?: string;
 }
 
 export type SaleStatus = 'DRAFT' | 'PENDING' | 'COMPLETED' | 'CANCELLED';

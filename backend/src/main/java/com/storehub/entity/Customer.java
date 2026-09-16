@@ -34,6 +34,10 @@ public class Customer {
     @Column(length = 100)
     private String email;
 
+    /** Free-text state name (mirrors Supplier#state) — the buyer-side anchor for Place of Supply tax-mode suggestion. */
+    @Column(length = 100)
+    private String state;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private CustomerStatus status;

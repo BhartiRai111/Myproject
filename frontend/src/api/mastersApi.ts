@@ -1,6 +1,8 @@
 import api from './axios';
 import { PagedResponse } from '../types/user';
 import {
+  BusinessGstConfig,
+  BusinessGstConfigPayload,
   City,
   CityPayload,
   Country,
@@ -175,4 +177,9 @@ export const partyApi = {
   update: (id: number, payload: PartyPayload) => api.put<Party>(`/masters/parties/${id}`, payload),
   activate: (id: number) => api.patch<Party>(`/masters/parties/${id}/activate`),
   deactivate: (id: number) => api.patch<Party>(`/masters/parties/${id}/deactivate`),
+};
+
+export const businessGstConfigApi = {
+  get: () => api.get<BusinessGstConfig>('/masters/business-gst-config'),
+  update: (payload: BusinessGstConfigPayload) => api.put<BusinessGstConfig>('/masters/business-gst-config', payload),
 };

@@ -11,6 +11,7 @@ import com.storehub.exception.BadRequestException;
 import com.storehub.exception.SupplierNotFoundException;
 import com.storehub.repository.PurchaseRepository;
 import com.storehub.repository.SupplierRepository;
+import com.storehub.util.GstinValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -57,9 +58,13 @@ public class SupplierService {
                 && supplierRepository.existsByEmailIgnoreCase(request.getEmail())) {
             throw new BadRequestException("A supplier with email '" + request.getEmail() + "' already exists");
         }
-        if (request.getGstNumber() != null && !request.getGstNumber().isBlank()
-                && supplierRepository.existsByGstNumberIgnoreCase(request.getGstNumber())) {
-            throw new BadRequestException("A supplier with GST number '" + request.getGstNumber() + "' already exists");
+        if (request.getGstNumber() != null && !request.getGstNumber().isBlank()) {
+            if (!GstinValidator.isValid(request.getGstNumber())) {
+                throw new BadRequestException("GST number '" + request.getGstNumber() + "' is not a valid 15-character GSTIN");
+            }
+            if (supplierRepository.existsByGstNumberIgnoreCase(request.getGstNumber())) {
+                throw new BadRequestException("A supplier with GST number '" + request.getGstNumber() + "' already exists");
+            }
         }
 
         Supplier supplier = Supplier.builder()
@@ -88,9 +93,14 @@ public class SupplierService {
             throw new BadRequestException("A supplier with email '" + newEmail + "' already exists");
         }
         String newGstNumber = blankToNull(request.getGstNumber());
-        if (newGstNumber != null && !newGstNumber.equalsIgnoreCase(supplier.getGstNumber())
-                && supplierRepository.existsByGstNumberIgnoreCaseAndIdNot(newGstNumber, id)) {
-            throw new BadRequestException("A supplier with GST number '" + newGstNumber + "' already exists");
+        if (newGstNumber != null) {
+            if (!GstinValidator.isValid(newGstNumber)) {
+                throw new BadRequestException("GST number '" + newGstNumber + "' is not a valid 15-character GSTIN");
+            }
+            if (!newGstNumber.equalsIgnoreCase(supplier.getGstNumber())
+                    && supplierRepository.existsByGstNumberIgnoreCaseAndIdNot(newGstNumber, id)) {
+                throw new BadRequestException("A supplier with GST number '" + newGstNumber + "' already exists");
+            }
         }
 
         supplier.setName(request.getName());

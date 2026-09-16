@@ -15,6 +15,17 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString();
 }
 
+const TAX_TREATMENT_LABELS: Record<string, string> = {
+  TAXABLE: 'Taxable',
+  EXEMPT: 'Exempt',
+  NIL_RATED: 'Nil Rated',
+  ZERO_RATED: 'Zero Rated',
+};
+
+function formatTaxTreatment(value?: string) {
+  return TAX_TREATMENT_LABELS[value ?? ''] ?? 'Taxable';
+}
+
 function InfoField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -62,6 +73,7 @@ export default function ProductViewModal({ show, product, onClose }: Props) {
                 <InfoField label="Purchase Price">{product.purchasePrice.toFixed(2)}</InfoField>
                 <InfoField label="Selling Price">{product.sellingPrice.toFixed(2)}</InfoField>
                 <InfoField label="Tax">{product.tax.toFixed(2)}%</InfoField>
+                <InfoField label="Tax Treatment">{formatTaxTreatment(product.taxTreatment)}</InfoField>
               </CardContent>
             </Card>
 

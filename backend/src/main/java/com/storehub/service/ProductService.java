@@ -14,6 +14,7 @@ import com.storehub.entity.Product;
 import com.storehub.entity.ProductStatus;
 import com.storehub.entity.ReferenceType;
 import com.storehub.entity.StockMovementType;
+import com.storehub.entity.TaxTreatment;
 import com.storehub.entity.Unit;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ProductNotFoundException;
@@ -151,6 +152,7 @@ public class ProductService {
                 .purchasePrice(request.getPurchasePrice())
                 .sellingPrice(request.getSellingPrice())
                 .tax(request.getTax())
+                .taxTreatment(request.getTaxTreatment() != null ? request.getTaxTreatment() : TaxTreatment.TAXABLE)
                 .minStockLevel(request.getMinStockLevel())
                 .reorderLevel(request.getReorderLevel())
                 .reorderQuantity(request.getReorderQuantity())
@@ -233,6 +235,7 @@ public class ProductService {
         product.setPurchasePrice(request.getPurchasePrice());
         product.setSellingPrice(request.getSellingPrice());
         product.setTax(request.getTax());
+        product.setTaxTreatment(request.getTaxTreatment() != null ? request.getTaxTreatment() : TaxTreatment.TAXABLE);
         product.setMinStockLevel(request.getMinStockLevel());
         product.setReorderLevel(request.getReorderLevel());
         product.setReorderQuantity(request.getReorderQuantity());

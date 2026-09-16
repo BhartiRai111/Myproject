@@ -18,6 +18,7 @@ public class CustomerResponse {
     private String lastName;
     private String mobile;
     private String email;
+    private String state;
     private CustomerStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -29,6 +30,7 @@ public class CustomerResponse {
                 .lastName(customer.getLastName())
                 .mobile(customer.getMobile())
                 .email(customer.getEmail())
+                .state(customer.getState())
                 .status(customer.getStatus())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())

@@ -54,6 +54,7 @@ import ItemGroupMaster from './pages/masters/ItemGroupMaster';
 import HsnMaster from './pages/masters/HsnMaster';
 import EmployeeMaster from './pages/masters/EmployeeMaster';
 import PartyMaster from './pages/masters/PartyMaster';
+import BusinessGstConfigMaster from './pages/masters/BusinessGstConfigMaster';
 import AccountingHub from './pages/accounting/AccountingHub';
 import Expenses from './pages/accounting/Expenses';
 import ExpenseForm from './pages/accounting/ExpenseForm';
@@ -251,6 +252,7 @@ export default function App() {
               <Route path="/masters/hsn" element={<HsnMaster />} />
               <Route path="/masters/employees" element={<EmployeeMaster />} />
               <Route path="/masters/parties" element={<PartyMaster />} />
+              <Route path="/masters/business-gst-config" element={<BusinessGstConfigMaster />} />
             </Route>
 
             {DISABLED_MODULES.map((path) => (

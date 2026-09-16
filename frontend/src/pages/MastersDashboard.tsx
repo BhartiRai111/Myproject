@@ -14,6 +14,7 @@ import {
   Handshake,
   Tags,
   Package,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -148,6 +149,14 @@ const CARDS: MasterCard[] = [
     icon: Handshake,
     path: '/masters/parties',
     loadCount: () => partyApi.list({ size: 1 }).then((r) => r.data.totalElements),
+  },
+  {
+    key: 'business-gst-config',
+    name: 'Business GST Config',
+    description: 'Seller GST registration details used for Place-of-Supply',
+    icon: Landmark,
+    path: '/masters/business-gst-config',
+    loadCount: () => Promise.resolve(-1),
   },
 ];
 

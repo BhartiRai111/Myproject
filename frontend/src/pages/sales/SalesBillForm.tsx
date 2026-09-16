@@ -8,7 +8,9 @@ import { productApi } from '../../api/productApi';
 import { customerApi } from '../../api/customerApi';
 import { saleApi } from '../../api/saleApi';
 import { salesOrderApi } from '../../api/salesOrderApi';
+import { businessGstConfigApi } from '../../api/mastersApi';
 import { parseApiError } from '../../utils/apiError';
+import { suggestTaxMode } from '../../utils/gst';
 import { Product } from '../../types/product';
 import { Customer, GstType, PaymentMode, Sale, SaleCreatePayload, TaxMode } from '../../types/sale';
 import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
@@ -58,6 +60,7 @@ export default function SalesBillForm() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [sellerState, setSellerState] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(isEdit || !!orderId);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -95,9 +98,14 @@ export default function SalesBillForm() {
 
   useEffect(() => {
     const loadReferenceData = async () => {
-      const [customerRes, productRes] = await Promise.all([customerApi.list(), productApi.list({ size: 200, status: 'ACTIVE' })]);
+      const [customerRes, productRes, businessConfigRes] = await Promise.all([
+        customerApi.list(),
+        productApi.list({ size: 200, status: 'ACTIVE' }),
+        businessGstConfigApi.get(),
+      ]);
       setCustomers(customerRes.data);
       setProducts(productRes.data.content);
+      setSellerState(businessConfigRes.data.stateName);
     };
 
     const loadSale = async () => {
@@ -191,6 +199,15 @@ export default function SalesBillForm() {
 
   const addItemRow = () => setItems((prev) => [...prev, { ...EMPTY_ROW }]);
   const removeItemRow = (index: number) => setItems((prev) => prev.filter((_, i) => i !== index));
+
+  /** Best-effort Place-of-Supply suggestion on manual customer selection only — never overrides an already-loaded sale/order, and the Tax Mode dropdown remains a manual override. */
+  const selectCustomer = (customerIdValue: string, customerList: Customer[] = customers) => {
+    setCustomerId(customerIdValue);
+    if (!isGst) return;
+    const customer = customerList.find((c) => String(c.id) === customerIdValue);
+    const suggestion = suggestTaxMode(sellerState, customer?.state);
+    if (suggestion) setTaxMode(suggestion);
+  };
 
   const handleScanBarcode = async () => {
     const code = scanQuery.trim();
@@ -393,7 +410,7 @@ export default function SalesBillForm() {
               <div className="space-y-1.5">
                 <Label>Customer</Label>
                 <div className="flex gap-2">
-                  <Select value={customerId} onValueChange={setCustomerId}>
+                  <Select value={customerId} onValueChange={selectCustomer}>
                     <SelectTrigger className={fieldErrors.customerId ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Walk-in / select customer" />
                     </SelectTrigger>
@@ -668,7 +685,7 @@ export default function SalesBillForm() {
         onCreated={(customer) => {
           setCustomers((prev) => [...prev, customer]);
           setShowCustomerModal(false);
-          setTimeout(() => setCustomerId(String(customer.id)), 0);
+          setTimeout(() => selectCustomer(String(customer.id), [...customers, customer]), 0);
           toast.success('Customer added');
         }}
       />

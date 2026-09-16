@@ -19,4 +19,6 @@ public class CustomerCreateRequest {
 
     @Email(message = "Email must be valid")
     private String email;
+
+    private String state;
 }

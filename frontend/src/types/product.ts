@@ -2,6 +2,8 @@ export type ProductStatus = 'ACTIVE' | 'INACTIVE';
 
 export type BarcodeType = 'EAN13' | 'EAN8' | 'UPC' | 'INTERNAL' | 'OTHER';
 
+export type TaxTreatment = 'TAXABLE' | 'EXEMPT' | 'NIL_RATED' | 'ZERO_RATED';
+
 export type CategoryStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface Category {
@@ -35,6 +37,7 @@ export interface Product {
   purchasePrice: number;
   sellingPrice: number;
   tax: number;
+  taxTreatment?: TaxTreatment;
   minStockLevel: number;
   reorderLevel?: number;
   reorderQuantity?: number;
@@ -76,6 +79,7 @@ export interface ProductPayload {
   purchasePrice: number;
   sellingPrice: number;
   tax?: number;
+  taxTreatment?: TaxTreatment;
   minStockLevel?: number;
   reorderLevel?: number;
   reorderQuantity?: number;

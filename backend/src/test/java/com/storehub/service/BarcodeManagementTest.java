@@ -43,10 +43,27 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Transactional
 class BarcodeManagementTest {
 
-    /** A real, checksum-valid EAN-13 (Kit-Kat 4-finger bar) used as the "valid EAN-13" fixture. */
-    private static final String VALID_EAN13 = "4006381333931";
+    /**
+     * A unique, checksum-valid EAN-13 computed per test run (rather than a fixed real-world
+     * barcode) so this test never collides with a leftover product from a manual/Playwright
+     * session using the same fixed value.
+     */
+    private static final String VALID_EAN13 = generateValidEan13();
     /** Same digits with the check digit flipped — same length/shape, invalid checksum. */
-    private static final String INVALID_EAN13_CHECKSUM = "4006381333930";
+    private static final String INVALID_EAN13_CHECKSUM =
+            VALID_EAN13.substring(0, 12) + ((Character.getNumericValue(VALID_EAN13.charAt(12)) + 1) % 10);
+
+    private static String generateValidEan13() {
+        String twelveDigits = String.valueOf(System.nanoTime()).replaceAll("[^0-9]", "");
+        twelveDigits = (twelveDigits + "000000000000").substring(0, 12);
+        int sum = 0;
+        for (int i = 0; i < 12; i++) {
+            int digit = twelveDigits.charAt(i) - '0';
+            sum += (i % 2 == 0) ? digit : digit * 3;
+        }
+        int checkDigit = (10 - (sum % 10)) % 10;
+        return twelveDigits + checkDigit;
+    }
 
     @Autowired
     private ProductService productService;

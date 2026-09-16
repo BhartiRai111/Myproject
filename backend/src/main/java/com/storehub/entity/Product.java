@@ -58,6 +58,11 @@ public class Product {
     @Column(precision = 5, scale = 2)
     private BigDecimal tax;
 
+    /** GST tax treatment — kept separate from {@link #tax} (spec sections 15/16). Defaults to TAXABLE. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tax_treatment", length = 20)
+    private TaxTreatment taxTreatment;
+
     @Column(name = "min_stock_level")
     private Integer minStockLevel;
 
@@ -106,6 +111,7 @@ public class Product {
     @Column(name = "item_type", length = 50)
     private String itemType;
 
+    /** Free-text descriptive metadata from the original Item Master tab — NOT read by GST calculation. See {@link #taxTreatment} for the enum that actually drives tax. */
     @Column(name = "tax_nature", length = 50)
     private String taxNature;
 
@@ -146,6 +152,9 @@ public class Product {
         }
         if (this.tax == null) {
             this.tax = BigDecimal.ZERO;
+        }
+        if (this.taxTreatment == null) {
+            this.taxTreatment = TaxTreatment.TAXABLE;
         }
         if (this.minStockLevel == null) {
             this.minStockLevel = 0;

@@ -8,6 +8,7 @@ import com.storehub.entity.*;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.MasterNotFoundException;
 import com.storehub.repository.PartyRepository;
+import com.storehub.util.GstinValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -47,9 +48,13 @@ public class PartyService {
         if (partyRepository.existsByPartyCodeIgnoreCase(request.getPartyCode())) {
             throw new BadRequestException("A party with code '" + request.getPartyCode() + "' already exists");
         }
-        if (StringUtils.hasText(request.getGstNumber())
-                && partyRepository.existsByGstNumberIgnoreCase(request.getGstNumber())) {
-            throw new BadRequestException("A party with GST number '" + request.getGstNumber() + "' already exists");
+        if (StringUtils.hasText(request.getGstNumber())) {
+            if (!GstinValidator.isValid(request.getGstNumber())) {
+                throw new BadRequestException("GST number '" + request.getGstNumber() + "' is not a valid 15-character GSTIN");
+            }
+            if (partyRepository.existsByGstNumberIgnoreCase(request.getGstNumber())) {
+                throw new BadRequestException("A party with GST number '" + request.getGstNumber() + "' already exists");
+            }
         }
 
         Party party = Party.builder()
@@ -82,10 +87,14 @@ public class PartyService {
                 && partyRepository.existsByPartyCodeIgnoreCaseAndIdNot(request.getPartyCode(), id)) {
             throw new BadRequestException("A party with code '" + request.getPartyCode() + "' already exists");
         }
-        if (StringUtils.hasText(request.getGstNumber())
-                && !request.getGstNumber().equalsIgnoreCase(party.getGstNumber())
-                && partyRepository.existsByGstNumberIgnoreCaseAndIdNot(request.getGstNumber(), id)) {
-            throw new BadRequestException("A party with GST number '" + request.getGstNumber() + "' already exists");
+        if (StringUtils.hasText(request.getGstNumber())) {
+            if (!GstinValidator.isValid(request.getGstNumber())) {
+                throw new BadRequestException("GST number '" + request.getGstNumber() + "' is not a valid 15-character GSTIN");
+            }
+            if (!request.getGstNumber().equalsIgnoreCase(party.getGstNumber())
+                    && partyRepository.existsByGstNumberIgnoreCaseAndIdNot(request.getGstNumber(), id)) {
+                throw new BadRequestException("A party with GST number '" + request.getGstNumber() + "' already exists");
+            }
         }
 
         party.setPartyCode(request.getPartyCode());

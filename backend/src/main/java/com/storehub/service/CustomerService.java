@@ -31,6 +31,7 @@ public class CustomerService {
                 .lastName(request.getLastName())
                 .mobile(request.getMobile())
                 .email(request.getEmail())
+                .state(request.getState())
                 .build();
 
         return CustomerResponse.fromEntity(customerRepository.save(customer));

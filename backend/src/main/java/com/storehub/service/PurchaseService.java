@@ -19,13 +19,13 @@ import com.storehub.entity.ReferenceType;
 import com.storehub.entity.StockMovementType;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
-import com.storehub.entity.TaxMode;
 import com.storehub.entity.TransactionType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.PurchaseNotFoundException;
 import com.storehub.repository.PaymentAllocationRepository;
 import com.storehub.repository.PurchaseOrderItemRepository;
 import com.storehub.repository.PurchaseRepository;
+import com.storehub.util.GstinValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -35,7 +35,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +60,7 @@ public class PurchaseService {
     private final GstTransactionSyncService gstTransactionSyncService;
     private final VoucherNumberService voucherNumberService;
     private final AuditService auditService;
+    private final GstCalculationService gstCalculationService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
@@ -82,6 +82,10 @@ public class PurchaseService {
     public PurchaseResponse createPurchase(PurchaseCreateRequest request) {
         if (request.getGstType() == GstType.GST && request.getTaxMode() == null) {
             throw new BadRequestException("Tax mode (Intra-State or Inter-State) is required for a GST purchase");
+        }
+        if (request.getSupplierGstin() != null && !request.getSupplierGstin().isBlank()
+                && !GstinValidator.isValid(request.getSupplierGstin())) {
+            throw new BadRequestException("Supplier GSTIN '" + request.getSupplierGstin() + "' is not a valid 15-character GSTIN");
         }
 
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
@@ -185,6 +189,10 @@ public class PurchaseService {
         }
         if (request.getGstType() == GstType.GST && request.getTaxMode() == null) {
             throw new BadRequestException("Tax mode (Intra-State or Inter-State) is required for a GST purchase");
+        }
+        if (request.getSupplierGstin() != null && !request.getSupplierGstin().isBlank()
+                && !GstinValidator.isValid(request.getSupplierGstin())) {
+            throw new BadRequestException("Supplier GSTIN '" + request.getSupplierGstin() + "' is not a valid 15-character GSTIN");
         }
 
         List<PurchaseItem> oldItems = new ArrayList<>(purchase.getItems());
@@ -370,46 +378,31 @@ public class PurchaseService {
                 throw new BadRequestException("Discount cannot exceed the item amount for product '" + product.getName() + "'");
             }
 
-            BigDecimal gstPercent = isGst ? itemRequest.getGstPercent() : BigDecimal.ZERO;
-            BigDecimal gstAmount = isGst
-                    ? taxableAmount.multiply(gstPercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
-
-            BigDecimal cgst = BigDecimal.ZERO;
-            BigDecimal sgst = BigDecimal.ZERO;
-            BigDecimal igst = BigDecimal.ZERO;
-            if (isGst && gstAmount.signum() > 0) {
-                if (purchase.getTaxMode() == TaxMode.INTER_STATE) {
-                    igst = gstAmount;
-                } else {
-                    cgst = gstAmount.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-                    sgst = gstAmount.subtract(cgst);
-                }
-            }
-
-            BigDecimal subtotal = taxableAmount.add(gstAmount);
+            BigDecimal requestedGstPercent = isGst ? itemRequest.getGstPercent() : BigDecimal.ZERO;
+            GstCalculationService.LineTaxResult tax = gstCalculationService.calculateLine(
+                    taxableAmount, requestedGstPercent, purchase.getTaxMode(), product.getTaxTreatment());
 
             PurchaseItem item = PurchaseItem.builder()
                     .product(product)
                     .quantity(itemRequest.getQuantity())
                     .purchasePrice(itemRequest.getPurchasePrice())
                     .discount(itemRequest.getDiscount())
-                    .tax(gstAmount)
-                    .subtotal(subtotal)
-                    .gstPercent(gstPercent)
-                    .taxableAmount(taxableAmount)
-                    .cgstAmount(cgst)
-                    .sgstAmount(sgst)
-                    .igstAmount(igst)
+                    .tax(tax.getGstAmount())
+                    .subtotal(tax.getTotalAmount())
+                    .gstPercent(tax.getGstPercent())
+                    .taxableAmount(tax.getTaxableAmount())
+                    .cgstAmount(tax.getCgstAmount())
+                    .sgstAmount(tax.getSgstAmount())
+                    .igstAmount(tax.getIgstAmount())
                     .purchaseOrderItem(orderItem)
                     .build();
 
             purchase.addItem(item);
-            taxableTotal = taxableTotal.add(taxableAmount);
-            cgstTotal = cgstTotal.add(cgst);
-            sgstTotal = sgstTotal.add(sgst);
-            igstTotal = igstTotal.add(igst);
-            grandTotal = grandTotal.add(subtotal);
+            taxableTotal = taxableTotal.add(tax.getTaxableAmount());
+            cgstTotal = cgstTotal.add(tax.getCgstAmount());
+            sgstTotal = sgstTotal.add(tax.getSgstAmount());
+            igstTotal = igstTotal.add(tax.getIgstAmount());
+            grandTotal = grandTotal.add(tax.getTotalAmount());
         }
 
         purchase.setTaxableAmount(taxableTotal);

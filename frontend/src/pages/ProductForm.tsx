@@ -7,7 +7,7 @@ import { productApi } from '../api/productApi';
 import { categoryApi } from '../api/categoryApi';
 import { hsnApi, itemGroupApi, unitApi } from '../api/mastersApi';
 import { parseApiError } from '../utils/apiError';
-import { Category, Product } from '../types/product';
+import { Category, Product, TaxTreatment } from '../types/product';
 import { Hsn, ItemGroup, Unit } from '../types/masters';
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard';
 import { BackButton } from '@/components/BackButton';
@@ -53,6 +53,7 @@ export default function ProductForm() {
   const [purchasePrice, setPurchasePrice] = useState('0');
   const [sellingPrice, setSellingPrice] = useState('0');
   const [tax, setTax] = useState('0');
+  const [taxTreatment, setTaxTreatment] = useState<TaxTreatment>('TAXABLE');
   const [minStockLevel, setMinStockLevel] = useState('0');
   const [reorderLevel, setReorderLevel] = useState('');
   const [reorderQuantity, setReorderQuantity] = useState('');
@@ -89,6 +90,7 @@ export default function ProductForm() {
       purchasePrice,
       sellingPrice,
       tax,
+      taxTreatment,
       minStockLevel,
       reorderLevel,
       reorderQuantity,
@@ -149,6 +151,7 @@ export default function ProductForm() {
       setPurchasePrice(String(product.purchasePrice));
       setSellingPrice(String(product.sellingPrice));
       setTax(String(product.tax));
+      setTaxTreatment(product.taxTreatment || 'TAXABLE');
       setMinStockLevel(String(product.minStockLevel));
       setReorderLevel(product.reorderLevel != null ? String(product.reorderLevel) : '');
       setReorderQuantity(product.reorderQuantity != null ? String(product.reorderQuantity) : '');
@@ -245,6 +248,7 @@ export default function ProductForm() {
       purchasePrice: toNumber(purchasePrice),
       sellingPrice: toNumber(sellingPrice),
       tax: toNumber(tax),
+      taxTreatment,
       minStockLevel: toNumber(minStockLevel),
       reorderLevel: reorderLevel ? toNumber(reorderLevel) : undefined,
       reorderQuantity: reorderQuantity ? toNumber(reorderQuantity) : undefined,
@@ -471,6 +475,23 @@ export default function ProductForm() {
                 invalid={!!fieldErrors.tax}
               />
               {fieldErrors.tax && <p className="text-xs text-destructive">{fieldErrors.tax}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="taxTreatment">Tax Treatment</Label>
+              <Select value={taxTreatment} onValueChange={(v) => v && setTaxTreatment(v as TaxTreatment)}>
+                <SelectTrigger id="taxTreatment">
+                  <SelectValue placeholder="Taxable" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TAXABLE">Taxable</SelectItem>
+                  <SelectItem value="EXEMPT">Exempt</SelectItem>
+                  <SelectItem value="NIL_RATED">Nil Rated</SelectItem>
+                  <SelectItem value="ZERO_RATED">Zero Rated</SelectItem>
+                </SelectContent>
+              </Select>
+              {taxTreatment !== 'TAXABLE' && (
+                <p className="text-xs text-muted-foreground">GST will be calculated as 0% for this item.</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="mrp">MRP (optional)</Label>

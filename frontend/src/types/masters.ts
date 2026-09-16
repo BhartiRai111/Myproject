@@ -258,3 +258,30 @@ export interface PartyPayload {
   dealsInCategoryIds: number[];
   addresses: PartyAddress[];
 }
+
+// ---------- Business GST Config ----------
+export interface BusinessGstConfig {
+  id: number;
+  legalName?: string;
+  tradeName?: string;
+  gstin?: string;
+  pan?: string;
+  address?: string;
+  stateId?: number;
+  stateName?: string;
+  stateCode?: string;
+  pincode?: string;
+  configured: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessGstConfigPayload {
+  legalName: string;
+  tradeName?: string;
+  gstin?: string;
+  pan?: string;
+  address?: string;
+  stateId?: number | '';
+  pincode?: string;
+}

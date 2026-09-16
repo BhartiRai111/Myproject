@@ -7,7 +7,6 @@ import com.storehub.entity.AuditAction;
 import com.storehub.entity.Expense;
 import com.storehub.entity.ExpenseStatus;
 import com.storehub.entity.SystemAccountCode;
-import com.storehub.entity.TaxMode;
 import com.storehub.entity.VoucherDocType;
 import com.storehub.entity.VoucherType;
 import com.storehub.exception.BadRequestException;
@@ -23,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -46,6 +44,7 @@ public class ExpenseService {
     private final FinancialYearService financialYearService;
     private final AccountingService accountingService;
     private final AuditService auditService;
+    private final GstCalculationService gstCalculationService;
 
     @Transactional(readOnly = true)
     public PagedResponse<ExpenseResponse> search(String search, ExpenseStatus status, String category,
@@ -65,21 +64,9 @@ public class ExpenseService {
     public ExpenseResponse create(ExpenseCreateRequest request) {
         BigDecimal taxable = request.getTaxableAmount();
         BigDecimal gstPercent = request.getGstPercent() != null ? request.getGstPercent() : BigDecimal.ZERO;
-        BigDecimal gstAmount = gstPercent.signum() > 0
-                ? taxable.multiply(gstPercent).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                : BigDecimal.ZERO;
-
-        BigDecimal cgst = BigDecimal.ZERO, sgst = BigDecimal.ZERO, igst = BigDecimal.ZERO;
-        if (gstAmount.signum() > 0) {
-            if (request.getTaxMode() == null) {
-                throw new BadRequestException("Tax mode (Intra-State or Inter-State) is required when GST percent is set");
-            }
-            if (request.getTaxMode() == TaxMode.INTER_STATE) {
-                igst = gstAmount;
-            } else {
-                cgst = gstAmount.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-                sgst = gstAmount.subtract(cgst);
-            }
+        GstCalculationService.LineTaxResult tax = gstCalculationService.calculateLine(taxable, gstPercent, request.getTaxMode());
+        if (tax.getGstAmount().signum() > 0 && request.getTaxMode() == null) {
+            throw new BadRequestException("Tax mode (Intra-State or Inter-State) is required when GST percent is set");
         }
 
         Expense expense = Expense.builder()
@@ -88,14 +75,14 @@ public class ExpenseService {
                 .vendorName(request.getVendorName())
                 .financialYearId(financialYearService.resolveForDate(request.getExpenseDate()).getId())
                 .paymentMode(request.getPaymentMode())
-                .taxMode(gstAmount.signum() > 0 ? request.getTaxMode() : null)
+                .taxMode(tax.getGstAmount().signum() > 0 ? request.getTaxMode() : null)
                 .gstPercent(gstPercent)
                 .itcEligible(request.isItcEligible())
                 .taxableAmount(taxable)
-                .cgstAmount(cgst)
-                .sgstAmount(sgst)
-                .igstAmount(igst)
-                .totalAmount(taxable.add(cgst).add(sgst).add(igst))
+                .cgstAmount(tax.getCgstAmount())
+                .sgstAmount(tax.getSgstAmount())
+                .igstAmount(tax.getIgstAmount())
+                .totalAmount(taxable.add(tax.getGstAmount()))
                 .description(request.getDescription())
                 .createdBy(SecurityUtil.currentUsername())
                 .status(ExpenseStatus.DRAFT)
