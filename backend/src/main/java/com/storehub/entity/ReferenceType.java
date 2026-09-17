@@ -5,5 +5,6 @@ public enum ReferenceType {
     SALE,
     MANUAL,
     CREDIT_NOTE,
-    DEBIT_NOTE
+    DEBIT_NOTE,
+    STOCK_TRANSFER
 }

@@ -20,6 +20,9 @@ public class InventoryResponse {
     private String sku;
     private Long categoryId;
     private String categoryName;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private String unit;
     private Integer currentStock;
     private Integer minStockLevel;
@@ -36,7 +39,7 @@ public class InventoryResponse {
         int minStockLevel = product.getMinStockLevel() != null ? product.getMinStockLevel() : 0;
         int currentStock = inventory.getCurrentStock();
 
-        Integer maxStockLevel = inventory.getMaxStockLevel();
+        Integer maxStockLevel = product.getMaxStockLevel();
 
         StockStatus stockStatus;
         if (currentStock <= 0) {
@@ -56,6 +59,9 @@ public class InventoryResponse {
                 .sku(product.getSku())
                 .categoryId(product.getCategory() != null ? product.getCategory().getId() : null)
                 .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .storeId(inventory.getStore() != null ? inventory.getStore().getId() : null)
+                .storeName(inventory.getStore() != null ? inventory.getStore().getStoreName() : null)
+                .storeCode(inventory.getStore() != null ? inventory.getStore().getStoreCode() : null)
                 .unit(product.getUnit())
                 .currentStock(currentStock)
                 .minStockLevel(minStockLevel)

@@ -33,9 +33,10 @@ public class SaleController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) TransactionType transactionType,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(saleService.getSales(search, paymentStatus, status, fromDate, toDate, transactionType, page, size));
+        return ResponseEntity.ok(saleService.getSales(search, paymentStatus, status, fromDate, toDate, transactionType, storeId, page, size));
     }
 
     @GetMapping("/{id}")

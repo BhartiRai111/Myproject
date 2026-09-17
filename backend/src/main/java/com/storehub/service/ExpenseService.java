@@ -12,9 +12,12 @@ import com.storehub.entity.ExpenseCategory;
 import com.storehub.entity.ExpenseStatus;
 import com.storehub.entity.PaymentMode;
 import com.storehub.entity.PaymentStatus;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
 import com.storehub.entity.SystemAccountCode;
+import com.storehub.entity.User;
 import com.storehub.entity.VoucherDocType;
 import com.storehub.entity.VoucherType;
 import com.storehub.exception.BadRequestException;
@@ -65,21 +68,27 @@ public class ExpenseService {
     private final PaymentAllocationRepository paymentAllocationRepository;
     private final AuditService auditService;
     private final GstCalculationService gstCalculationService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     @Transactional(readOnly = true)
     public PagedResponse<ExpenseResponse> search(String search, ExpenseStatus status, String category, Long categoryId,
                                                   Long supplierId, PaymentMode paymentMode, Boolean gstApplicable, Boolean itcEligible,
-                                                  LocalDate fromDate, LocalDate toDate, int page, int size) {
+                                                  LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<ExpenseResponse> result = expenseRepository.search(search, status, category, categoryId, supplierId,
-                        paymentMode, gstApplicable, itcEligible, fromDate, toDate, pageable)
+                        paymentMode, gstApplicable, itcEligible, fromDate, toDate, resolvedStoreId, pageable)
                 .map(ExpenseResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** An expense belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     @Transactional(readOnly = true)
     public ExpenseResponse getById(Long id) {
-        return ExpenseResponse.fromEntity(findOrThrow(id));
+        Expense expense = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), expense.getStore() != null ? expense.getStore().getId() : null);
+        return ExpenseResponse.fromEntity(expense);
     }
 
     /** Expense Summary report: category-wise, payment-method-wise, party-wise, and GST/ITC-wise totals — all server-aggregated. */
@@ -127,7 +136,15 @@ public class ExpenseService {
 
     @Transactional
     public ExpenseResponse create(ExpenseCreateRequest request) {
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot be used for new expenses");
+        }
+
         Expense expense = new Expense();
+        expense.setStore(store);
         expense.setStatus(ExpenseStatus.DRAFT);
         expense.setCreatedBy(SecurityUtil.currentUsername());
         applyRequest(expense, request.getExpenseDate(), request.getCategoryId(), request.getCategory(),
@@ -140,7 +157,8 @@ public class ExpenseService {
         saved = expenseRepository.save(saved);
 
         auditService.log(AuditAction.CREATE, "EXPENSE", "Expense", saved.getId(), saved.getExpenseNumber(),
-                null, null, "Expense " + saved.getExpenseNumber() + " (" + saved.getCategory() + ") created");
+                null, null, "Expense " + saved.getExpenseNumber() + " (" + saved.getCategory() + ") created",
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         if (request.isPost()) {
             return post(saved.getId());
@@ -163,7 +181,8 @@ public class ExpenseService {
 
         Expense saved = expenseRepository.save(expense);
         auditService.log(AuditAction.UPDATE, "EXPENSE", "Expense", saved.getId(), saved.getExpenseNumber(),
-                null, null, "Expense " + saved.getExpenseNumber() + " edited while in DRAFT");
+                null, null, "Expense " + saved.getExpenseNumber() + " edited while in DRAFT",
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         if (request.isPost()) {
             return post(saved.getId());
@@ -261,7 +280,8 @@ public class ExpenseService {
         }
 
         accountingService.postJournalByAccountId(VoucherType.EXPENSE, expense.getId(), expense.getExpenseNumber(),
-                expense.getExpenseDate(), "Expense " + expense.getExpenseNumber() + ": " + expense.getCategory(), lines);
+                expense.getExpenseDate(), "Expense " + expense.getExpenseNumber() + ": " + expense.getCategory(), lines,
+                expense.getStore() != null ? expense.getStore().getId() : null);
 
         if (creditExpense) {
             ledgerService.recordExpenseCredit(expense);
@@ -282,7 +302,8 @@ public class ExpenseService {
         gstTransactionSyncService.syncExpense(posted);
 
         auditService.log(AuditAction.POST, "EXPENSE", "Expense", posted.getId(), posted.getExpenseNumber(),
-                null, null, "Expense " + posted.getExpenseNumber() + " posted: accounting journal applied");
+                null, null, "Expense " + posted.getExpenseNumber() + " posted: accounting journal applied",
+                posted.getStore() != null ? posted.getStore().getId() : null);
         return ExpenseResponse.fromEntity(posted);
     }
 
@@ -315,7 +336,7 @@ public class ExpenseService {
         Expense cancelled = expenseRepository.save(expense);
 
         auditService.log(AuditAction.CANCEL, "EXPENSE", "Expense", cancelled.getId(), cancelled.getExpenseNumber(),
-                null, null, reason);
+                null, null, reason, cancelled.getStore() != null ? cancelled.getStore().getId() : null);
         return ExpenseResponse.fromEntity(cancelled);
     }
 

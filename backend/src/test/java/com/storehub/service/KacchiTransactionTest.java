@@ -70,6 +70,8 @@ class KacchiTransactionTest {
     @Autowired
     private InventoryRepository inventoryRepository;
     @Autowired
+    private StoreService storeService;
+    @Autowired
     private StockHistoryRepository stockHistoryRepository;
     @Autowired
     private CustomerLedgerEntryRepository customerLedgerEntryRepository;
@@ -96,7 +98,7 @@ class KacchiTransactionTest {
         Product product = productRepository.save(Product.builder()
                 .name("Kacchi Test Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE).build());
-        inventoryRepository.save(Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 
@@ -155,7 +157,7 @@ class KacchiTransactionTest {
     void kacchiSaleSameState_calculatesGstAndExcludesReporting() {
         Customer customer = newCustomer();
         Product product = newProduct(new BigDecimal("10000"), 10);
-        int stockBefore = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockBefore = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         SaleResponse response = saleService.createSale(kacchiSaleRequest(customer.getId(), product.getId(), TaxMode.INTRA_STATE, false));
 
@@ -167,7 +169,7 @@ class KacchiTransactionTest {
         assertThat(response.isGstReportingApplicable()).isFalse();
         assertThat(response.getTransactionType()).isEqualTo(TransactionType.SALE_CHALLAN);
 
-        int stockAfter = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfter = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfter).isEqualTo(stockBefore - 1);
 
         BigDecimal outstanding = customerLedgerEntryRepository.getOutstandingForCustomer(customer.getId());
@@ -203,7 +205,7 @@ class KacchiTransactionTest {
     void kacchiPurchaseSameState_calculatesGstAndExcludesReporting() {
         Supplier supplier = newSupplier();
         Product product = newProduct(new BigDecimal("20000"), 0);
-        int stockBefore = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockBefore = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         PurchaseResponse response = purchaseService.createPurchase(kacchiPurchaseRequest(supplier.getId(), product.getId(), TaxMode.INTRA_STATE, false));
 
@@ -214,7 +216,7 @@ class KacchiTransactionTest {
         assertThat(response.getTotalAmount()).isEqualByComparingTo("23600.00");
         assertThat(response.isGstReportingApplicable()).isFalse();
 
-        int stockAfter = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfter = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfter).isEqualTo(stockBefore + 1);
 
         BigDecimal outstanding = supplierLedgerEntryRepository.getOutstandingForSupplier(supplier.getId());
@@ -247,7 +249,7 @@ class KacchiTransactionTest {
     void draftKacchiSale_hasNoStockLedgerOrAccountingEffects() {
         Customer customer = newCustomer();
         Product product = newProduct(new BigDecimal("10000"), 10);
-        int stockBefore = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockBefore = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         SaleResponse response = saleService.createSale(kacchiSaleRequest(customer.getId(), product.getId(), TaxMode.INTRA_STATE, true));
 
@@ -255,7 +257,7 @@ class KacchiTransactionTest {
         // GST is still fully calculated even though nothing is posted yet.
         assertThat(response.getTotalAmount()).isEqualByComparingTo("11800.00");
 
-        int stockAfter = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfter = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfter).isEqualTo(stockBefore);
 
         assertThat(customerLedgerEntryRepository.getOutstandingForCustomer(customer.getId())).isEqualByComparingTo("0");
@@ -269,15 +271,15 @@ class KacchiTransactionTest {
     void cancelKacchiSale_reversesStockLedgerAndAccounting() {
         Customer customer = newCustomer();
         Product product = newProduct(new BigDecimal("10000"), 10);
-        int stockBefore = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockBefore = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         SaleResponse response = saleService.createSale(kacchiSaleRequest(customer.getId(), product.getId(), TaxMode.INTRA_STATE, false));
-        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfterSale).isEqualTo(stockBefore - 1);
 
         saleService.cancelSale(response.getId());
 
-        int stockAfterCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterCancel = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfterCancel).isEqualTo(stockBefore);
 
         List<JournalHeader> journals = journalHeaderRepository.findAll().stream()
@@ -296,15 +298,15 @@ class KacchiTransactionTest {
     void cancelKacchiPurchase_reversesStockLedgerAndAccounting() {
         Supplier supplier = newSupplier();
         Product product = newProduct(new BigDecimal("20000"), 0);
-        int stockBefore = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockBefore = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         PurchaseResponse response = purchaseService.createPurchase(kacchiPurchaseRequest(supplier.getId(), product.getId(), TaxMode.INTRA_STATE, false));
-        int stockAfterPurchase = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterPurchase = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfterPurchase).isEqualTo(stockBefore + 1);
 
         purchaseService.cancelPurchase(response.getId());
 
-        int stockAfterCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterCancel = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfterCancel).isEqualTo(stockBefore);
 
         List<JournalHeader> journals = journalHeaderRepository.findAll().stream()

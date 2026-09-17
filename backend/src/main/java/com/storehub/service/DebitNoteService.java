@@ -55,18 +55,24 @@ public class DebitNoteService {
     private final LedgerService ledgerService;
     private final GstTransactionSyncService gstTransactionSyncService;
     private final AuditService auditService;
+    private final StoreAccessService storeAccessService;
 
     @Transactional(readOnly = true)
-    public PagedResponse<DebitNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, int page, int size) {
+    public PagedResponse<DebitNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<DebitNoteResponse> result = debitNoteRepository.search(search, status, fromDate, toDate, pageable)
+        Page<DebitNoteResponse> result = debitNoteRepository.search(search, status, fromDate, toDate, resolvedStoreId, pageable)
                 .map(DebitNoteResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A debit note belongs to its source purchase's store — never returned to a caller without access to it (Multi-Store spec section 14). */
     @Transactional(readOnly = true)
     public DebitNoteResponse getById(Long id) {
-        return DebitNoteResponse.fromEntity(findOrThrow(id));
+        DebitNote note = findOrThrow(id);
+        Long storeId = note.getSourcePurchase().getStore() != null ? note.getSourcePurchase().getStore().getId() : null;
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), storeId);
+        return DebitNoteResponse.fromEntity(note);
     }
 
     @Transactional
@@ -163,7 +169,8 @@ public class DebitNoteService {
 
         auditService.log(com.storehub.entity.AuditAction.CREATE, "PURCHASE", "DebitNote", saved.getId(),
                 saved.getVoucherNumber(), null, null,
-                "Debit Note " + saved.getVoucherNumber() + " created against purchase " + purchase.getPurchaseNumber());
+                "Debit Note " + saved.getVoucherNumber() + " created against purchase " + purchase.getPurchaseNumber(),
+                purchase.getStore() != null ? purchase.getStore().getId() : null);
 
         if (request.isPost()) {
             return post(saved.getId());
@@ -189,13 +196,19 @@ public class DebitNoteService {
         addIfPositive(lines, SystemAccountCode.INPUT_SGST, note.getSgstAmount(), false);
         addIfPositive(lines, SystemAccountCode.INPUT_IGST, note.getIgstAmount(), false);
 
+        Long storeId = note.getSourcePurchase().getStore() != null ? note.getSourcePurchase().getStore().getId() : null;
         accountingService.postJournal(VoucherType.DEBIT_NOTE, note.getId(), note.getVoucherNumber(),
-                note.getNoteDate(), "Debit Note " + note.getVoucherNumber(), lines);
+                note.getNoteDate(), "Debit Note " + note.getVoucherNumber(), lines, storeId);
 
         if (note.getStockImpact() == StockImpactType.STOCK_RETURN) {
             for (DebitNoteItem item : note.getItems()) {
-                inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(), com.storehub.entity.StockMovementType.PURCHASE_RETURN,
-                        ReferenceType.DEBIT_NOTE, note.getId(), "Purchase return: Debit Note " + note.getVoucherNumber());
+                if (storeId != null) {
+                    inventoryService.applyMovement(item.getProduct().getId(), storeId, -item.getQuantity(), com.storehub.entity.StockMovementType.PURCHASE_RETURN,
+                            ReferenceType.DEBIT_NOTE, note.getId(), "Purchase return: Debit Note " + note.getVoucherNumber());
+                } else {
+                    inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(), com.storehub.entity.StockMovementType.PURCHASE_RETURN,
+                            ReferenceType.DEBIT_NOTE, note.getId(), "Purchase return: Debit Note " + note.getVoucherNumber());
+                }
             }
         }
 
@@ -211,7 +224,7 @@ public class DebitNoteService {
 
         auditService.log(com.storehub.entity.AuditAction.POST, "PURCHASE", "DebitNote", posted.getId(),
                 posted.getVoucherNumber(), null, null,
-                "Debit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied");
+                "Debit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied", storeId);
         return DebitNoteResponse.fromEntity(posted);
     }
 
@@ -226,9 +239,15 @@ public class DebitNoteService {
         if (note.getStatus() == NoteStatus.POSTED) {
             accountingService.reverseJournal(VoucherType.DEBIT_NOTE, note.getId(), reason);
             if (note.getStockImpact() == StockImpactType.STOCK_RETURN) {
+                Long storeId = note.getSourcePurchase().getStore() != null ? note.getSourcePurchase().getStore().getId() : null;
                 for (DebitNoteItem item : note.getItems()) {
-                    inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
-                            ReferenceType.DEBIT_NOTE, note.getId(), reason);
+                    if (storeId != null) {
+                        inventoryService.applyMovement(item.getProduct().getId(), storeId, item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
+                                ReferenceType.DEBIT_NOTE, note.getId(), reason);
+                    } else {
+                        inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
+                                ReferenceType.DEBIT_NOTE, note.getId(), reason);
+                    }
                 }
             }
             ledgerService.reverseDebitNoteEntry(note, reason);
@@ -241,7 +260,8 @@ public class DebitNoteService {
         DebitNote cancelled = debitNoteRepository.save(note);
 
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "DebitNote", cancelled.getId(),
-                cancelled.getVoucherNumber(), null, null, reason);
+                cancelled.getVoucherNumber(), null, null, reason,
+                cancelled.getSourcePurchase().getStore() != null ? cancelled.getSourcePurchase().getStore().getId() : null);
         return DebitNoteResponse.fromEntity(cancelled);
     }
 

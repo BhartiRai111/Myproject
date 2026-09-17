@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { AlertTriangle, ArrowUpCircle, Boxes, Download, Eye, History, MoreHorizontal, Package, PackageX, RotateCw, Search, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, ArrowUpCircle, Boxes, Download, Eye, History, MoreHorizontal, Package, PackageX, RotateCw, Search, SlidersHorizontal } from 'lucide-react';
 import { inventoryApi } from '../api/inventoryApi';
 import { categoryApi } from '../api/categoryApi';
 import InventoryViewModal from '../components/InventoryViewModal';
@@ -91,7 +92,8 @@ function SummaryCardSkeleton() {
 }
 
 export default function InventoryPage() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, myStores } = useAuth();
   const canManage = user?.role === 'ADMIN' || user?.role === 'STORE_MANAGER';
 
   const [items, setItems] = useState<Inventory[]>([]);
@@ -109,6 +111,7 @@ export default function InventoryPage() {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [storeFilter, setStoreFilter] = useState('');
   const [stockStatusFilter, setStockStatusFilter] = useState<StockStatus | ''>('');
   const [sort, setSort] = useState('updatedAt-desc');
   const [page, setPage] = useState(0);
@@ -133,7 +136,7 @@ export default function InventoryPage() {
   const loadSummary = async () => {
     setSummaryLoading(true);
     try {
-      const res = await inventoryApi.getSummary();
+      const res = await inventoryApi.getSummary(storeFilter ? Number(storeFilter) : undefined);
       setSummary(res.data);
     } catch (err) {
       toast.error(parseApiError(err, 'Failed to load inventory summary').message);
@@ -148,6 +151,7 @@ export default function InventoryPage() {
       const res = await inventoryApi.list({
         search,
         categoryId: categoryFilter ? Number(categoryFilter) : undefined,
+        storeId: storeFilter ? Number(storeFilter) : undefined,
         stockStatus: stockStatusFilter || undefined,
         page,
         size: PAGE_SIZE,
@@ -165,13 +169,17 @@ export default function InventoryPage() {
 
   useEffect(() => {
     loadCategories();
-    loadSummary();
   }, []);
+
+  useEffect(() => {
+    loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeFilter]);
 
   useEffect(() => {
     loadInventory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, categoryFilter, stockStatusFilter, sortBy, sortDir]);
+  }, [page, categoryFilter, storeFilter, stockStatusFilter, sortBy, sortDir]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,6 +199,7 @@ export default function InventoryPage() {
       const res = await inventoryApi.exportCsv({
         search,
         categoryId: categoryFilter ? Number(categoryFilter) : undefined,
+        storeId: storeFilter ? Number(storeFilter) : undefined,
         stockStatus: stockStatusFilter || undefined,
       });
       downloadBlob(res.data, `inventory-${new Date().toISOString().slice(0, 10)}.csv`);
@@ -217,6 +226,9 @@ export default function InventoryPage() {
         description="Track current stock levels and stock movements across your catalog."
         actions={
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate('/inventory/stock-transfers')}>
+              <ArrowLeftRight className="h-4 w-4" /> Stock Transfers
+            </Button>
             <Button variant="outline" loading={exporting} onClick={handleExport}>
               <Download className="h-4 w-4" /> Export
             </Button>
@@ -247,6 +259,27 @@ export default function InventoryPage() {
             />
           </form>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:shrink-0">
+            {myStores.length > 1 && (
+              <Select
+                value={storeFilter || ALL}
+                onValueChange={(v) => {
+                  setPage(0);
+                  setStoreFilter(v === ALL ? '' : v);
+                }}
+              >
+                <SelectTrigger className="w-full lg:w-36">
+                  <SelectValue placeholder="Store" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All Stores</SelectItem>
+                  {myStores.map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {s.storeName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select
               value={categoryFilter || ALL}
               onValueChange={(v) => {
@@ -307,6 +340,7 @@ export default function InventoryPage() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
+                {myStores.length > 1 && <TableHead>Store</TableHead>}
                 <TableHead>Category</TableHead>
                 <TableHead className="text-right">Current Stock</TableHead>
                 <TableHead className="text-right">Minimum Stock</TableHead>
@@ -317,13 +351,16 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             {loading ? (
-              <TableSkeleton columns={9} />
+              <TableSkeleton columns={myStores.length > 1 ? 10 : 9} />
             ) : (
               <TableBody>
                 {items.map((inv) => (
                   <TableRow key={inv.id}>
                     <TableCell className="font-medium">{inv.productName}</TableCell>
                     <TableCell className="text-muted-foreground">{inv.sku || '—'}</TableCell>
+                    {myStores.length > 1 && (
+                      <TableCell className="text-muted-foreground">{inv.storeName || '—'}</TableCell>
+                    )}
                     <TableCell>{inv.categoryName || '—'}</TableCell>
                     <TableCell className="text-right font-medium">{inv.currentStock}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{inv.minStockLevel}</TableCell>

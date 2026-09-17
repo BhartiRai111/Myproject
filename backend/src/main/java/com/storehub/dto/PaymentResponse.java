@@ -20,6 +20,9 @@ public class PaymentResponse {
     private String paymentNumber;
     private LocalDate paymentDate;
     private SupplierResponse supplier;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private BigDecimal amount;
     private PaymentMode paymentMode;
     private String remarks;
@@ -33,6 +36,9 @@ public class PaymentResponse {
                 .paymentNumber(payment.getPaymentNumber())
                 .paymentDate(payment.getPaymentDate())
                 .supplier(payment.getSupplier() != null ? SupplierResponse.fromEntity(payment.getSupplier()) : null)
+                .storeId(payment.getStore() != null ? payment.getStore().getId() : null)
+                .storeName(payment.getStore() != null ? payment.getStore().getStoreName() : null)
+                .storeCode(payment.getStore() != null ? payment.getStore().getStoreCode() : null)
                 .amount(payment.getAmount())
                 .paymentMode(payment.getPaymentMode())
                 .remarks(payment.getRemarks())

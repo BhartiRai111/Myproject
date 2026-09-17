@@ -15,12 +15,14 @@ import com.storehub.dto.ReconciliationRow;
 import com.storehub.dto.TaxRateSummaryReportResponse;
 import com.storehub.dto.TaxRateSummaryRow;
 import com.storehub.entity.GstTransaction;
+import com.storehub.entity.User;
 import com.storehub.entity.VoucherType;
 import com.storehub.repository.GstTransactionRepository;
 import com.storehub.repository.PurchaseItemRepository;
 import com.storehub.repository.PurchaseRepository;
 import com.storehub.repository.SaleItemRepository;
 import com.storehub.repository.SaleRepository;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,10 +62,17 @@ public class GstReportingService {
     private final PurchaseItemRepository purchaseItemRepository;
     private final SaleRepository saleRepository;
     private final PurchaseRepository purchaseRepository;
+    private final StoreAccessService storeAccessService;
+
+    private Long resolveStoreId(Long requestedStoreId) {
+        User currentUser = SecurityUtil.currentUserOrNull();
+        return storeAccessService.resolveViewableStoreId(currentUser, requestedStoreId);
+    }
 
     @Transactional(readOnly = true)
-    public Gstr1Response gstr1(LocalDate fromDate, LocalDate toDate, String returnPeriod) {
-        List<GstTransaction> transactions = gstTransactionRepository.findActiveForSummary(VoucherType.SALE, returnPeriod, fromDate, toDate);
+    public Gstr1Response gstr1(LocalDate fromDate, LocalDate toDate, String returnPeriod, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        List<GstTransaction> transactions = gstTransactionRepository.findActiveForSummary(VoucherType.SALE, returnPeriod, fromDate, toDate, resolvedStoreId);
 
         List<GstTransactionRow> b2b = new ArrayList<>();
         List<GstTransactionRow> b2c = new ArrayList<>();
@@ -76,8 +85,8 @@ public class GstReportingService {
             }
         }
 
-        List<HsnSummaryRow> hsnSummary = mapHsnRows(saleItemRepository.hsnSummary(fromDate, toDate));
-        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, fromDate, toDate));
+        List<HsnSummaryRow> hsnSummary = mapHsnRows(saleItemRepository.hsnSummary(fromDate, toDate, resolvedStoreId));
+        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, fromDate, toDate, resolvedStoreId));
 
         return Gstr1Response.builder()
                 .returnPeriod(returnPeriod)
@@ -93,33 +102,36 @@ public class GstReportingService {
     }
 
     @Transactional(readOnly = true)
-    public TaxRateSummaryReportResponse taxRateSummary(LocalDate fromDate, LocalDate toDate) {
+    public TaxRateSummaryReportResponse taxRateSummary(LocalDate fromDate, LocalDate toDate, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
         return TaxRateSummaryReportResponse.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
-                .outward(mapTaxRateRows(saleItemRepository.taxRateSummary(fromDate, toDate)))
-                .inward(mapTaxRateRows(purchaseItemRepository.taxRateSummary(fromDate, toDate)))
+                .outward(mapTaxRateRows(saleItemRepository.taxRateSummary(fromDate, toDate, resolvedStoreId)))
+                .inward(mapTaxRateRows(purchaseItemRepository.taxRateSummary(fromDate, toDate, resolvedStoreId)))
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public HsnSummaryReportResponse hsnSummary(LocalDate fromDate, LocalDate toDate) {
+    public HsnSummaryReportResponse hsnSummary(LocalDate fromDate, LocalDate toDate, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
         return HsnSummaryReportResponse.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
-                .outward(mapHsnRows(saleItemRepository.hsnSummary(fromDate, toDate)))
-                .inward(mapHsnRows(purchaseItemRepository.hsnSummary(fromDate, toDate)))
+                .outward(mapHsnRows(saleItemRepository.hsnSummary(fromDate, toDate, resolvedStoreId)))
+                .inward(mapHsnRows(purchaseItemRepository.hsnSummary(fromDate, toDate, resolvedStoreId)))
                 .build();
     }
 
     /** Purchase GST Report: every ACTIVE, GST-reportable purchase with its ITC eligibility status. */
     @Transactional(readOnly = true)
-    public PurchaseGstReportResponse purchaseGstReport(LocalDate fromDate, LocalDate toDate, String returnPeriod, Pageable pageable) {
-        Page<GstTransaction> page = gstTransactionRepository.search(VoucherType.PURCHASE, returnPeriod, fromDate, toDate, null, pageable);
+    public PurchaseGstReportResponse purchaseGstReport(LocalDate fromDate, LocalDate toDate, String returnPeriod, Long storeId, Pageable pageable) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        Page<GstTransaction> page = gstTransactionRepository.search(VoucherType.PURCHASE, returnPeriod, fromDate, toDate, null, resolvedStoreId, pageable);
         Page<GstTransactionRow> rows = page.map(txn -> toRow(txn, txn.isB2b()));
 
-        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.PURCHASE, returnPeriod, fromDate, toDate));
-        GstSummaryTotals itcTotals = aggregate(gstTransactionRepository.aggregateB2bTotals(VoucherType.PURCHASE, returnPeriod, fromDate, toDate));
+        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.PURCHASE, returnPeriod, fromDate, toDate, resolvedStoreId));
+        GstSummaryTotals itcTotals = aggregate(gstTransactionRepository.aggregateB2bTotals(VoucherType.PURCHASE, returnPeriod, fromDate, toDate, resolvedStoreId));
 
         return PurchaseGstReportResponse.builder()
                 .returnPeriod(returnPeriod)
@@ -132,10 +144,11 @@ public class GstReportingService {
     }
 
     @Transactional(readOnly = true)
-    public GstReportListResponse outputGstReport(LocalDate fromDate, LocalDate toDate, Pageable pageable) {
-        Page<GstTransaction> page = gstTransactionRepository.search(VoucherType.SALE, null, fromDate, toDate, null, pageable);
+    public GstReportListResponse outputGstReport(LocalDate fromDate, LocalDate toDate, Long storeId, Pageable pageable) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        Page<GstTransaction> page = gstTransactionRepository.search(VoucherType.SALE, null, fromDate, toDate, null, resolvedStoreId, pageable);
         Page<GstTransactionRow> rows = page.map(txn -> toRow(txn, null));
-        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, null, fromDate, toDate));
+        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, null, fromDate, toDate, resolvedStoreId));
         return GstReportListResponse.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
@@ -148,10 +161,11 @@ public class GstReportingService {
     private static final List<VoucherType> INPUT_GST_TYPES = List.of(VoucherType.PURCHASE, VoucherType.EXPENSE);
 
     @Transactional(readOnly = true)
-    public GstReportListResponse inputGstReport(LocalDate fromDate, LocalDate toDate, Pageable pageable) {
-        Page<GstTransaction> page = gstTransactionRepository.searchByTypes(INPUT_GST_TYPES, null, fromDate, toDate, pageable);
+    public GstReportListResponse inputGstReport(LocalDate fromDate, LocalDate toDate, Long storeId, Pageable pageable) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        Page<GstTransaction> page = gstTransactionRepository.searchByTypes(INPUT_GST_TYPES, null, fromDate, toDate, resolvedStoreId, pageable);
         Page<GstTransactionRow> rows = page.map(txn -> toRow(txn, txn.isB2b()));
-        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotalsByTypes(INPUT_GST_TYPES, null, fromDate, toDate));
+        GstSummaryTotals totals = aggregate(gstTransactionRepository.aggregateTotalsByTypes(INPUT_GST_TYPES, null, fromDate, toDate, resolvedStoreId));
         return GstReportListResponse.builder()
                 .fromDate(fromDate)
                 .toDate(toDate)
@@ -162,9 +176,10 @@ public class GstReportingService {
 
     /** GSTR-3B summary for a return period: outward supplies, Input Tax Credit (ITC-eligible Purchase + Expense rows), and net liability. */
     @Transactional(readOnly = true)
-    public Gstr3bResponse gstr3bSummary(String returnPeriod) {
-        GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null));
-        GstSummaryTotals itc = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null));
+    public Gstr3bResponse gstr3bSummary(String returnPeriod, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null, resolvedStoreId));
+        GstSummaryTotals itc = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null, resolvedStoreId));
         GstSummaryTotals net = netOf(outward, itc);
 
         return Gstr3bResponse.builder()
@@ -178,9 +193,10 @@ public class GstReportingService {
 
     /** Same underlying math as {@link #gstr3bSummary}, in the output/input/net layout of the GST Liability page. */
     @Transactional(readOnly = true)
-    public GstLiabilityResponse gstLiability(String returnPeriod) {
-        GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null));
-        GstSummaryTotals input = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null));
+    public GstLiabilityResponse gstLiability(String returnPeriod, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
+        GstSummaryTotals outward = aggregate(gstTransactionRepository.aggregateTotals(VoucherType.SALE, returnPeriod, null, null, resolvedStoreId));
+        GstSummaryTotals input = aggregate(gstTransactionRepository.aggregateB2bTotalsByTypes(INPUT_GST_TYPES, returnPeriod, null, null, resolvedStoreId));
 
         return GstLiabilityResponse.builder()
                 .returnPeriod(returnPeriod)
@@ -206,18 +222,19 @@ public class GstReportingService {
      * (source_transaction_type, source_transaction_id) makes a true duplicate row impossible in practice.
      */
     @Transactional(readOnly = true)
-    public ReconciliationResponse reconciliation(LocalDate fromDate, LocalDate toDate) {
+    public ReconciliationResponse reconciliation(LocalDate fromDate, LocalDate toDate, Long storeId) {
+        Long resolvedStoreId = resolveStoreId(storeId);
         List<ReconciliationRow> rows = new ArrayList<>();
         long matched = 0;
         long mismatched = 0;
         long missing = 0;
 
-        matched += reconcileSide(VoucherType.SALE, saleRepository.findEligibleForReconciliation(fromDate, toDate), rows);
+        matched += reconcileSide(VoucherType.SALE, saleRepository.findEligibleForReconciliation(fromDate, toDate, resolvedStoreId), rows);
         mismatched += rows.stream().filter(r -> "MISMATCHED".equals(r.getStatus()) && r.getSourceTransactionType() == VoucherType.SALE).count();
         missing += rows.stream().filter(r -> "MISSING".equals(r.getStatus()) && r.getSourceTransactionType() == VoucherType.SALE).count();
 
         int beforePurchase = rows.size();
-        reconcileSide(VoucherType.PURCHASE, purchaseRepository.findEligibleForReconciliation(fromDate, toDate), rows);
+        reconcileSide(VoucherType.PURCHASE, purchaseRepository.findEligibleForReconciliation(fromDate, toDate, resolvedStoreId), rows);
         for (int i = beforePurchase; i < rows.size(); i++) {
             ReconciliationRow r = rows.get(i);
             if ("MATCHED".equals(r.getStatus())) {

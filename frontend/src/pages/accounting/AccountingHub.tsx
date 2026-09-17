@@ -17,11 +17,13 @@ import {
   ArrowRight,
   CreditCard,
   CalendarCheck,
+  Building2,
 } from 'lucide-react';
 import { accountingReportApi } from '../../api/accountingApi';
 import { salesSummaryApi } from '../../api/salesSummaryApi';
 import { purchaseSummaryApi } from '../../api/purchaseSummaryApi';
 import { AccountingDashboardSummary } from '../../types/accounting';
+import { useAuth } from '../../context/AuthContext';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +33,7 @@ const money = (n: number) => `₹${(n ?? 0).toLocaleString('en-IN', { minimumFra
 
 export default function AccountingHub() {
   const navigate = useNavigate();
+  const { myStores } = useAuth();
   const [summary, setSummary] = useState<AccountingDashboardSummary | null>(null);
   const [totalSales, setTotalSales] = useState<number | null>(null);
   const [totalPurchase, setTotalPurchase] = useState<number | null>(null);
@@ -210,6 +213,17 @@ export default function AccountingHub() {
       icon: ShieldCheck,
       path: '/accounting/reports/health-check',
     },
+    ...(myStores.length > 1
+      ? [
+          {
+            key: 'store-comparison',
+            title: 'Store Comparison',
+            description: 'Sales, purchases and stock position side-by-side across every store you can access.',
+            icon: Building2,
+            path: '/accounting/reports/store-comparison',
+          },
+        ]
+      : []),
   ];
 
   return (

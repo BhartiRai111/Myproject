@@ -1,6 +1,7 @@
 package com.storehub.controller;
 
 import com.storehub.dto.AdminPasswordResetRequest;
+import com.storehub.dto.AssignStoresRequest;
 import com.storehub.dto.PagedResponse;
 import com.storehub.dto.PasswordChangeRequest;
 import com.storehub.dto.UserCreateRequest;
@@ -20,6 +21,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -70,6 +72,17 @@ public class UserController {
     @PostMapping("/{id}/reset-password")
     public ResponseEntity<UserResponse> resetPassword(@PathVariable Long id, @Valid @RequestBody AdminPasswordResetRequest request) {
         return ResponseEntity.ok(userService.adminResetPassword(id, request));
+    }
+
+    /** ADMIN-only (class-level guard): a user's assigned-store list (Multi-Store spec sections 11, 70). */
+    @GetMapping("/{id}/stores")
+    public ResponseEntity<List<Long>> getAssignedStores(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getAssignedStoreIds(id));
+    }
+
+    @PutMapping("/{id}/stores")
+    public ResponseEntity<UserResponse> assignStores(@PathVariable Long id, @Valid @RequestBody AssignStoresRequest request) {
+        return ResponseEntity.ok(userService.assignStores(id, request.getStoreIds()));
     }
 
     /**

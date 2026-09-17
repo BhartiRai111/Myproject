@@ -20,12 +20,14 @@ public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
             "AND (:customerId IS NULL OR c.id = :customerId) " +
             "AND (:status IS NULL OR o.status = :status) " +
             "AND (:fromDate IS NULL OR o.orderDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR o.orderDate <= :toDate)")
+            "AND (:toDate IS NULL OR o.orderDate <= :toDate) " +
+            "AND (:storeId IS NULL OR o.store.id = :storeId)")
     Page<SalesOrder> search(@Param("search") String search,
                              @Param("customerId") Long customerId,
                              @Param("status") SalesOrderStatus status,
                              @Param("fromDate") LocalDate fromDate,
                              @Param("toDate") LocalDate toDate,
+                             @Param("storeId") Long storeId,
                              Pageable pageable);
 
     long countByStatusIn(java.util.Collection<SalesOrderStatus> statuses);

@@ -23,7 +23,8 @@ public enum VoucherDocType {
     CREDIT_NOTE("CN"),
     DEBIT_NOTE("DN"),
     EXPENSE("EXP"),
-    CASH_TRANSACTION("CT");
+    CASH_TRANSACTION("CT"),
+    STOCK_TRANSFER("ST");
 
     private final String prefix;
 

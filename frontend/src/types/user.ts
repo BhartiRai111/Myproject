@@ -29,6 +29,9 @@ export interface User {
   employeeId?: number | null;
   employeeName?: string | null;
   employeeCode?: string | null;
+  currentStoreId?: number | null;
+  currentStoreName?: string | null;
+  currentStoreCode?: string | null;
   mustChangePassword: boolean;
   lastLogin?: string | null;
   createdAt: string;

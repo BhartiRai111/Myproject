@@ -17,6 +17,9 @@ public class ExpenseCreateRequest {
     @NotNull(message = "Expense date is required")
     private LocalDate expenseDate;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     /** Preferred: a master ExpenseCategory id. When set, its name is snapshotted into the legacy {@code category} string. */
     private Long categoryId;
 

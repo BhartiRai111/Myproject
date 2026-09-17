@@ -28,9 +28,10 @@ public class ReceiptController {
             @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(receiptService.search(search, customerId, fromDate, toDate, page, size));
+        return ResponseEntity.ok(receiptService.search(search, customerId, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/{id}")

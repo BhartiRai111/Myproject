@@ -55,6 +55,12 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED")
     long countByDateRange(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 
+    /** Store-scoped counterpart for the Store Comparison report (Multi-Store spec section 21). */
+    @Query("SELECT COALESCE(SUM(s.totalAmount), 0), COUNT(s) FROM Sale s WHERE s.saleDate BETWEEN :fromDate AND :toDate " +
+            "AND s.status <> com.storehub.entity.SaleStatus.CANCELLED AND s.store.id = :storeId")
+    List<Object[]> sumAndCountByDateRangeAndStore(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+                                                   @Param("storeId") Long storeId);
+
     @Query("SELECT s FROM Sale s LEFT JOIN s.customer c WHERE " +
             "(:search IS NULL OR :search = '' OR " +
             "  LOWER(s.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -64,13 +70,15 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             "AND (:status IS NULL OR s.status = :status) " +
             "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
             "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
-            "AND (:transactionType IS NULL OR s.transactionType = :transactionType)")
+            "AND (:transactionType IS NULL OR s.transactionType = :transactionType) " +
+            "AND (:storeId IS NULL OR s.store.id = :storeId)")
     Page<Sale> search(@Param("search") String search,
                        @Param("paymentStatus") PaymentStatus paymentStatus,
                        @Param("status") SaleStatus status,
                        @Param("fromDate") LocalDate fromDate,
                        @Param("toDate") LocalDate toDate,
                        @Param("transactionType") TransactionType transactionType,
+                       @Param("storeId") Long storeId,
                        Pageable pageable);
 
     /**
@@ -83,6 +91,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
             "AND s.gstReportingApplicable = true " +
             "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
             "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
+            "AND (:storeId IS NULL OR s.store.id = :storeId) " +
             "ORDER BY s.saleDate ASC, s.id ASC")
-    List<Object[]> findEligibleForReconciliation(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+    List<Object[]> findEligibleForReconciliation(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, @Param("storeId") Long storeId);
 }

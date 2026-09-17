@@ -24,6 +24,9 @@ public class PurchaseResponse {
     private Long id;
     private String purchaseNumber;
     private SupplierResponse supplier;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private LocalDate purchaseDate;
     private List<PurchaseItemResponse> items;
     private BigDecimal subtotalAmount;
@@ -79,6 +82,9 @@ public class PurchaseResponse {
                 .id(purchase.getId())
                 .purchaseNumber(purchase.getPurchaseNumber())
                 .supplier(SupplierResponse.fromEntity(purchase.getSupplier()))
+                .storeId(purchase.getStore() != null ? purchase.getStore().getId() : null)
+                .storeName(purchase.getStore() != null ? purchase.getStore().getStoreName() : null)
+                .storeCode(purchase.getStore() != null ? purchase.getStore().getStoreCode() : null)
                 .purchaseDate(purchase.getPurchaseDate())
                 .items(items)
                 .subtotalAmount(subtotalAmount)

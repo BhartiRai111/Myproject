@@ -40,6 +40,11 @@ public class Expense {
     @Column(name = "expense_date", nullable = false)
     private LocalDate expenseDate;
 
+    /** Which store this expense belongs to (Multi-Store spec section 26) — fixed at creation. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(nullable = false, length = 100)
     private String category;
 

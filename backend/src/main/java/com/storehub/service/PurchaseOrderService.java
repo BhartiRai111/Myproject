@@ -8,12 +8,16 @@ import com.storehub.entity.Product;
 import com.storehub.entity.PurchaseOrder;
 import com.storehub.entity.PurchaseOrderItem;
 import com.storehub.entity.PurchaseOrderStatus;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.PurchaseOrderNotFoundException;
 import com.storehub.repository.PurchaseOrderItemRepository;
 import com.storehub.repository.PurchaseOrderRepository;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -37,18 +41,24 @@ public class PurchaseOrderService {
     private final ProductService productService;
     private final SupplierService supplierService;
     private final VoucherNumberService voucherNumberService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<PurchaseOrderResponse> search(String search, Long supplierId, PurchaseOrderStatus status,
-                                                         LocalDate fromDate, LocalDate toDate, int page, int size) {
+                                                         LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<PurchaseOrderResponse> result = purchaseOrderRepository
-                .search(search, supplierId, status, fromDate, toDate, pageable)
+                .search(search, supplierId, status, fromDate, toDate, resolvedStoreId, pageable)
                 .map(PurchaseOrderResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A purchase order belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public PurchaseOrderResponse getById(Long id) {
-        return PurchaseOrderResponse.fromEntity(findOrThrow(id));
+        PurchaseOrder order = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), order.getStore() != null ? order.getStore().getId() : null);
+        return PurchaseOrderResponse.fromEntity(order);
     }
 
     @Transactional
@@ -58,8 +68,16 @@ public class PurchaseOrderService {
             throw new BadRequestException("Supplier '" + supplier.getName() + "' is inactive and cannot be used for new purchase orders");
         }
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot be used for new purchase orders");
+        }
+
         PurchaseOrder order = PurchaseOrder.builder()
                 .supplier(supplier)
+                .store(store)
                 .supplierPhone(request.getSupplierPhone())
                 .supplierGstin(request.getSupplierGstin())
                 .billingAddress(request.getBillingAddress())

@@ -243,7 +243,7 @@ class Step4ExpenseTest {
         assertThat(txn.isB2b()).isFalse(); // b2b doubles as "ITC eligible" for Expense rows
 
         String returnPeriod = LocalDate.now().toString().substring(0, 7);
-        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(returnPeriod);
+        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(returnPeriod, null);
         // The ITC-ineligible expense's 180 tax must not appear in the ITC total for this period.
         // (Other posted purchases/expenses in the same period from other tests may also contribute;
         // the assertion here is a floor, not an exact match, consistent with a shared-schema test suite.)

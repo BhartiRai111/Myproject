@@ -85,7 +85,7 @@ public class ProductService {
 
     public ProductResponse getProductById(Long id) {
         Product product = findProductOrThrow(id);
-        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(id), inventoryService.getMaxStockLevel(id),
+        return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(id), product.getMaxStockLevel(),
                 stockHistoryRepository.existsByProductId(id));
     }
 
@@ -172,13 +172,11 @@ public class ProductService {
                 .partyProductName(request.getPartyProductName())
                 .freeValue(request.getFreeValue())
                 .applicableProperty(request.getApplicableProperty())
+                .maxStockLevel(request.getMaxStockLevel())
                 .build();
 
         Product saved = productRepository.save(product);
         inventoryService.createInventoryForProduct(saved);
-        if (request.getMaxStockLevel() != null) {
-            inventoryService.updateMaxStockLevel(saved.getId(), request.getMaxStockLevel());
-        }
 
         auditService.log(AuditAction.CREATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
                 null, null, "Item '" + saved.getName() + "' (SKU " + saved.getSku() + ") created");
@@ -255,9 +253,9 @@ public class ProductService {
         product.setPartyProductName(request.getPartyProductName());
         product.setFreeValue(request.getFreeValue());
         product.setApplicableProperty(request.getApplicableProperty());
+        product.setMaxStockLevel(request.getMaxStockLevel());
 
         Product saved = productRepository.save(product);
-        inventoryService.updateMaxStockLevel(id, request.getMaxStockLevel());
 
         if (skuChanging) {
             auditService.log(AuditAction.UPDATE, "ITEM_MASTER", "Product", saved.getId(), saved.getSku(),
@@ -317,7 +315,7 @@ public class ProductService {
             throw new BadRequestException("Item '" + product.getName() + "' is inactive and cannot be used in new transactions");
         }
         return ProductResponse.fromEntity(product, inventoryService.getCurrentStock(product.getId()),
-                inventoryService.getMaxStockLevel(product.getId()), stockHistoryRepository.existsByProductId(product.getId()));
+                product.getMaxStockLevel(), stockHistoryRepository.existsByProductId(product.getId()));
     }
 
     /**
@@ -351,7 +349,6 @@ public class ProductService {
         List<Product> products = productRepository.search(search, categoryId, status, Sort.by("name").ascending());
         List<Long> productIds = products.stream().map(Product::getId).toList();
         Map<Long, Integer> stockByProductId = inventoryService.getCurrentStockBulk(productIds);
-        Map<Long, Integer> maxStockByProductId = inventoryService.getMaxStockLevelBulk(productIds);
 
         StringBuilder csv = new StringBuilder();
         csv.append(CsvUtil.row(EXPORT_HEADER.toArray()));
@@ -359,7 +356,7 @@ public class ProductService {
             csv.append(CsvUtil.row(
                     p.getName(), p.getSku(), p.getBarcode(), p.getCategory() != null ? p.getCategory().getName() : "",
                     p.getBrand(), p.getUnit(), p.getPurchasePrice(), p.getSellingPrice(), p.getTax(),
-                    p.getMinStockLevel(), p.getReorderLevel(), p.getReorderQuantity(), maxStockByProductId.get(p.getId()),
+                    p.getMinStockLevel(), p.getReorderLevel(), p.getReorderQuantity(), p.getMaxStockLevel(),
                     p.getMrp(), p.getWholesalePrice(), stockByProductId.getOrDefault(p.getId(), 0),
                     p.getStatus(), p.getDescription()));
         }
@@ -477,10 +474,10 @@ public class ProductService {
                     }
                     existing.setBarcode(barcode);
                     existing.setBarcodeType(BarcodeUtil.detectType(barcode));
-                    Product saved = productRepository.save(existing);
                     if (maxStockLevel != null) {
-                        inventoryService.updateMaxStockLevel(saved.getId(), maxStockLevel);
+                        existing.setMaxStockLevel(maxStockLevel);
                     }
+                    productRepository.save(existing);
                     updated++;
                 } else {
                     if (productRepository.existsByNameIgnoreCase(name.trim())) {
@@ -510,12 +507,10 @@ public class ProductService {
                             .mrp(mrp)
                             .wholesalePrice(wholesalePrice)
                             .description(blankToNull(description))
+                            .maxStockLevel(maxStockLevel)
                             .build();
                     Product saved = productRepository.save(product);
                     inventoryService.createInventoryForProduct(saved);
-                    if (maxStockLevel != null) {
-                        inventoryService.updateMaxStockLevel(saved.getId(), maxStockLevel);
-                    }
                     if (openingStock != null && openingStock > 0) {
                         inventoryService.applyMovement(saved.getId(), openingStock, StockMovementType.STOCK_IN,
                                 ReferenceType.MANUAL, null, "Opening stock via CSV import");

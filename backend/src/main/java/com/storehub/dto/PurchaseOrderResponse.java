@@ -21,6 +21,9 @@ public class PurchaseOrderResponse {
     private String orderNumber;
     private LocalDate orderDate;
     private SupplierResponse supplier;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private String supplierPhone;
     private String supplierGstin;
     private String billingAddress;
@@ -62,6 +65,9 @@ public class PurchaseOrderResponse {
                 .orderNumber(order.getOrderNumber())
                 .orderDate(order.getOrderDate())
                 .supplier(order.getSupplier() != null ? SupplierResponse.fromEntity(order.getSupplier()) : null)
+                .storeId(order.getStore() != null ? order.getStore().getId() : null)
+                .storeName(order.getStore() != null ? order.getStore().getStoreName() : null)
+                .storeCode(order.getStore() != null ? order.getStore().getStoreCode() : null)
                 .supplierPhone(order.getSupplierPhone())
                 .supplierGstin(order.getSupplierGstin())
                 .billingAddress(order.getBillingAddress())

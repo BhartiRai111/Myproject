@@ -164,7 +164,8 @@ class Step5UserRoleTest {
         // Structural guarantee: UserResponse has no password field at all, for any user.
         UserResponse response = UserResponse.fromEntity(target);
         assertThat(response).hasNoNullFieldsOrPropertiesExcept(
-                "employeeId", "employeeName", "employeeCode", "lastLogin");
+                "employeeId", "employeeName", "employeeCode", "lastLogin",
+                "currentStoreId", "currentStoreName", "currentStoreCode");
     }
 
     // ---- Scenario 6: admin password reset sets mustChangePassword, never requires the old password ----

@@ -18,13 +18,17 @@ import com.storehub.entity.SaleStatus;
 import com.storehub.entity.SalesOrder;
 import com.storehub.entity.SalesOrderItem;
 import com.storehub.entity.StockMovementType;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
 import com.storehub.entity.TransactionType;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.SaleNotFoundException;
 import com.storehub.repository.ReceiptAllocationRepository;
 import com.storehub.repository.SaleRepository;
 import com.storehub.repository.SalesOrderItemRepository;
 import com.storehub.util.GstinValidator;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -60,19 +64,24 @@ public class SaleService {
     private final VoucherNumberService voucherNumberService;
     private final AuditService auditService;
     private final GstCalculationService gstCalculationService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<SaleResponse> getSales(String search, PaymentStatus paymentStatus,
                                                  SaleStatus status, LocalDate fromDate, LocalDate toDate,
-                                                 TransactionType transactionType, int page, int size) {
+                                                 TransactionType transactionType, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<SaleResponse> result = saleRepository
-                .search(search, paymentStatus, status, fromDate, toDate, transactionType, pageable)
+                .search(search, paymentStatus, status, fromDate, toDate, transactionType, resolvedStoreId, pageable)
                 .map(SaleResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A sale belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public SaleResponse getSaleById(Long id) {
         Sale sale = findSaleOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), sale.getStore() != null ? sale.getStore().getId() : null);
         boolean hasReceipts = !receiptAllocationRepository.findBySaleId(id).isEmpty();
         return SaleResponse.fromEntity(sale, hasReceipts);
     }
@@ -104,6 +113,13 @@ public class SaleService {
                 ? salesOrderService.findOrThrow(request.getSalesOrderId())
                 : null;
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot be used for new sales");
+        }
+
         TransactionType type = request.getTransactionType() != null ? request.getTransactionType() : TransactionType.SALE;
         boolean draft = request.isSaveAsDraft();
         if (draft && type != TransactionType.SALE_CHALLAN) {
@@ -114,6 +130,7 @@ public class SaleService {
                 .clientRequestId(request.getClientRequestId() != null && !request.getClientRequestId().isBlank()
                         ? request.getClientRequestId() : null)
                 .customer(customer)
+                .store(store)
                 .saleDate(request.getSaleDate())
                 .status(draft ? SaleStatus.DRAFT : SaleStatus.COMPLETED)
                 .notes(request.getNotes())
@@ -159,7 +176,8 @@ public class SaleService {
         }
 
         auditService.log(com.storehub.entity.AuditAction.CREATE, "SALES", "Sale", saved.getId(), saved.getInvoiceNumber(),
-                null, null, "Sale " + saved.getInvoiceNumber() + (draft ? " saved as draft" : " created and posted"));
+                null, null, "Sale " + saved.getInvoiceNumber() + (draft ? " saved as draft" : " created and posted"),
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         boolean hasReceipts = !receiptAllocationRepository.findBySaleId(saved.getId()).isEmpty();
         return SaleResponse.fromEntity(saved, hasReceipts);
@@ -177,7 +195,7 @@ public class SaleService {
         }
 
         for (SaleItem item : sale.getItems()) {
-            int available = inventoryService.getCurrentStock(item.getProduct().getId());
+            int available = inventoryService.getCurrentStock(item.getProduct().getId(), sale.getStore().getId());
             if (item.getQuantity() > available) {
                 throw new BadRequestException("Insufficient stock for product '" + item.getProduct().getName()
                         + "': available " + available + ", requested " + item.getQuantity());
@@ -313,7 +331,8 @@ public class SaleService {
         Sale saved = saleRepository.save(sale);
 
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "Sale", saved.getId(), saved.getInvoiceNumber(),
-                null, null, "Sale " + saved.getInvoiceNumber() + " cancelled: stock, ledger, accounting and GST effects reversed");
+                null, null, "Sale " + saved.getInvoiceNumber() + " cancelled: stock, ledger, accounting and GST effects reversed",
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         return SaleResponse.fromEntity(saved, false);
     }
@@ -407,7 +426,7 @@ public class SaleService {
                 throw new BadRequestException("Product '" + product.getName() + "' is inactive and cannot be sold in new sales");
             }
 
-            int availableStock = inventoryService.getCurrentStock(product.getId());
+            int availableStock = inventoryService.getCurrentStock(product.getId(), sale.getStore().getId());
             if (itemRequest.getQuantity() > availableStock) {
                 throw new BadRequestException("Insufficient stock for product '" + product.getName() + "': available "
                         + availableStock + ", requested " + itemRequest.getQuantity());
@@ -466,7 +485,7 @@ public class SaleService {
     private void restoreStock(Sale sale, List<SaleItem> items) {
         String reason = "Sale cancelled: " + sale.getInvoiceNumber();
         for (SaleItem item : items) {
-            inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(),
+            inventoryService.applyMovement(item.getProduct().getId(), sale.getStore().getId(), item.getQuantity(),
                     StockMovementType.SALE_CANCEL, ReferenceType.SALE, sale.getId(), reason);
         }
     }
@@ -474,7 +493,7 @@ public class SaleService {
     private void deductStock(Sale sale, List<SaleItem> items) {
         String reason = "Sale " + sale.getInvoiceNumber();
         for (SaleItem item : items) {
-            inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(),
+            inventoryService.applyMovement(item.getProduct().getId(), sale.getStore().getId(), -item.getQuantity(),
                     StockMovementType.SALE, ReferenceType.SALE, sale.getId(), reason);
         }
     }

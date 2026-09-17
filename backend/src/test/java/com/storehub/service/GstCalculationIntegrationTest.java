@@ -84,6 +84,8 @@ class GstCalculationIntegrationTest {
     @Autowired
     private InventoryRepository inventoryRepository;
     @Autowired
+    private StoreService storeService;
+    @Autowired
     private SaleItemRepository saleItemRepository;
     @Autowired
     private PurchaseItemRepository purchaseItemRepository;
@@ -109,7 +111,7 @@ class GstCalculationIntegrationTest {
                 .name("GstCalc Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE)
                 .taxTreatment(treatment).build());
-        inventoryRepository.save(Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 

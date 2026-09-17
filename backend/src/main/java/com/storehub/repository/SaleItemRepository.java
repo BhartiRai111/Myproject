@@ -23,9 +23,10 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
             "AND s.gstReportingApplicable = true " +
             "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
             "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
+            "AND (:storeId IS NULL OR s.store.id = :storeId) " +
             "GROUP BY h.hsnCode, h.description, p.unit " +
             "ORDER BY h.hsnCode ASC")
-    List<Object[]> hsnSummary(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+    List<Object[]> hsnSummary(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, @Param("storeId") Long storeId);
 
     @Query("SELECT i.gstPercent, SUM(i.taxableAmount), SUM(i.cgstAmount), SUM(i.sgstAmount), SUM(i.igstAmount), SUM(i.subtotal) " +
             "FROM SaleItem i JOIN i.sale s " +
@@ -33,7 +34,8 @@ public interface SaleItemRepository extends JpaRepository<SaleItem, Long> {
             "AND s.gstReportingApplicable = true " +
             "AND (:fromDate IS NULL OR s.saleDate >= :fromDate) " +
             "AND (:toDate IS NULL OR s.saleDate <= :toDate) " +
+            "AND (:storeId IS NULL OR s.store.id = :storeId) " +
             "GROUP BY i.gstPercent " +
             "ORDER BY i.gstPercent ASC")
-    List<Object[]> taxRateSummary(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+    List<Object[]> taxRateSummary(@Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, @Param("storeId") Long storeId);
 }

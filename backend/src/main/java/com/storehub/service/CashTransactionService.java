@@ -7,7 +7,10 @@ import com.storehub.entity.AuditAction;
 import com.storehub.entity.CashTransaction;
 import com.storehub.entity.CashTransactionStatus;
 import com.storehub.entity.CashTransactionType;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
 import com.storehub.entity.SystemAccountCode;
+import com.storehub.entity.User;
 import com.storehub.entity.VoucherDocType;
 import com.storehub.entity.VoucherType;
 import com.storehub.exception.BadRequestException;
@@ -42,25 +45,39 @@ public class CashTransactionService {
     private final FinancialYearService financialYearService;
     private final AccountingService accountingService;
     private final AuditService auditService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     @Transactional(readOnly = true)
     public PagedResponse<CashTransactionResponse> search(String search, CashTransactionType type, CashTransactionStatus status,
-                                                           LocalDate fromDate, LocalDate toDate, int page, int size) {
+                                                           LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<CashTransactionResponse> result = cashTransactionRepository.search(search, type, status, fromDate, toDate, pageable)
+        Page<CashTransactionResponse> result = cashTransactionRepository.search(search, type, status, fromDate, toDate, resolvedStoreId, pageable)
                 .map(CashTransactionResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A cash transaction belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     @Transactional(readOnly = true)
     public CashTransactionResponse getById(Long id) {
-        return CashTransactionResponse.fromEntity(findOrThrow(id));
+        CashTransaction txn = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), txn.getStore() != null ? txn.getStore().getId() : null);
+        return CashTransactionResponse.fromEntity(txn);
     }
 
     @Transactional
     public CashTransactionResponse create(CashTransactionCreateRequest request) {
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot be used for new cash transactions");
+        }
+
         CashTransaction txn = CashTransaction.builder()
                 .transactionDate(request.getTransactionDate())
+                .store(store)
                 .transactionType(request.getTransactionType())
                 .paymentMode(request.getPaymentMode())
                 .amount(request.getAmount())
@@ -75,7 +92,8 @@ public class CashTransactionService {
         saved = cashTransactionRepository.save(saved);
 
         auditService.log(AuditAction.CREATE, "CASH", "CashTransaction", saved.getId(), saved.getTransactionNumber(),
-                null, null, "Cash transaction " + saved.getTransactionNumber() + " (" + saved.getTransactionType() + ") created");
+                null, null, "Cash transaction " + saved.getTransactionNumber() + " (" + saved.getTransactionType() + ") created",
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         if (request.isPost()) {
             return post(saved.getId());
@@ -104,7 +122,7 @@ public class CashTransactionService {
 
         accountingService.postJournal(VoucherType.CASH_TRANSACTION, txn.getId(), txn.getTransactionNumber(),
                 txn.getTransactionDate(), "Cash " + (txn.getTransactionType() == CashTransactionType.CASH_IN ? "In" : "Out")
-                        + ": " + txn.getReason(), lines);
+                        + ": " + txn.getReason(), lines, txn.getStore() != null ? txn.getStore().getId() : null);
 
         txn.setStatus(CashTransactionStatus.POSTED);
         txn.setPostedBy(SecurityUtil.currentUsername());
@@ -112,7 +130,8 @@ public class CashTransactionService {
         CashTransaction posted = cashTransactionRepository.save(txn);
 
         auditService.log(AuditAction.POST, "CASH", "CashTransaction", posted.getId(), posted.getTransactionNumber(),
-                null, null, "Cash transaction " + posted.getTransactionNumber() + " posted");
+                null, null, "Cash transaction " + posted.getTransactionNumber() + " posted",
+                posted.getStore() != null ? posted.getStore().getId() : null);
         return CashTransactionResponse.fromEntity(posted);
     }
 
@@ -135,7 +154,7 @@ public class CashTransactionService {
         CashTransaction cancelled = cashTransactionRepository.save(txn);
 
         auditService.log(AuditAction.CANCEL, "CASH", "CashTransaction", cancelled.getId(), cancelled.getTransactionNumber(),
-                null, null, reason);
+                null, null, reason, cancelled.getStore() != null ? cancelled.getStore().getId() : null);
         return CashTransactionResponse.fromEntity(cancelled);
     }
 

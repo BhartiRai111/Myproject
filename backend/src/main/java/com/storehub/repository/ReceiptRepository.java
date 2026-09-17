@@ -25,10 +25,12 @@ public interface ReceiptRepository extends JpaRepository<Receipt, Long> {
             "  LOWER(c.lastName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:customerId IS NULL OR c.id = :customerId) " +
             "AND (:fromDate IS NULL OR r.receiptDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR r.receiptDate <= :toDate)")
+            "AND (:toDate IS NULL OR r.receiptDate <= :toDate) " +
+            "AND (:storeId IS NULL OR r.store.id = :storeId)")
     Page<Receipt> search(@Param("search") String search,
                           @Param("customerId") Long customerId,
                           @Param("fromDate") LocalDate fromDate,
                           @Param("toDate") LocalDate toDate,
+                          @Param("storeId") Long storeId,
                           Pageable pageable);
 }

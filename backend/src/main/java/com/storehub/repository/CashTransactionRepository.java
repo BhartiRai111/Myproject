@@ -20,11 +20,13 @@ public interface CashTransactionRepository extends JpaRepository<CashTransaction
             "AND (:transactionType IS NULL OR c.transactionType = :transactionType) " +
             "AND (:status IS NULL OR c.status = :status) " +
             "AND (:fromDate IS NULL OR c.transactionDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR c.transactionDate <= :toDate)")
+            "AND (:toDate IS NULL OR c.transactionDate <= :toDate) " +
+            "AND (:storeId IS NULL OR c.store.id = :storeId)")
     Page<CashTransaction> search(@Param("search") String search,
                                   @Param("transactionType") CashTransactionType transactionType,
                                   @Param("status") CashTransactionStatus status,
                                   @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+                                  @Param("storeId") Long storeId,
                                   Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(c.amount), 0) FROM CashTransaction c WHERE c.transactionDate = :date " +

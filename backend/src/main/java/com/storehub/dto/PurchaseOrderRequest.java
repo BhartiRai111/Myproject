@@ -16,6 +16,9 @@ public class PurchaseOrderRequest {
     @NotNull(message = "Supplier is required")
     private Long supplierId;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     private String supplierPhone;
 
     private String supplierGstin;

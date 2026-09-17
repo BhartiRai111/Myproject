@@ -1,5 +1,6 @@
 package com.storehub.controller;
 
+import com.storehub.dto.AssignStoresRequest;
 import com.storehub.dto.EmployeeRequest;
 import com.storehub.dto.EmployeeResponse;
 import com.storehub.dto.GenerateEmployeeCodeResponse;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/masters/employees")
@@ -62,5 +65,18 @@ public class EmployeeController {
     @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
     public ResponseEntity<EmployeeResponse> deactivate(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.setStatus(id, EmployeeStatus.INACTIVE));
+    }
+
+    /** Which stores this employee is (informationally) associated with (Multi-Store spec section 10). */
+    @GetMapping("/{id}/stores")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_VIEW')")
+    public ResponseEntity<List<Long>> getAssignedStores(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.getAssignedStoreIds(id));
+    }
+
+    @PutMapping("/{id}/stores")
+    @PreAuthorize("hasAuthority('PERM_EMPLOYEE_EDIT')")
+    public ResponseEntity<EmployeeResponse> assignStores(@PathVariable Long id, @Valid @RequestBody AssignStoresRequest request) {
+        return ResponseEntity.ok(employeeService.assignStores(id, request.getStoreIds()));
     }
 }

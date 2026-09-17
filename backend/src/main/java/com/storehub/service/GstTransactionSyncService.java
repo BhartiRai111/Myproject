@@ -60,6 +60,7 @@ public class GstTransactionSyncService {
         txn.setPartyGstin(gstin);
         txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
         txn.setB2b(GstinValidator.isValid(gstin));
+        txn.setStore(sale.getStore());
         applyAmounts(txn, sale.getTaxableAmount(), sale.getCgstAmount(), sale.getSgstAmount(), sale.getIgstAmount(), sale.getTotalAmount());
         txn.setReturnPeriod(sale.getSaleDate().format(RETURN_PERIOD_FORMAT));
         txn.setStatus(GstTransactionStatus.ACTIVE);
@@ -96,6 +97,7 @@ public class GstTransactionSyncService {
         txn.setPartyGstin(gstin);
         txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
         txn.setB2b(GstinValidator.isValid(gstin));
+        txn.setStore(purchase.getStore());
         applyAmounts(txn, purchase.getTaxableAmount(), purchase.getCgstAmount(), purchase.getSgstAmount(), purchase.getIgstAmount(), purchase.getTotalAmount());
         txn.setReturnPeriod(purchase.getPurchaseDate().format(RETURN_PERIOD_FORMAT));
         txn.setStatus(GstTransactionStatus.ACTIVE);
@@ -132,6 +134,7 @@ public class GstTransactionSyncService {
         txn.setPartyGstin(gstin);
         txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
         txn.setB2b(GstinValidator.isValid(gstin));
+        txn.setStore(note.getSourceSale().getStore());
         applyAmounts(txn, note.getTaxableAmount(), note.getCgstAmount(), note.getSgstAmount(), note.getIgstAmount(), note.getTotalAmount());
         txn.setReturnPeriod(note.getNoteDate().format(RETURN_PERIOD_FORMAT));
         txn.setStatus(GstTransactionStatus.ACTIVE);
@@ -167,6 +170,7 @@ public class GstTransactionSyncService {
         txn.setPartyGstin(gstin);
         txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
         txn.setB2b(GstinValidator.isValid(gstin));
+        txn.setStore(note.getSourcePurchase().getStore());
         applyAmounts(txn, note.getTaxableAmount(), note.getCgstAmount(), note.getSgstAmount(), note.getIgstAmount(), note.getTotalAmount());
         txn.setReturnPeriod(note.getNoteDate().format(RETURN_PERIOD_FORMAT));
         txn.setStatus(GstTransactionStatus.ACTIVE);
@@ -208,6 +212,7 @@ public class GstTransactionSyncService {
         txn.setPartyGstin(gstin);
         txn.setPlaceOfSupplyStateCode(GstinValidator.extractStateCode(gstin));
         txn.setB2b(expense.isItcEligible());
+        txn.setStore(expense.getStore());
         applyAmounts(txn, expense.getTaxableAmount(), expense.getCgstAmount(), expense.getSgstAmount(), expense.getIgstAmount(), expense.getTotalAmount());
         txn.setReturnPeriod(expense.getExpenseDate().format(RETURN_PERIOD_FORMAT));
         txn.setStatus(GstTransactionStatus.ACTIVE);

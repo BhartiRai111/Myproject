@@ -46,6 +46,11 @@ public class GstTransaction {
     @Column(name = "source_transaction_id", nullable = false)
     private Long sourceTransactionId;
 
+    /** The store of the source voucher, when it has one (Multi-Store spec section 27) — null for pre-migration data. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "voucher_number", length = 30)
     private String voucherNumber;
 

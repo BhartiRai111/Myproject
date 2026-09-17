@@ -81,6 +81,8 @@ class Phase6Test {
     @Autowired
     private InventoryRepository inventoryRepository;
     @Autowired
+    private StoreService storeService;
+    @Autowired
     private SaleRepository saleRepository;
     @Autowired
     private JournalHeaderRepository journalHeaderRepository;
@@ -102,7 +104,7 @@ class Phase6Test {
         Product product = productRepository.save(Product.builder()
                 .name("P6 Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE).build());
-        inventoryRepository.save(com.storehub.entity.Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(com.storehub.entity.Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 
@@ -269,7 +271,7 @@ class Phase6Test {
         assertThat(saleRepository.findByClientRequestId(idempotencyKey)).isPresent();
 
         // Stock should reflect exactly ONE sale of 2 units, not two.
-        int stockAfter = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfter = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stockAfter).isEqualTo(8);
     }
 
@@ -315,7 +317,7 @@ class Phase6Test {
         request.setReorderQuantity(20);
 
         var created = productService.createProduct(request);
-        assertThat(inventoryRepository.findReorderCandidates()).anyMatch(i -> i.getProduct().getId().equals(created.getId()));
+        assertThat(inventoryRepository.findReorderCandidates(null)).anyMatch(i -> i.getProduct().getId().equals(created.getId()));
     }
 
     private Long ensureCategory() {
@@ -427,7 +429,7 @@ class Phase6Test {
         assertThat(result.getErrors()).isEmpty();
 
         Product product = productRepository.findBySkuIgnoreCase(sku).orElseThrow();
-        int stock = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stock = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
         assertThat(stock).isEqualTo(30);
 
         var history = stockHistoryRepository.findByProductIdOrderByCreatedAtDesc(product.getId(),
@@ -454,7 +456,7 @@ class Phase6Test {
 
         Product reloaded = productRepository.findById(existing.getId()).orElseThrow();
         assertThat(reloaded.getSellingPrice()).isEqualByComparingTo("99");
-        int stock = inventoryRepository.findByProductId(existing.getId()).orElseThrow().getCurrentStock();
+        int stock = inventoryRepository.findByProductId(existing.getId()).get(0).getCurrentStock();
         assertThat(stock).isEqualTo(12);
     }
 
@@ -478,8 +480,8 @@ class Phase6Test {
         product.setSku("INV-EXP-" + System.nanoTime());
         productRepository.save(product);
 
-        String csv = inventoryService.exportCsv(product.getSku(), null, null);
-        assertThat(csv).startsWith("product,sku,category");
+        String csv = inventoryService.exportCsv(product.getSku(), null, null, null);
+        assertThat(csv).startsWith("store,product,sku,category");
         assertThat(csv).contains(product.getSku());
         assertThat(csv).contains(",7,");
     }

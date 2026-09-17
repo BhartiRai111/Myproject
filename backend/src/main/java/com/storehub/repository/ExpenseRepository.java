@@ -29,7 +29,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             "     OR (:gstApplicable = false AND e.taxMode IS NULL)) " +
             "AND (:itcEligible IS NULL OR e.itcEligible = :itcEligible) " +
             "AND (:fromDate IS NULL OR e.expenseDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR e.expenseDate <= :toDate)")
+            "AND (:toDate IS NULL OR e.expenseDate <= :toDate) " +
+            "AND (:storeId IS NULL OR e.store.id = :storeId)")
     Page<Expense> search(@Param("search") String search, @Param("status") ExpenseStatus status,
                           @Param("category") String category,
                           @Param("categoryId") Long categoryId,
@@ -37,7 +38,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
                           @Param("paymentMode") PaymentMode paymentMode,
                           @Param("gstApplicable") Boolean gstApplicable,
                           @Param("itcEligible") Boolean itcEligible,
-                          @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, Pageable pageable);
+                          @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+                          @Param("storeId") Long storeId, Pageable pageable);
 
     @Query("SELECT e.id FROM Expense e WHERE e.status = com.storehub.entity.ExpenseStatus.POSTED")
     List<Long> findPostedIds();

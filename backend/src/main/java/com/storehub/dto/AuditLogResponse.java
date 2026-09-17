@@ -19,6 +19,9 @@ public class AuditLogResponse {
     private String module;
     private String entityType;
     private Long entityId;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private String documentNumber;
     private String oldValue;
     private String newValue;
@@ -36,6 +39,9 @@ public class AuditLogResponse {
                 .module(log.getModule())
                 .entityType(log.getEntityType())
                 .entityId(log.getEntityId())
+                .storeId(log.getStore() != null ? log.getStore().getId() : null)
+                .storeName(log.getStore() != null ? log.getStore().getStoreName() : null)
+                .storeCode(log.getStore() != null ? log.getStore().getStoreCode() : null)
                 .documentNumber(log.getDocumentNumber())
                 .oldValue(log.getOldValue())
                 .newValue(log.getNewValue())

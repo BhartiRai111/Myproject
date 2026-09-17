@@ -32,6 +32,7 @@ public class AuditLogController {
             @RequestParam(required = false) String entityType,
             @RequestParam(required = false) Long entityId,
             @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime toDate,
@@ -39,7 +40,7 @@ public class AuditLogController {
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
         Page<AuditLogResponse> result = auditLogRepository
-                .search(action, module, entityType, entityId, userId, search, fromDate, toDate, pageable)
+                .search(action, module, entityType, entityId, userId, storeId, search, fromDate, toDate, pageable)
                 .map(AuditLogResponse::fromEntity);
         return ResponseEntity.ok(PagedResponse.fromPage(result));
     }

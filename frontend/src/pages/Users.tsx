@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { KeyRound, MoreHorizontal, Plus, Search, ShieldCheck, UserRoundX, Users as UsersIcon } from 'lucide-react';
+import { KeyRound, MoreHorizontal, Plus, Search, ShieldCheck, Store, UserRoundX, Users as UsersIcon } from 'lucide-react';
 import { userApi } from '../api/userApi';
 import { parseApiError } from '../utils/apiError';
 import UserFormModal, { UserFormValues } from '../components/UserFormModal';
 import UserViewModal from '../components/UserViewModal';
 import ResetPasswordDialog from '../components/ResetPasswordDialog';
+import StoreAccessDialog from '../components/StoreAccessDialog';
 import { Role, User, UserStatus } from '../types/user';
 import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
@@ -50,6 +51,7 @@ export default function Users() {
   });
   const [viewUser, setViewUser] = useState<User | null>(null);
   const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [storeAccessUser, setStoreAccessUser] = useState<User | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -240,6 +242,9 @@ export default function Users() {
                           <DropdownMenuItem onClick={() => setResetPasswordUser(u)}>
                             <KeyRound className="h-4 w-4" /> Reset Password
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setStoreAccessUser(u)}>
+                            <Store className="h-4 w-4" /> Store Access
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => toggleStatus(u)}
                             variant={u.status === 'ACTIVE' ? 'destructive' : 'default'}
@@ -289,6 +294,13 @@ export default function Users() {
         show={!!resetPasswordUser}
         user={resetPasswordUser}
         onClose={() => setResetPasswordUser(null)}
+      />
+
+      <StoreAccessDialog
+        show={!!storeAccessUser}
+        user={storeAccessUser}
+        onClose={() => setStoreAccessUser(null)}
+        onSaved={loadUsers}
       />
     </div>
   );

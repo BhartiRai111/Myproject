@@ -93,6 +93,8 @@ class Phase5Test {
     @Autowired
     private InventoryRepository inventoryRepository;
     @Autowired
+    private StoreService storeService;
+    @Autowired
     private SaleItemRepository saleItemRepository;
     @Autowired
     private PurchaseItemRepository purchaseItemRepository;
@@ -117,7 +119,7 @@ class Phase5Test {
         Product product = productRepository.save(Product.builder()
                 .name("P5 Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE).build());
-        inventoryRepository.save(Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 
@@ -263,7 +265,7 @@ class Phase5Test {
         assertThat(journalHeaderRepository.existsByVoucherTypeAndVoucherIdAndStatusAndReversalOfJournalIsNull(
                 VoucherType.CREDIT_NOTE, note.getId(), JournalStatus.POSTED)).isFalse();
 
-        Inventory inv = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory inv = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(inv.getCurrentStock()).isEqualTo(5); // 10 - 5 sold, unaffected by the draft note
     }
 
@@ -276,7 +278,7 @@ class Phase5Test {
         SaleItem saleItem = saleItemRepository.findAll().stream()
                 .filter(i -> i.getSale().getId().equals(sale.getId())).findFirst().orElseThrow();
 
-        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         CreditNoteCreateRequest request = new CreditNoteCreateRequest();
         request.setSourceSaleId(sale.getId());
@@ -301,7 +303,7 @@ class Phase5Test {
         assertThat(totalDebit).isEqualByComparingTo(note.getTotalAmount());
 
         // Inventory: stock increased by the returned quantity
-        Inventory invAfterPost = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfterPost = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfterPost.getCurrentStock()).isEqualTo(stockAfterSale + 2);
 
         // GST reporting: an ACTIVE row exists for a normal (non-Kacchi) sale's credit note
@@ -313,7 +315,7 @@ class Phase5Test {
         CreditNoteResponse cancelled = creditNoteService.cancel(note.getId());
         assertThat(cancelled.getStatus()).isEqualTo(NoteStatus.CANCELLED);
 
-        Inventory invAfterCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfterCancel = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfterCancel.getCurrentStock()).isEqualTo(stockAfterSale);
 
         var gstTxnAfterCancel = gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.CREDIT_NOTE, note.getId());
@@ -322,7 +324,7 @@ class Phase5Test {
         // Idempotent: cancelling again is a no-op, no error, no duplicate reversal
         CreditNoteResponse cancelledAgain = creditNoteService.cancel(note.getId());
         assertThat(cancelledAgain.getStatus()).isEqualTo(NoteStatus.CANCELLED);
-        Inventory invAfterSecondCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfterSecondCancel = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfterSecondCancel.getCurrentStock()).isEqualTo(stockAfterSale);
     }
 
@@ -476,7 +478,7 @@ class Phase5Test {
                 List.of(saleItemReq(product.getId(), 3, new BigDecimal("1000"), new BigDecimal("18")))));
         SaleItem saleItem = saleItemRepository.findAll().stream()
                 .filter(i -> i.getSale().getId().equals(sale.getId())).findFirst().orElseThrow();
-        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterSale = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         CreditNoteCreateRequest request = new CreditNoteCreateRequest();
         request.setSourceSaleId(sale.getId());
@@ -490,7 +492,7 @@ class Phase5Test {
         request.setPost(true);
 
         creditNoteService.create(request);
-        Inventory invAfter = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfter = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfter.getCurrentStock()).isEqualTo(stockAfterSale);
     }
 
@@ -504,7 +506,7 @@ class Phase5Test {
                 List.of(purchaseItemReq(product.getId(), 10, new BigDecimal("2000"), new BigDecimal("18")))));
         PurchaseItem purchaseItem = purchaseItemRepository.findAll().stream()
                 .filter(i -> i.getPurchase().getId().equals(purchase.getId())).findFirst().orElseThrow();
-        int stockAfterPurchase = inventoryRepository.findByProductId(product.getId()).orElseThrow().getCurrentStock();
+        int stockAfterPurchase = inventoryRepository.findByProductId(product.getId()).get(0).getCurrentStock();
 
         DebitNoteCreateRequest request = new DebitNoteCreateRequest();
         request.setSourcePurchaseId(purchase.getId());
@@ -526,12 +528,12 @@ class Phase5Test {
         BigDecimal totalCredit = journal.getLines().stream().map(l -> l.getCreditAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
         assertThat(totalDebit).isEqualByComparingTo(totalCredit);
 
-        Inventory invAfterPost = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfterPost = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfterPost.getCurrentStock()).isEqualTo(stockAfterPurchase - 3);
 
         DebitNoteResponse cancelled = debitNoteService.cancel(note.getId());
         assertThat(cancelled.getStatus()).isEqualTo(NoteStatus.CANCELLED);
-        Inventory invAfterCancel = inventoryRepository.findByProductId(product.getId()).orElseThrow();
+        Inventory invAfterCancel = inventoryRepository.findByProductId(product.getId()).get(0);
         assertThat(invAfterCancel.getCurrentStock()).isEqualTo(stockAfterPurchase);
     }
 

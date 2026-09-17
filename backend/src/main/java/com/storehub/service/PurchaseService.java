@@ -17,15 +17,19 @@ import com.storehub.entity.PurchaseOrderItem;
 import com.storehub.entity.PurchaseStatus;
 import com.storehub.entity.ReferenceType;
 import com.storehub.entity.StockMovementType;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
 import com.storehub.entity.Supplier;
 import com.storehub.entity.SupplierStatus;
 import com.storehub.entity.TransactionType;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.PurchaseNotFoundException;
 import com.storehub.repository.PaymentAllocationRepository;
 import com.storehub.repository.PurchaseOrderItemRepository;
 import com.storehub.repository.PurchaseRepository;
 import com.storehub.util.GstinValidator;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -61,19 +65,24 @@ public class PurchaseService {
     private final VoucherNumberService voucherNumberService;
     private final AuditService auditService;
     private final GstCalculationService gstCalculationService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<PurchaseResponse> getPurchases(String search, PaymentStatus paymentStatus,
                                                           PurchaseStatus status, LocalDate fromDate, LocalDate toDate,
-                                                          TransactionType transactionType, int page, int size) {
+                                                          TransactionType transactionType, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<PurchaseResponse> result = purchaseRepository
-                .search(search, paymentStatus, status, fromDate, toDate, transactionType, pageable)
+                .search(search, paymentStatus, status, fromDate, toDate, transactionType, resolvedStoreId, pageable)
                 .map(PurchaseResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A purchase belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public PurchaseResponse getPurchaseById(Long id) {
         Purchase purchase = findPurchaseOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), purchase.getStore() != null ? purchase.getStore().getId() : null);
         boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(id).isEmpty();
         return PurchaseResponse.fromEntity(purchase, hasPayments);
     }
@@ -97,6 +106,13 @@ public class PurchaseService {
                 ? purchaseOrderService.findOrThrow(request.getPurchaseOrderId())
                 : null;
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot receive new purchases");
+        }
+
         TransactionType type = request.getTransactionType() != null ? request.getTransactionType() : TransactionType.PURCHASE;
         boolean draft = request.isSaveAsDraft();
         if (draft && type != TransactionType.PURCHASE_CHALLAN) {
@@ -105,6 +121,7 @@ public class PurchaseService {
 
         Purchase purchase = Purchase.builder()
                 .supplier(supplier)
+                .store(store)
                 .purchaseDate(request.getPurchaseDate())
                 .status(draft ? PurchaseStatus.DRAFT : PurchaseStatus.COMPLETED)
                 .notes(request.getNotes())
@@ -134,7 +151,8 @@ public class PurchaseService {
         }
 
         auditService.log(com.storehub.entity.AuditAction.CREATE, "PURCHASE", "Purchase", saved.getId(), saved.getPurchaseNumber(),
-                null, null, "Purchase " + saved.getPurchaseNumber() + (draft ? " saved as draft" : " created and posted"));
+                null, null, "Purchase " + saved.getPurchaseNumber() + (draft ? " saved as draft" : " created and posted"),
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         boolean hasPayments = !paymentAllocationRepository.findByPurchaseId(saved.getId()).isEmpty();
         return PurchaseResponse.fromEntity(saved, hasPayments);
@@ -271,7 +289,8 @@ public class PurchaseService {
         Purchase saved = purchaseRepository.save(purchase);
 
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "Purchase", saved.getId(), saved.getPurchaseNumber(),
-                null, null, "Purchase " + saved.getPurchaseNumber() + " cancelled: stock, ledger, accounting and GST effects reversed");
+                null, null, "Purchase " + saved.getPurchaseNumber() + " cancelled: stock, ledger, accounting and GST effects reversed",
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         return PurchaseResponse.fromEntity(saved, false);
     }
@@ -415,7 +434,7 @@ public class PurchaseService {
     private void restoreStock(Purchase purchase, List<PurchaseItem> items) {
         String reason = "Purchase reversed: " + purchase.getPurchaseNumber();
         for (PurchaseItem item : items) {
-            inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(),
+            inventoryService.applyMovement(item.getProduct().getId(), purchase.getStore().getId(), -item.getQuantity(),
                     StockMovementType.PURCHASE_CANCEL, ReferenceType.PURCHASE, purchase.getId(), reason);
         }
     }
@@ -423,7 +442,7 @@ public class PurchaseService {
     private void addStock(Purchase purchase, List<PurchaseItem> items) {
         String reason = "Purchase " + purchase.getPurchaseNumber();
         for (PurchaseItem item : items) {
-            inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(),
+            inventoryService.applyMovement(item.getProduct().getId(), purchase.getStore().getId(), item.getQuantity(),
                     StockMovementType.PURCHASE, ReferenceType.PURCHASE, purchase.getId(), reason);
         }
     }

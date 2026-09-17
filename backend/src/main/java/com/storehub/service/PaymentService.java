@@ -11,7 +11,9 @@ import com.storehub.entity.PaymentAllocation;
 import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Payment;
 import com.storehub.entity.Purchase;
+import com.storehub.entity.Store;
 import com.storehub.entity.Supplier;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ExpenseNotFoundException;
 import com.storehub.exception.PaymentNotFoundException;
@@ -19,6 +21,7 @@ import com.storehub.exception.PurchaseNotFoundException;
 import com.storehub.repository.ExpenseRepository;
 import com.storehub.repository.PaymentRepository;
 import com.storehub.repository.PurchaseRepository;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -52,17 +55,23 @@ public class PaymentService {
     private final AccountingService accountingService;
     private final VoucherNumberService voucherNumberService;
     private final AuditService auditService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<PaymentResponse> search(String search, Long supplierId, LocalDate fromDate, LocalDate toDate,
-                                                  int page, int size) {
+                                                  Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<PaymentResponse> result = paymentRepository.search(search, supplierId, fromDate, toDate, pageable)
+        Page<PaymentResponse> result = paymentRepository.search(search, supplierId, fromDate, toDate, resolvedStoreId, pageable)
                 .map(PaymentResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A payment belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public PaymentResponse getById(Long id) {
-        return PaymentResponse.fromEntity(findOrThrow(id));
+        Payment payment = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), payment.getStore() != null ? payment.getStore().getId() : null);
+        return PaymentResponse.fromEntity(payment);
     }
 
     public SupplierOutstandingResponse getOutstandingForSupplier(Long supplierId) {
@@ -84,8 +93,13 @@ public class PaymentService {
     public PaymentResponse create(PaymentRequest request) {
         Supplier supplier = supplierService.findSupplierOrThrow(request.getSupplierId());
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+
         Payment payment = Payment.builder()
                 .supplier(supplier)
+                .store(store)
                 .paymentDate(request.getPaymentDate())
                 .amount(request.getAmount())
                 .paymentMode(request.getPaymentMode())
@@ -104,7 +118,8 @@ public class PaymentService {
         accountingService.postPaymentJournal(saved);
 
         auditService.log(com.storehub.entity.AuditAction.PAYMENT, "PURCHASE", "Payment", saved.getId(), saved.getPaymentNumber(),
-                null, null, "Payment " + saved.getPaymentNumber() + " of " + saved.getAmount() + " recorded for supplier " + supplier.getId());
+                null, null, "Payment " + saved.getPaymentNumber() + " of " + saved.getAmount() + " recorded for supplier " + supplier.getId(),
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         return PaymentResponse.fromEntity(saved);
     }
@@ -114,6 +129,7 @@ public class PaymentService {
     public Payment createSystemPaymentForPurchase(Purchase purchase) {
         Payment payment = Payment.builder()
                 .supplier(purchase.getSupplier())
+                .store(purchase.getStore())
                 .paymentDate(purchase.getPurchaseDate())
                 .amount(purchase.getPaidAmount())
                 .paymentMode(purchase.getPaymentMode())
@@ -141,9 +157,10 @@ public class PaymentService {
         }
         String paymentNumber = payment.getPaymentNumber();
         Long paymentId = payment.getId();
+        Long storeId = payment.getStore() != null ? payment.getStore().getId() : null;
         reverseAndRemove(payment);
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "PURCHASE", "Payment", paymentId, paymentNumber,
-                null, null, "Payment " + paymentNumber + " deleted: allocations and ledger/accounting effects reversed");
+                null, null, "Payment " + paymentNumber + " deleted: allocations and ledger/accounting effects reversed", storeId);
     }
 
     /** Used only by PurchaseService when reversing a purchase that has its own auto-generated payment. */

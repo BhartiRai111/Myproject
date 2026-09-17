@@ -18,6 +18,9 @@ public class StockHistoryResponse {
     private Long productId;
     private String productName;
     private String sku;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private StockMovementType movementType;
     private Integer quantity;
     private Integer previousStock;
@@ -35,6 +38,9 @@ public class StockHistoryResponse {
                 .productId(history.getProduct().getId())
                 .productName(history.getProduct().getName())
                 .sku(history.getProduct().getSku())
+                .storeId(history.getStore() != null ? history.getStore().getId() : null)
+                .storeName(history.getStore() != null ? history.getStore().getStoreName() : null)
+                .storeCode(history.getStore() != null ? history.getStore().getStoreCode() : null)
                 .movementType(history.getMovementType())
                 .quantity(history.getQuantity())
                 .previousStock(history.getPreviousStock())

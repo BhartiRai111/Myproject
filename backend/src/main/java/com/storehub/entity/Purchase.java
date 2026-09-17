@@ -33,6 +33,11 @@ public class Purchase {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
+    /** The receiving store (Multi-Store spec section 22) — fixed at creation, never changed on edit. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "purchase_date", nullable = false)
     private LocalDate purchaseDate;
 

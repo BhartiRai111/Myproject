@@ -34,7 +34,7 @@ const ADJUSTMENT_TYPES: { value: ManualAdjustmentType; label: string; hint: stri
 
 export default function StockAdjustmentDialog({ show, preselected, onClose, onAdjusted }: Props) {
   const [inventoryOptions, setInventoryOptions] = useState<Inventory[]>([]);
-  const [productId, setProductId] = useState('');
+  const [inventoryId, setInventoryId] = useState('');
   const [movementType, setMovementType] = useState<ManualAdjustmentType>('STOCK_IN');
   const [quantity, setQuantity] = useState('');
   const [reason, setReason] = useState('');
@@ -55,10 +55,10 @@ export default function StockAdjustmentDialog({ show, preselected, onClose, onAd
     setNotes('');
 
     if (preselected) {
-      setProductId(String(preselected.productId));
+      setInventoryId(String(preselected.id));
       setInventoryOptions([preselected]);
     } else {
-      setProductId('');
+      setInventoryId('');
       inventoryApi
         .list({ size: 200 })
         .then((res) => setInventoryOptions(res.data.content))
@@ -66,7 +66,7 @@ export default function StockAdjustmentDialog({ show, preselected, onClose, onAd
     }
   }, [show, preselected]);
 
-  const selected = inventoryOptions.find((inv) => String(inv.productId) === productId) || preselected || null;
+  const selected = inventoryOptions.find((inv) => String(inv.id) === inventoryId) || preselected || null;
   const currentStock = selected?.currentStock ?? 0;
   const quantityNum = Number(quantity) || 0;
 
@@ -80,7 +80,8 @@ export default function StockAdjustmentDialog({ show, preselected, onClose, onAd
   const newStock = computeNewStock();
 
   const validate = (): string | null => {
-    if (!productId) return 'Product is required';
+    if (!inventoryId || !selected) return 'Product is required';
+    if (!selected.storeId) return 'This product has no store attributed yet — adjust it from the Inventory list instead';
     if (!quantityNum || quantityNum <= 0) return 'Quantity must be greater than 0';
     if (!reason.trim()) return 'Reason is required';
     if (newStock !== null && newStock < 0) {
@@ -101,12 +102,14 @@ export default function StockAdjustmentDialog({ show, preselected, onClose, onAd
   };
 
   const handleConfirm = async () => {
+    if (!selected || !selected.storeId) return;
     setSubmitting(true);
     setError('');
     setFieldErrors({});
     try {
       await inventoryApi.adjust({
-        productId: Number(productId),
+        productId: selected.productId,
+        storeId: selected.storeId,
         movementType,
         quantity: quantityNum,
         reason,
@@ -145,24 +148,32 @@ export default function StockAdjustmentDialog({ show, preselected, onClose, onAd
           <form onSubmit={handleReview} className="space-y-4" noValidate>
             <div className="space-y-1.5">
               <Label>Product</Label>
-              <Select value={productId} onValueChange={(v) => v && setProductId(v)} disabled={!!preselected}>
-                <SelectTrigger className={fieldErrors.productId ? 'border-destructive' : ''}>
+              <Select value={inventoryId} onValueChange={(v) => v && setInventoryId(v)} disabled={!!preselected}>
+                <SelectTrigger className={fieldErrors.storeId || fieldErrors.productId ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select product" />
                 </SelectTrigger>
                 <SelectContent>
                   {inventoryOptions.map((inv) => (
-                    <SelectItem key={inv.productId} value={String(inv.productId)}>
-                      {inv.productName} ({inv.currentStock} {inv.unit})
+                    <SelectItem key={inv.id} value={String(inv.id)}>
+                      {inv.productName} ({inv.currentStock} {inv.unit}){inv.storeCode ? ` — ${inv.storeCode}` : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {fieldErrors.productId && <p className="text-xs text-destructive">{fieldErrors.productId}</p>}
+              {(fieldErrors.productId || fieldErrors.storeId) && (
+                <p className="text-xs text-destructive">{fieldErrors.productId || fieldErrors.storeId}</p>
+              )}
             </div>
 
             {selected && (
               <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
                 Current stock: <span className="font-medium text-foreground">{currentStock}</span> {selected.unit}
+                {selected.storeName && (
+                  <>
+                    {' '}
+                    at <span className="font-medium text-foreground">{selected.storeName}</span>
+                  </>
+                )}
               </p>
             )}
 

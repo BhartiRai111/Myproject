@@ -47,11 +47,21 @@ public enum Permission {
 
     // ---- Inventory ----
     INVENTORY_VIEW("Inventory"), INVENTORY_ADJUST("Inventory"),
+    /** Store-to-store stock transfer (Multi-Store spec section 18) — deliberately its own tier: creating/approving a transfer is broader than a plain stock adjustment. */
+    STOCK_TRANSFER_VIEW("Inventory"), STOCK_TRANSFER_CREATE("Inventory"), STOCK_TRANSFER_APPROVE("Inventory"),
+    STOCK_TRANSFER_DISPATCH("Inventory"), STOCK_TRANSFER_RECEIVE("Inventory"), STOCK_TRANSFER_CANCEL("Inventory"),
+
+    // ---- Master (Store/Branch — Multi-Store spec section 4) ----
+    STORE_VIEW("Master"), STORE_CREATE("Master"), STORE_EDIT("Master"),
 
     // ---- Security ----
     USER_VIEW("Security"), USER_CREATE("Security"), USER_EDIT("Security"), USER_DEACTIVATE("Security"),
     ROLE_VIEW("Security"), ROLE_MANAGE("Security"),
     PERMISSION_VIEW("Security"),
+    /** Assigning users/employees to stores (Multi-Store spec sections 11, 70-71) — an admin-tier security action, separate from STORE_EDIT (editing the store record itself). */
+    STORE_ASSIGN("Security"),
+    /** Bypasses store-access scoping entirely — the "ALL_STORES" mode (spec sections 10, 46). Never implied by any other permission. */
+    STORE_ACCESS_ALL("Security"),
 
     // ---- Audit ----
     AUDIT_VIEW("Audit");

@@ -4,6 +4,7 @@ import com.storehub.entity.AuditAction;
 import com.storehub.entity.AuditLog;
 import com.storehub.entity.User;
 import com.storehub.repository.AuditLogRepository;
+import com.storehub.repository.StoreRepository;
 import com.storehub.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -31,10 +32,17 @@ public class AuditService {
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
     private final AuditLogRepository auditLogRepository;
+    private final StoreRepository storeRepository;
 
-    @Transactional
     public void log(AuditAction action, String module, String entityType, Long entityId,
                      String documentNumber, String oldValue, String newValue, String description) {
+        log(action, module, entityType, entityId, documentNumber, oldValue, newValue, description, null);
+    }
+
+    /** @param storeId the store the audited action belongs to, when it has one (Multi-Store spec section 27) — null for a global/system-level action. */
+    @Transactional
+    public void log(AuditAction action, String module, String entityType, Long entityId,
+                     String documentNumber, String oldValue, String newValue, String description, Long storeId) {
         try {
             User user = SecurityUtil.currentUserOrNull();
             auditLogRepository.save(AuditLog.builder()
@@ -44,6 +52,7 @@ public class AuditService {
                     .module(module)
                     .entityType(entityType)
                     .entityId(entityId)
+                    .store(storeId != null ? storeRepository.getReferenceById(storeId) : null)
                     .documentNumber(documentNumber)
                     .oldValue(oldValue)
                     .newValue(newValue)

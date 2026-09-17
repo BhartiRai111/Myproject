@@ -16,6 +16,7 @@ import {
   Package,
   Landmark,
   Receipt,
+  Store as StoreIcon,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -32,6 +33,7 @@ import {
   partyApi,
   expenseCategoryApi,
 } from '../api/mastersApi';
+import { storeApi } from '../api/storeApi';
 import { categoryApi } from '../api/categoryApi';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,6 +50,14 @@ interface MasterCard {
 }
 
 const CARDS: MasterCard[] = [
+  {
+    key: 'store',
+    name: 'Store / Branch',
+    description: 'Stores, branches and warehouses that Sales, Purchases and Inventory belong to',
+    icon: StoreIcon,
+    path: '/masters/stores',
+    loadCount: () => storeApi.list({ size: 1 }).then((r) => r.data.totalElements),
+  },
   {
     key: 'currency',
     name: 'Currency',

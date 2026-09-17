@@ -14,11 +14,13 @@ import com.storehub.entity.PaymentMode;
 import com.storehub.entity.Purchase;
 import com.storehub.entity.Receipt;
 import com.storehub.entity.Sale;
+import com.storehub.entity.Store;
 import com.storehub.entity.SystemAccountCode;
 import com.storehub.entity.VoucherType;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.JournalNotFoundException;
 import com.storehub.repository.JournalHeaderRepository;
+import com.storehub.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +53,11 @@ public class AccountingService {
     private final AccountService accountService;
     private final JournalHeaderRepository journalHeaderRepository;
     private final FinancialYearService financialYearService;
+    private final StoreRepository storeRepository;
+
+    private static Long storeIdOf(Store store) {
+        return store != null ? store.getId() : null;
+    }
 
     // ---- Sale ----
 
@@ -79,7 +86,7 @@ public class AccountingService {
             return;
         }
         postJournal(VoucherType.SALE, sale.getId(), sale.getInvoiceNumber(), sale.getSaleDate(),
-                "Sale " + sale.getInvoiceNumber(), lines);
+                "Sale " + sale.getInvoiceNumber(), lines, storeIdOf(sale.getStore()));
     }
 
     private void addOutputSalesCreditLines(List<JournalLine> lines, Sale sale) {
@@ -112,7 +119,7 @@ public class AccountingService {
                 AccountingPartyType.SUPPLIER, purchase.getSupplier().getId()));
 
         postJournal(VoucherType.PURCHASE, purchase.getId(), purchase.getPurchaseNumber(), purchase.getPurchaseDate(),
-                "Purchase " + purchase.getPurchaseNumber(), lines);
+                "Purchase " + purchase.getPurchaseNumber(), lines, storeIdOf(purchase.getStore()));
     }
 
     @Transactional
@@ -130,7 +137,7 @@ public class AccountingService {
                         AccountingPartyType.CUSTOMER, receipt.getCustomer().getId()));
 
         postJournal(VoucherType.RECEIPT, receipt.getId(), receipt.getReceiptNumber(), receipt.getReceiptDate(),
-                "Receipt " + receipt.getReceiptNumber(), lines);
+                "Receipt " + receipt.getReceiptNumber(), lines, storeIdOf(receipt.getStore()));
     }
 
     @Transactional
@@ -148,7 +155,7 @@ public class AccountingService {
                 JournalLine.credit(resolveCashOrBank(payment.getPaymentMode()), payment.getAmount()));
 
         postJournal(VoucherType.PAYMENT, payment.getId(), payment.getPaymentNumber(), payment.getPaymentDate(),
-                "Payment " + payment.getPaymentNumber(), lines);
+                "Payment " + payment.getPaymentNumber(), lines, storeIdOf(payment.getStore()));
     }
 
     @Transactional
@@ -198,15 +205,27 @@ public class AccountingService {
      * second POSTED original for the same (voucherType, voucherId) so a
      * Sale/Purchase/Receipt/Payment can never be journalled twice.
      */
-    @Transactional
     public JournalHeader postJournal(VoucherType voucherType, Long voucherId, String voucherNumber,
                                       LocalDate journalDate, String narration, List<JournalLine> lines) {
+        return postJournal(voucherType, voucherId, voucherNumber, journalDate, narration, lines, null);
+    }
+
+    /**
+     * Store-aware overload (Multi-Store spec section 27) — the storeId is stamped onto the
+     * JournalHeader so store-filtered accounting reports (Day Book, Trial Balance, ...) can
+     * filter without joining back through every possible source-voucher table. Null for
+     * vouchers without a meaningful store (a manual JOURNAL entry, or a legacy voucher from
+     * before the Default Store migration).
+     */
+    @Transactional
+    public JournalHeader postJournal(VoucherType voucherType, Long voucherId, String voucherNumber,
+                                      LocalDate journalDate, String narration, List<JournalLine> lines, Long storeId) {
         validateJournal(lines);
         List<ResolvedLine> resolved = lines.stream()
                 .map(line -> new ResolvedLine(resolveActiveAccount(line.account()), line.debitAmount(), line.creditAmount(),
                         line.narration(), line.partyType(), line.partyId()))
                 .toList();
-        return buildAndSaveJournal(voucherType, voucherId, voucherNumber, journalDate, narration, resolved);
+        return buildAndSaveJournal(voucherType, voucherId, voucherNumber, journalDate, narration, resolved, storeId);
     }
 
     /**
@@ -229,7 +248,7 @@ public class AccountingService {
                         line.narration(), line.partyType(), line.partyId()))
                 .toList();
         validateResolvedLines(resolved);
-        return buildAndSaveJournal(VoucherType.JOURNAL, null, null, journalDate, narration, resolved);
+        return buildAndSaveJournal(VoucherType.JOURNAL, null, null, journalDate, narration, resolved, null);
     }
 
     /** Convenience overload for the REST layer: maps the API request DTO and returns the response DTO. */
@@ -254,9 +273,15 @@ public class AccountingService {
      * the posting account is configurable per source record rather than one of the
      * fixed system accounts (e.g. an Expense Category's linked account).
      */
-    @Transactional
     public JournalHeader postJournalByAccountId(VoucherType voucherType, Long voucherId, String voucherNumber,
                                                  LocalDate journalDate, String narration, List<ManualJournalLine> lines) {
+        return postJournalByAccountId(voucherType, voucherId, voucherNumber, journalDate, narration, lines, null);
+    }
+
+    /** Store-aware overload — see {@link #postJournal(VoucherType, Long, String, LocalDate, String, List, Long)}. */
+    @Transactional
+    public JournalHeader postJournalByAccountId(VoucherType voucherType, Long voucherId, String voucherNumber,
+                                                 LocalDate journalDate, String narration, List<ManualJournalLine> lines, Long storeId) {
         List<ResolvedLine> resolved = lines.stream()
                 .map(line -> new ResolvedLine(resolveActiveAccountById(line.accountId()),
                         line.debitAmount() != null ? line.debitAmount() : BigDecimal.ZERO,
@@ -264,11 +289,11 @@ public class AccountingService {
                         line.narration(), line.partyType(), line.partyId()))
                 .toList();
         validateResolvedLines(resolved);
-        return buildAndSaveJournal(voucherType, voucherId, voucherNumber, journalDate, narration, resolved);
+        return buildAndSaveJournal(voucherType, voucherId, voucherNumber, journalDate, narration, resolved, storeId);
     }
 
     private JournalHeader buildAndSaveJournal(VoucherType voucherType, Long voucherId, String voucherNumber,
-                                               LocalDate journalDate, String narration, List<ResolvedLine> lines) {
+                                               LocalDate journalDate, String narration, List<ResolvedLine> lines, Long storeId) {
         financialYearService.resolveOpenForPosting(journalDate);
         if (voucherId != null && journalHeaderRepository
                 .existsByVoucherTypeAndVoucherIdAndStatusAndReversalOfJournalIsNull(voucherType, voucherId, JournalStatus.POSTED)) {
@@ -283,6 +308,7 @@ public class AccountingService {
                 .voucherNumber(voucherNumber)
                 .narration(narration)
                 .status(JournalStatus.POSTED)
+                .store(storeId != null ? storeRepository.getReferenceById(storeId) : null)
                 .postedBy(user)
                 .postedAt(LocalDateTime.now())
                 .createdBy(user)
@@ -339,6 +365,7 @@ public class AccountingService {
                 .narration(reason)
                 .status(JournalStatus.POSTED)
                 .reversalOfJournal(original)
+                .store(original.getStore())
                 .postedBy(user)
                 .postedAt(LocalDateTime.now())
                 .createdBy(user)

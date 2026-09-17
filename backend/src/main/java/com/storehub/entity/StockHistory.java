@@ -26,6 +26,15 @@ public class StockHistory {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    /**
+     * The store this movement happened at (Multi-Store spec section 16). Nullable only for
+     * rows recorded before Multi-Store existed; the Default Store migration (spec section
+     * 76) backfills those, and every new row set from here on always carries one.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private StockMovementType movementType;

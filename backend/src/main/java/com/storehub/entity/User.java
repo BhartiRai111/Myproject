@@ -63,6 +63,17 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
+    /**
+     * The active store this user is currently working in (Multi-Store spec section 12) —
+     * validated against {@link UserStore} access (or STORE_ACCESS_ALL) by
+     * {@code StoreAccessService} before it is ever set, never trusted blindly from a
+     * frontend request. Nullable: a brand-new user has no store selected until one is
+     * assigned/chosen; an ALL_STORES admin need not have one at all.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_store_id")
+    private Store currentStore;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

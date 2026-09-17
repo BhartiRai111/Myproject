@@ -19,9 +19,11 @@ public interface CreditNoteRepository extends JpaRepository<CreditNote, Long> {
             "  LOWER(cust.lastName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:status IS NULL OR c.status = :status) " +
             "AND (:fromDate IS NULL OR c.noteDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR c.noteDate <= :toDate)")
+            "AND (:toDate IS NULL OR c.noteDate <= :toDate) " +
+            "AND (:storeId IS NULL OR c.sourceSale.store.id = :storeId)")
     Page<CreditNote> search(@Param("search") String search, @Param("status") NoteStatus status,
-                             @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate, Pageable pageable);
+                             @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate,
+                             @Param("storeId") Long storeId, Pageable pageable);
 
     @Query("SELECT c.id FROM CreditNote c WHERE c.status = com.storehub.entity.NoteStatus.POSTED")
     java.util.List<Long> findPostedIds();

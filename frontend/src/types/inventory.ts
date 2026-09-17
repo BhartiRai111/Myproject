@@ -20,6 +20,9 @@ export interface Inventory {
   sku?: string;
   categoryId?: number;
   categoryName?: string;
+  storeId?: number | null;
+  storeName?: string | null;
+  storeCode?: string | null;
   unit: string;
   currentStock: number;
   minStockLevel: number;
@@ -37,6 +40,9 @@ export interface StockHistory {
   productId: number;
   productName: string;
   sku?: string;
+  storeId?: number | null;
+  storeName?: string | null;
+  storeCode?: string | null;
   movementType: StockMovementType;
   quantity: number;
   previousStock: number;
@@ -51,6 +57,7 @@ export interface StockHistory {
 
 export interface StockAdjustmentPayload {
   productId: number;
+  storeId: number;
   movementType: ManualAdjustmentType;
   quantity: number;
   reason: string;

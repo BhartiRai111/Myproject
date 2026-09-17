@@ -6,10 +6,14 @@ import com.storehub.dto.PagedResponse;
 import com.storehub.entity.City;
 import com.storehub.entity.Employee;
 import com.storehub.entity.EmployeeStatus;
+import com.storehub.entity.EmployeeStore;
 import com.storehub.entity.State;
+import com.storehub.entity.Store;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.MasterNotFoundException;
 import com.storehub.repository.EmployeeRepository;
+import com.storehub.repository.EmployeeStoreRepository;
+import com.storehub.repository.StoreRepository;
 import com.storehub.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class EmployeeService {
@@ -28,6 +36,8 @@ public class EmployeeService {
     private final CityService cityService;
     private final StateService stateService;
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
+    private final EmployeeStoreRepository employeeStoreRepository;
     private final EmployeeCodeGeneratorService employeeCodeGeneratorService;
     private final AuditService auditService;
 
@@ -131,6 +141,32 @@ public class EmployeeService {
         auditService.log(com.storehub.entity.AuditAction.UPDATE, "MASTER", "Employee", saved.getId(), saved.getEmployeeCode(),
                 oldStatus.name(), status.name(), "Employee " + saved.getEmployeeCode() + " status changed to " + status);
         return EmployeeResponse.fromEntity(saved, userRepository.findByEmployeeId(id).orElse(null));
+    }
+
+    /**
+     * ADMIN assigns an Employee's store list — purely informational (spec section 10),
+     * distinct from {@code StoreAccessService.assignStores} which is the actual login
+     * access control on {@link com.storehub.entity.User}. Replace-all semantics.
+     */
+    @Transactional
+    public EmployeeResponse assignStores(Long id, Set<Long> storeIds) {
+        Employee employee = findOrThrow(id);
+        employeeStoreRepository.deleteByEmployeeId(id);
+        for (Long storeId : storeIds) {
+            Store store = storeRepository.findById(storeId)
+                    .orElseThrow(() -> new MasterNotFoundException("Store", storeId));
+            employeeStoreRepository.save(EmployeeStore.builder().employee(employee).store(store).build());
+        }
+        auditService.log(com.storehub.entity.AuditAction.UPDATE, "MASTER", "Employee", id, employee.getEmployeeCode(),
+                null, null, "Store assignment for employee " + employee.getEmployeeCode() + " set to " + storeIds.size() + " store(s)");
+        return EmployeeResponse.fromEntity(employee, userRepository.findByEmployeeId(id).orElse(null));
+    }
+
+    public List<Long> getAssignedStoreIds(Long id) {
+        findOrThrow(id);
+        return employeeStoreRepository.findByEmployeeId(id).stream()
+                .map(es -> es.getStore().getId())
+                .collect(Collectors.toList());
     }
 
     public Employee findOrThrow(Long id) {

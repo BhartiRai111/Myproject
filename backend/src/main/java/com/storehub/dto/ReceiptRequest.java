@@ -18,6 +18,9 @@ public class ReceiptRequest {
     @NotNull(message = "Customer is required")
     private Long customerId;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     @NotNull(message = "Receipt date is required")
     private LocalDate receiptDate;
 

@@ -3,6 +3,7 @@ package com.storehub.service;
 import com.storehub.dto.AdminPasswordResetRequest;
 import com.storehub.dto.PagedResponse;
 import com.storehub.dto.PasswordChangeRequest;
+import com.storehub.dto.StoreResponse;
 import com.storehub.dto.UserCreateRequest;
 import com.storehub.dto.UserResponse;
 import com.storehub.dto.UserStatusUpdateRequest;
@@ -11,6 +12,7 @@ import com.storehub.entity.AuditAction;
 import com.storehub.entity.Employee;
 import com.storehub.entity.Permission;
 import com.storehub.entity.Role;
+import com.storehub.entity.Store;
 import com.storehub.entity.User;
 import com.storehub.entity.UserStatus;
 import com.storehub.exception.BadRequestException;
@@ -18,6 +20,7 @@ import com.storehub.exception.DuplicateEmailException;
 import com.storehub.exception.MasterNotFoundException;
 import com.storehub.exception.UserNotFoundException;
 import com.storehub.repository.EmployeeRepository;
+import com.storehub.repository.StoreRepository;
 import com.storehub.repository.UserRepository;
 import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Set;
 
 /**
  * Never physically deletes a user (spec section 52) — only ever ACTIVE/INACTIVE, so
@@ -41,6 +47,8 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final EmployeeRepository employeeRepository;
+    private final StoreRepository storeRepository;
+    private final StoreAccessService storeAccessService;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
 
@@ -167,6 +175,44 @@ public class UserService {
     public java.util.Set<Permission> effectivePermissions(Long id) {
         User user = findUserOrThrow(id);
         return RolePermissions.forRole(user.getRole());
+    }
+
+    /** ADMIN assigns a user's ASSIGNED_STORES list (spec sections 11, 70) — replace-all semantics. */
+    @Transactional
+    public UserResponse assignStores(Long id, Set<Long> storeIds) {
+        User user = findUserOrThrow(id);
+        storeAccessService.assignStores(id, storeIds);
+        auditService.log(AuditAction.UPDATE, "ADMIN", "User", id, null,
+                null, null, "Store access for user " + user.getEmail() + " set to " + storeIds.size() + " store(s)");
+        return UserResponse.fromEntity(findUserOrThrow(id));
+    }
+
+    public List<Long> getAssignedStoreIds(Long id) {
+        findUserOrThrow(id);
+        return storeAccessService.getAssignedStoreIds(id);
+    }
+
+    /** Self-service current-store switch (spec section 12/45) — validated against the caller's own store access, never trusted blindly. */
+    @Transactional
+    public UserResponse setCurrentStore(String currentUserEmail, Long storeId) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        storeAccessService.assertStoreAccess(user, storeId);
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new MasterNotFoundException("Store", storeId));
+        user.setCurrentStore(store);
+        User saved = userRepository.save(user);
+        auditService.log(AuditAction.UPDATE, "AUTH", "User", saved.getId(), store.getStoreCode(),
+                null, null, "User " + saved.getEmail() + " switched current store to " + store.getStoreCode());
+        return UserResponse.fromEntity(saved);
+    }
+
+    /** Every store this user may act on — ALL stores for an ALL_STORES user, else their explicit assignments (spec section 55). */
+    public List<StoreResponse> getAccessibleStores(String currentUserEmail) {
+        User user = userRepository.findByEmail(currentUserEmail)
+                .orElseThrow(() -> new BadRequestException("User not found"));
+        List<Long> ids = storeAccessService.getAccessibleStoreIds(user);
+        return storeRepository.findAllById(ids).stream().map(StoreResponse::fromEntity).toList();
     }
 
     private Employee resolveEmployee(Long employeeId, Long excludeUserId) {

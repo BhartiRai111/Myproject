@@ -39,6 +39,11 @@ public class CashTransaction {
     @Column(name = "transaction_date", nullable = false)
     private LocalDate transactionDate;
 
+    /** Which store's cash/bank this transaction affects (Multi-Store spec section 25) — fixed at creation. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "transaction_type", nullable = false, columnDefinition = "VARCHAR(20)")
     private CashTransactionType transactionType;

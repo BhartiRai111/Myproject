@@ -18,6 +18,9 @@ public class CashTransactionCreateRequest {
     @NotNull(message = "Transaction date is required")
     private LocalDate transactionDate;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     @NotNull(message = "Transaction type is required")
     private CashTransactionType transactionType;
 

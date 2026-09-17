@@ -19,6 +19,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             "AND (:entityType IS NULL OR :entityType = '' OR a.entityType = :entityType) " +
             "AND (:entityId IS NULL OR a.entityId = :entityId) " +
             "AND (:userId IS NULL OR a.userId = :userId) " +
+            "AND (:storeId IS NULL OR a.store.id = :storeId) " +
             "AND (:search IS NULL OR :search = '' OR " +
             "  LOWER(a.username) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
             "  LOWER(a.documentNumber) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
@@ -30,6 +31,7 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
                            @Param("entityType") String entityType,
                            @Param("entityId") Long entityId,
                            @Param("userId") Long userId,
+                           @Param("storeId") Long storeId,
                            @Param("search") String search,
                            @Param("fromDate") LocalDateTime fromDate,
                            @Param("toDate") LocalDateTime toDate,

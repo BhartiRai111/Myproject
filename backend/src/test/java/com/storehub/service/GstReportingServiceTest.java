@@ -79,6 +79,8 @@ class GstReportingServiceTest {
     private ProductRepository productRepository;
     @Autowired
     private InventoryRepository inventoryRepository;
+    @Autowired
+    private StoreService storeService;
 
     private Customer newCustomer() {
         return customerRepository.save(Customer.builder()
@@ -94,7 +96,7 @@ class GstReportingServiceTest {
         Product product = productRepository.save(Product.builder()
                 .name("Gst Report Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE).build());
-        inventoryRepository.save(Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 
@@ -168,7 +170,7 @@ class GstReportingServiceTest {
         Optional<GstTransaction> txn = gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.SALE, response.getId());
         assertThat(txn).isEmpty();
 
-        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null);
+        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null, null);
         assertThat(gstr1.getB2bTransactions()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
         assertThat(gstr1.getB2cTransactions()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
     }
@@ -186,9 +188,9 @@ class GstReportingServiceTest {
         Optional<GstTransaction> txn = gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.PURCHASE, response.getId());
         assertThat(txn).isEmpty();
 
-        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(currentReturnPeriod());
+        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(currentReturnPeriod(), null);
         // A Kacchi purchase's tax must not have leaked into the ITC total via any other path.
-        PurchaseGstReportResponse purchaseReport = gstReportingService.purchaseGstReport(LocalDate.now(), LocalDate.now(), null, PageRequest.of(0, 50));
+        PurchaseGstReportResponse purchaseReport = gstReportingService.purchaseGstReport(LocalDate.now(), LocalDate.now(), null, null, PageRequest.of(0, 50));
         assertThat(purchaseReport.getTransactions().getContent()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
     }
 
@@ -218,7 +220,7 @@ class GstReportingServiceTest {
         assertThat(txn.isB2b()).isFalse();
         assertThat(txn.getStatus()).isEqualTo(GstTransactionStatus.ACTIVE);
 
-        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null);
+        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null, null);
         assertThat(gstr1.getB2cTransactions()).anyMatch(r -> r.getSourceTransactionId().equals(response.getId()));
         assertThat(gstr1.getB2bTransactions()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
     }
@@ -236,7 +238,7 @@ class GstReportingServiceTest {
         assertThat(txn.isB2b()).isTrue();
         assertThat(txn.getPlaceOfSupplyStateCode()).isEqualTo("27");
 
-        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null);
+        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null, null);
         assertThat(gstr1.getB2bTransactions()).anyMatch(r -> r.getSourceTransactionId().equals(response.getId()));
     }
 
@@ -249,12 +251,12 @@ class GstReportingServiceTest {
         PurchaseResponse response = purchaseService.createPurchase(
                 purchaseRequest(TransactionType.PURCHASE, supplier.getId(), List.of(purchaseItem(product.getId(), 1, new BigDecimal("20000"), new BigDecimal("18"))), VALID_GSTIN));
 
-        PurchaseGstReportResponse report = gstReportingService.purchaseGstReport(LocalDate.now(), LocalDate.now(), null, PageRequest.of(0, 50));
+        PurchaseGstReportResponse report = gstReportingService.purchaseGstReport(LocalDate.now(), LocalDate.now(), null, null, PageRequest.of(0, 50));
         assertThat(report.getTransactions().getContent())
                 .filteredOn(r -> r.getSourceTransactionId().equals(response.getId()))
                 .allMatch(r -> Boolean.TRUE.equals(r.getItcEligible()));
 
-        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(currentReturnPeriod());
+        Gstr3bResponse gstr3b = gstReportingService.gstr3bSummary(currentReturnPeriod(), null);
         assertThat(gstr3b.getInputTaxCredit().getTotalTax()).isGreaterThanOrEqualTo(response.getTotalTax());
         assertThat(gstr3b.getNote()).contains("not a government");
     }
@@ -276,7 +278,7 @@ class GstReportingServiceTest {
         GstTransaction txn = gstTransactionRepository.findBySourceTransactionTypeAndSourceTransactionId(VoucherType.SALE, response.getId()).orElseThrow();
         assertThat(txn.getStatus()).isEqualTo(GstTransactionStatus.REVERSED);
 
-        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null);
+        Gstr1Response gstr1 = gstReportingService.gstr1(LocalDate.now(), LocalDate.now(), null, null);
         assertThat(gstr1.getB2bTransactions()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
         assertThat(gstr1.getB2cTransactions()).noneMatch(r -> r.getSourceTransactionId().equals(response.getId()));
     }
@@ -317,7 +319,7 @@ class GstReportingServiceTest {
         SaleResponse response = saleService.createSale(
                 saleRequest(TransactionType.SALE, customer.getId(), List.of(saleItem(product.getId(), 1, new BigDecimal("10000"), new BigDecimal("18"))), null, false));
 
-        ReconciliationResponse reconciliation = gstReportingService.reconciliation(LocalDate.now(), LocalDate.now());
+        ReconciliationResponse reconciliation = gstReportingService.reconciliation(LocalDate.now(), LocalDate.now(), null);
         assertThat(reconciliation.getRows())
                 .filteredOn(r -> r.getSourceTransactionType() == VoucherType.SALE && r.getSourceTransactionId().equals(response.getId()))
                 .allMatch(r -> "MATCHED".equals(r.getStatus()));
@@ -339,11 +341,11 @@ class GstReportingServiceTest {
 
         assertThat(response.getTotalTax()).isEqualByComparingTo("2040.00");
 
-        TaxRateSummaryReportResponse taxRateSummary = gstReportingService.taxRateSummary(LocalDate.now(), LocalDate.now());
+        TaxRateSummaryReportResponse taxRateSummary = gstReportingService.taxRateSummary(LocalDate.now(), LocalDate.now(), null);
         assertThat(taxRateSummary.getOutward()).extracting(r -> r.getGstPercent().stripTrailingZeros())
                 .contains(new BigDecimal("12").stripTrailingZeros(), new BigDecimal("18").stripTrailingZeros());
 
-        HsnSummaryReportResponse hsnSummary = gstReportingService.hsnSummary(LocalDate.now(), LocalDate.now());
+        HsnSummaryReportResponse hsnSummary = gstReportingService.hsnSummary(LocalDate.now(), LocalDate.now(), null);
         assertThat(hsnSummary.getOutward()).isNotEmpty();
     }
 
@@ -356,7 +358,7 @@ class GstReportingServiceTest {
         SaleResponse response = saleService.createSale(
                 saleRequest(TransactionType.SALE, customer.getId(), List.of(saleItem(product.getId(), 1, new BigDecimal("10000"), new BigDecimal("18"))), null, false));
 
-        GstReportListResponse output = gstReportingService.outputGstReport(LocalDate.now(), LocalDate.now(), PageRequest.of(0, 50));
+        GstReportListResponse output = gstReportingService.outputGstReport(LocalDate.now(), LocalDate.now(), null, PageRequest.of(0, 50));
         assertThat(output.getTransactions().getContent()).anyMatch(r -> r.getSourceTransactionId().equals(response.getId()));
         assertThat(output.getTotals().getTotalTax()).isGreaterThanOrEqualTo(response.getTotalTax());
     }

@@ -42,21 +42,22 @@ public class AlertService {
     public List<AlertItem> getAlerts() {
         List<AlertItem> alerts = new ArrayList<>();
 
-        long outOfStock = inventoryRepository.countOutOfStock();
+        // Aggregated across all stores (null storeId) — Alert Center itself isn't store-scoped yet.
+        long outOfStock = inventoryRepository.countOutOfStock(null);
         if (outOfStock > 0) {
             alerts.add(AlertItem.builder().severity("CRITICAL").category("Inventory")
                     .message(outOfStock + " product(s) are OUT OF STOCK")
                     .path("/inventory?stockStatus=OUT_OF_STOCK").build());
         }
 
-        long lowStock = inventoryRepository.countLowStock();
+        long lowStock = inventoryRepository.countLowStock(null);
         if (lowStock > 0) {
             alerts.add(AlertItem.builder().severity("WARNING").category("Inventory")
                     .message(lowStock + " product(s) are LOW STOCK")
                     .path("/inventory?stockStatus=LOW_STOCK").build());
         }
 
-        long reorderCandidates = inventoryRepository.countReorderCandidates();
+        long reorderCandidates = inventoryRepository.countReorderCandidates(null);
         if (reorderCandidates > 0) {
             alerts.add(AlertItem.builder().severity("WARNING").category("Inventory")
                     .message(reorderCandidates + " product(s) have reached their reorder point")

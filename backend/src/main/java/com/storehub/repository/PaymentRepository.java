@@ -24,10 +24,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             "  LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "AND (:supplierId IS NULL OR s.id = :supplierId) " +
             "AND (:fromDate IS NULL OR p.paymentDate >= :fromDate) " +
-            "AND (:toDate IS NULL OR p.paymentDate <= :toDate)")
+            "AND (:toDate IS NULL OR p.paymentDate <= :toDate) " +
+            "AND (:storeId IS NULL OR p.store.id = :storeId)")
     Page<Payment> search(@Param("search") String search,
                           @Param("supplierId") Long supplierId,
                           @Param("fromDate") LocalDate fromDate,
                           @Param("toDate") LocalDate toDate,
+                          @Param("storeId") Long storeId,
                           Pageable pageable);
 }

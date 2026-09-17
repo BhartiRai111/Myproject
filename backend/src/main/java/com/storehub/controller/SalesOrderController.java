@@ -29,9 +29,10 @@ public class SalesOrderController {
             @RequestParam(required = false) SalesOrderStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(salesOrderService.search(search, customerId, status, fromDate, toDate, page, size));
+        return ResponseEntity.ok(salesOrderService.search(search, customerId, status, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/{id}")

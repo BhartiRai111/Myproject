@@ -24,6 +24,9 @@ public class SaleCreateRequest {
 
     private Long customerId;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     @NotNull(message = "Sale date is required")
     private LocalDate saleDate;
 

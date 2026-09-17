@@ -20,6 +20,9 @@ public class ReceiptResponse {
     private String receiptNumber;
     private LocalDate receiptDate;
     private CustomerResponse customer;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private BigDecimal amount;
     private PaymentMode paymentMode;
     private String remarks;
@@ -33,6 +36,9 @@ public class ReceiptResponse {
                 .receiptNumber(receipt.getReceiptNumber())
                 .receiptDate(receipt.getReceiptDate())
                 .customer(receipt.getCustomer() != null ? CustomerResponse.fromEntity(receipt.getCustomer()) : null)
+                .storeId(receipt.getStore() != null ? receipt.getStore().getId() : null)
+                .storeName(receipt.getStore() != null ? receipt.getStore().getStoreName() : null)
+                .storeCode(receipt.getStore() != null ? receipt.getStore().getStoreCode() : null)
                 .amount(receipt.getAmount())
                 .paymentMode(receipt.getPaymentMode())
                 .remarks(receipt.getRemarks())

@@ -72,6 +72,15 @@ public class Product {
     @Column(name = "reorder_quantity")
     private Integer reorderQuantity;
 
+    /**
+     * Overstock threshold — moved here from {@code Inventory} for Multi-Store (spec
+     * sections 82-83): it is Item Master configuration ("how much of this item is too
+     * much"), not a per-store quantity, so it must not be duplicated across a product's
+     * now-multiple per-store Inventory rows.
+     */
+    @Column(name = "max_stock_level")
+    private Integer maxStockLevel;
+
     @Column(name = "mrp", precision = 12, scale = 2)
     private BigDecimal mrp;
 

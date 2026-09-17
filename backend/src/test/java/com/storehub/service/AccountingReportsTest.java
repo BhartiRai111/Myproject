@@ -89,6 +89,8 @@ class AccountingReportsTest {
     private ProductRepository productRepository;
     @Autowired
     private InventoryRepository inventoryRepository;
+    @Autowired
+    private StoreService storeService;
 
     private Customer newCustomer() {
         return customerRepository.save(Customer.builder()
@@ -104,7 +106,7 @@ class AccountingReportsTest {
         Product product = productRepository.save(Product.builder()
                 .name("P4 Item " + System.nanoTime())
                 .sellingPrice(price).purchasePrice(price).status(ProductStatus.ACTIVE).build());
-        inventoryRepository.save(Inventory.builder().product(product).currentStock(stock).build());
+        inventoryRepository.save(Inventory.builder().product(product).store(storeService.getOrCreateDefaultStore()).currentStock(stock).build());
         return product;
     }
 

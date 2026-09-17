@@ -31,9 +31,10 @@ public class CashTransactionController {
             @RequestParam(required = false) CashTransactionStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(cashTransactionService.search(search, transactionType, status, fromDate, toDate, page, size));
+        return ResponseEntity.ok(cashTransactionService.search(search, transactionType, status, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/{id}")

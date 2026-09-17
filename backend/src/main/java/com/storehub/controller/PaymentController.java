@@ -29,9 +29,10 @@ public class PaymentController {
             @RequestParam(required = false) Long supplierId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(paymentService.search(search, supplierId, fromDate, toDate, page, size));
+        return ResponseEntity.ok(paymentService.search(search, supplierId, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/{id}")

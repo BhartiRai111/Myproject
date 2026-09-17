@@ -39,4 +39,7 @@ export const userApi = {
     api.post<User>(`/users/${id}/reset-password`, payload),
   changeOwnPassword: (payload: PasswordChangePayload) => api.put<void>('/users/me/password', payload),
   getEffectivePermissions: (id: number) => api.get<Permission[]>(`/users/${id}/effective-permissions`),
+  /** This user's ASSIGNED_STORES list (Multi-Store spec sections 11, 70) — irrelevant for a STORE_ACCESS_ALL user, who can already act on every store. */
+  getAssignedStores: (id: number) => api.get<number[]>(`/users/${id}/stores`),
+  assignStores: (id: number, storeIds: number[]) => api.put<User>(`/users/${id}/stores`, { storeIds }),
 };

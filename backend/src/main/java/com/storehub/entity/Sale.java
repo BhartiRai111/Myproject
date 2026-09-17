@@ -43,6 +43,11 @@ public class Sale {
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
+    /** The store this sale belongs to (Multi-Store spec section 22) — fixed at creation, never changed on edit. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "sale_date", nullable = false)
     private LocalDate saleDate;
 

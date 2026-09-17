@@ -14,6 +14,9 @@ public class StockAdjustmentRequest {
     @NotNull(message = "Product is required")
     private Long productId;
 
+    @NotNull(message = "Store is required")
+    private Long storeId;
+
     @NotNull(message = "Adjustment type is required")
     private StockMovementType movementType;
 

@@ -21,6 +21,9 @@ public class SalesOrderResponse {
     private String orderNumber;
     private LocalDate orderDate;
     private CustomerResponse customer;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private String customerPhone;
     private String customerGstin;
     private String billingAddress;
@@ -62,6 +65,9 @@ public class SalesOrderResponse {
                 .orderNumber(order.getOrderNumber())
                 .orderDate(order.getOrderDate())
                 .customer(order.getCustomer() != null ? CustomerResponse.fromEntity(order.getCustomer()) : null)
+                .storeId(order.getStore() != null ? order.getStore().getId() : null)
+                .storeName(order.getStore() != null ? order.getStore().getStoreName() : null)
+                .storeCode(order.getStore() != null ? order.getStore().getStoreCode() : null)
                 .customerPhone(order.getCustomerPhone())
                 .customerGstin(order.getCustomerGstin())
                 .billingAddress(order.getBillingAddress())

@@ -11,11 +11,14 @@ import com.storehub.entity.PaymentStatus;
 import com.storehub.entity.Receipt;
 import com.storehub.entity.ReceiptAllocation;
 import com.storehub.entity.Sale;
+import com.storehub.entity.Store;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.ReceiptNotFoundException;
 import com.storehub.exception.SaleNotFoundException;
 import com.storehub.repository.ReceiptRepository;
 import com.storehub.repository.SaleRepository;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,17 +42,23 @@ public class ReceiptService {
     private final AccountingService accountingService;
     private final VoucherNumberService voucherNumberService;
     private final AuditService auditService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<ReceiptResponse> search(String search, Long customerId, LocalDate fromDate, LocalDate toDate,
-                                                  int page, int size) {
+                                                  Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<ReceiptResponse> result = receiptRepository.search(search, customerId, fromDate, toDate, pageable)
+        Page<ReceiptResponse> result = receiptRepository.search(search, customerId, fromDate, toDate, resolvedStoreId, pageable)
                 .map(ReceiptResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A receipt belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public ReceiptResponse getById(Long id) {
-        return ReceiptResponse.fromEntity(findOrThrow(id));
+        Receipt receipt = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), receipt.getStore() != null ? receipt.getStore().getId() : null);
+        return ReceiptResponse.fromEntity(receipt);
     }
 
     public CustomerOutstandingResponse getOutstandingForCustomer(Long customerId) {
@@ -67,8 +76,13 @@ public class ReceiptService {
     public ReceiptResponse create(ReceiptRequest request) {
         Customer customer = customerService.findCustomerOrThrow(request.getCustomerId());
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+
         Receipt receipt = Receipt.builder()
                 .customer(customer)
+                .store(store)
                 .receiptDate(request.getReceiptDate())
                 .amount(request.getAmount())
                 .paymentMode(request.getPaymentMode())
@@ -87,7 +101,8 @@ public class ReceiptService {
         accountingService.postReceiptJournal(saved);
 
         auditService.log(com.storehub.entity.AuditAction.RECEIPT, "SALES", "Receipt", saved.getId(), saved.getReceiptNumber(),
-                null, null, "Receipt " + saved.getReceiptNumber() + " of " + saved.getAmount() + " recorded for customer " + customer.getId());
+                null, null, "Receipt " + saved.getReceiptNumber() + " of " + saved.getAmount() + " recorded for customer " + customer.getId(),
+                saved.getStore() != null ? saved.getStore().getId() : null);
 
         return ReceiptResponse.fromEntity(saved);
     }
@@ -97,6 +112,7 @@ public class ReceiptService {
     public Receipt createSystemReceiptForSale(Sale sale) {
         Receipt receipt = Receipt.builder()
                 .customer(sale.getCustomer())
+                .store(sale.getStore())
                 .receiptDate(sale.getSaleDate())
                 .amount(sale.getPaidAmount())
                 .paymentMode(sale.getPaymentMode())
@@ -124,9 +140,10 @@ public class ReceiptService {
         }
         String receiptNumber = receipt.getReceiptNumber();
         Long receiptId = receipt.getId();
+        Long storeId = receipt.getStore() != null ? receipt.getStore().getId() : null;
         reverseAndRemove(receipt);
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "Receipt", receiptId, receiptNumber,
-                null, null, "Receipt " + receiptNumber + " deleted: allocations and ledger/accounting effects reversed");
+                null, null, "Receipt " + receiptNumber + " deleted: allocations and ledger/accounting effects reversed", storeId);
     }
 
     /** Used only by SaleService when reversing a sale that has its own auto-generated receipt. */

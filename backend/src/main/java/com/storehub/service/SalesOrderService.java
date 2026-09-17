@@ -9,10 +9,14 @@ import com.storehub.entity.Product;
 import com.storehub.entity.SalesOrder;
 import com.storehub.entity.SalesOrderItem;
 import com.storehub.entity.SalesOrderStatus;
+import com.storehub.entity.Store;
+import com.storehub.entity.StoreStatus;
+import com.storehub.entity.User;
 import com.storehub.exception.BadRequestException;
 import com.storehub.exception.SalesOrderNotFoundException;
 import com.storehub.repository.SalesOrderItemRepository;
 import com.storehub.repository.SalesOrderRepository;
+import com.storehub.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -36,18 +40,24 @@ public class SalesOrderService {
     private final ProductService productService;
     private final CustomerService customerService;
     private final VoucherNumberService voucherNumberService;
+    private final StoreAccessService storeAccessService;
+    private final StoreService storeService;
 
     public PagedResponse<SalesOrderResponse> search(String search, Long customerId, SalesOrderStatus status,
-                                                      LocalDate fromDate, LocalDate toDate, int page, int size) {
+                                                      LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<SalesOrderResponse> result = salesOrderRepository
-                .search(search, customerId, status, fromDate, toDate, pageable)
+                .search(search, customerId, status, fromDate, toDate, resolvedStoreId, pageable)
                 .map(SalesOrderResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A sales order belongs to exactly one store — never returned to a caller without access to it (Multi-Store spec section 14). */
     public SalesOrderResponse getById(Long id) {
-        return SalesOrderResponse.fromEntity(findOrThrow(id));
+        SalesOrder order = findOrThrow(id);
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), order.getStore() != null ? order.getStore().getId() : null);
+        return SalesOrderResponse.fromEntity(order);
     }
 
     @Transactional
@@ -56,8 +66,16 @@ public class SalesOrderService {
                 ? customerService.findCustomerOrThrow(request.getCustomerId())
                 : null;
 
+        User currentUser = SecurityUtil.currentUserOrNull();
+        Long resolvedStoreId = storeAccessService.resolveEffectiveStoreId(currentUser, request.getStoreId());
+        Store store = storeService.findOrThrow(resolvedStoreId);
+        if (store.getStatus() == StoreStatus.INACTIVE) {
+            throw new BadRequestException("Store '" + store.getStoreName() + "' is inactive and cannot be used for new sales orders");
+        }
+
         SalesOrder order = SalesOrder.builder()
                 .customer(customer)
+                .store(store)
                 .customerPhone(request.getCustomerPhone())
                 .customerGstin(request.getCustomerGstin())
                 .billingAddress(request.getBillingAddress())

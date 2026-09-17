@@ -119,6 +119,11 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(StockTransferNotFoundException.class)
+    public ResponseEntity<ApiError> handleStockTransferNotFound(StockTransferNotFoundException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(JournalNotFoundException.class)
     public ResponseEntity<ApiError> handleJournalNotFound(JournalNotFoundException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);

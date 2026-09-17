@@ -28,9 +28,10 @@ public class DebitNoteController {
             @RequestParam(required = false) NoteStatus status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(debitNoteService.search(search, status, fromDate, toDate, page, size));
+        return ResponseEntity.ok(debitNoteService.search(search, status, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/{id}")

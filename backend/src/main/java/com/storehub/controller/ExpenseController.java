@@ -38,10 +38,11 @@ public class ExpenseController {
             @RequestParam(required = false) Boolean itcEligible,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) Long storeId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(expenseService.search(search, status, category, categoryId, supplierId, paymentMode,
-                gstApplicable, itcEligible, fromDate, toDate, page, size));
+                gstApplicable, itcEligible, fromDate, toDate, storeId, page, size));
     }
 
     @GetMapping("/reports/summary")

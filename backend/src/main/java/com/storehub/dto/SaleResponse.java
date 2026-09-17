@@ -24,6 +24,9 @@ public class SaleResponse {
     private Long id;
     private String invoiceNumber;
     private CustomerResponse customer;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private LocalDate saleDate;
     private List<SaleItemResponse> items;
     private BigDecimal subtotalAmount;
@@ -79,6 +82,9 @@ public class SaleResponse {
                 .id(sale.getId())
                 .invoiceNumber(sale.getInvoiceNumber())
                 .customer(sale.getCustomer() != null ? CustomerResponse.fromEntity(sale.getCustomer()) : null)
+                .storeId(sale.getStore() != null ? sale.getStore().getId() : null)
+                .storeName(sale.getStore() != null ? sale.getStore().getStoreName() : null)
+                .storeCode(sale.getStore() != null ? sale.getStore().getStoreCode() : null)
                 .saleDate(sale.getSaleDate())
                 .items(items)
                 .subtotalAmount(subtotalAmount)

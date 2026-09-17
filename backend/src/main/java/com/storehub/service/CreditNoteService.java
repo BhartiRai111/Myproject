@@ -63,18 +63,24 @@ public class CreditNoteService {
     private final LedgerService ledgerService;
     private final GstTransactionSyncService gstTransactionSyncService;
     private final AuditService auditService;
+    private final StoreAccessService storeAccessService;
 
     @Transactional(readOnly = true)
-    public PagedResponse<CreditNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, int page, int size) {
+    public PagedResponse<CreditNoteResponse> search(String search, NoteStatus status, LocalDate fromDate, LocalDate toDate, Long storeId, int page, int size) {
+        Long resolvedStoreId = storeAccessService.resolveViewableStoreId(SecurityUtil.currentUserOrNull(), storeId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<CreditNoteResponse> result = creditNoteRepository.search(search, status, fromDate, toDate, pageable)
+        Page<CreditNoteResponse> result = creditNoteRepository.search(search, status, fromDate, toDate, resolvedStoreId, pageable)
                 .map(CreditNoteResponse::fromEntity);
         return PagedResponse.fromPage(result);
     }
 
+    /** A credit note belongs to its source sale's store — never returned to a caller without access to it (Multi-Store spec section 14). */
     @Transactional(readOnly = true)
     public CreditNoteResponse getById(Long id) {
-        return CreditNoteResponse.fromEntity(findOrThrow(id));
+        CreditNote note = findOrThrow(id);
+        Long storeId = note.getSourceSale().getStore() != null ? note.getSourceSale().getStore().getId() : null;
+        storeAccessService.assertStoreAccess(SecurityUtil.currentUserOrNull(), storeId);
+        return CreditNoteResponse.fromEntity(note);
     }
 
     @Transactional
@@ -174,7 +180,8 @@ public class CreditNoteService {
 
         auditService.log(com.storehub.entity.AuditAction.CREATE, "SALES", "CreditNote", saved.getId(),
                 saved.getVoucherNumber(), null, null,
-                "Credit Note " + saved.getVoucherNumber() + " created against sale " + sale.getInvoiceNumber());
+                "Credit Note " + saved.getVoucherNumber() + " created against sale " + sale.getInvoiceNumber(),
+                sale.getStore() != null ? sale.getStore().getId() : null);
 
         if (request.isPost()) {
             return post(saved.getId());
@@ -200,13 +207,19 @@ public class CreditNoteService {
         lines.add(JournalLine.credit(SystemAccountCode.CUSTOMER_RECEIVABLE, note.getTotalAmount(),
                 AccountingPartyType.CUSTOMER, note.getCustomer().getId()));
 
+        Long storeId = note.getSourceSale().getStore() != null ? note.getSourceSale().getStore().getId() : null;
         accountingService.postJournal(VoucherType.CREDIT_NOTE, note.getId(), note.getVoucherNumber(),
-                note.getNoteDate(), "Credit Note " + note.getVoucherNumber(), lines);
+                note.getNoteDate(), "Credit Note " + note.getVoucherNumber(), lines, storeId);
 
         if (note.getStockImpact() == StockImpactType.STOCK_RETURN) {
             for (CreditNoteItem item : note.getItems()) {
-                inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(), com.storehub.entity.StockMovementType.SALES_RETURN,
-                        ReferenceType.CREDIT_NOTE, note.getId(), "Sales return: Credit Note " + note.getVoucherNumber());
+                if (storeId != null) {
+                    inventoryService.applyMovement(item.getProduct().getId(), storeId, item.getQuantity(), com.storehub.entity.StockMovementType.SALES_RETURN,
+                            ReferenceType.CREDIT_NOTE, note.getId(), "Sales return: Credit Note " + note.getVoucherNumber());
+                } else {
+                    inventoryService.applyMovement(item.getProduct().getId(), item.getQuantity(), com.storehub.entity.StockMovementType.SALES_RETURN,
+                            ReferenceType.CREDIT_NOTE, note.getId(), "Sales return: Credit Note " + note.getVoucherNumber());
+                }
             }
         }
 
@@ -222,7 +235,7 @@ public class CreditNoteService {
 
         auditService.log(com.storehub.entity.AuditAction.POST, "SALES", "CreditNote", posted.getId(),
                 posted.getVoucherNumber(), null, null,
-                "Credit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied");
+                "Credit Note " + posted.getVoucherNumber() + " posted: stock/ledger/accounting/GST effects applied", storeId);
         return CreditNoteResponse.fromEntity(posted);
     }
 
@@ -238,9 +251,15 @@ public class CreditNoteService {
         if (note.getStatus() == NoteStatus.POSTED) {
             accountingService.reverseJournal(VoucherType.CREDIT_NOTE, note.getId(), reason);
             if (note.getStockImpact() == StockImpactType.STOCK_RETURN) {
+                Long storeId = note.getSourceSale().getStore() != null ? note.getSourceSale().getStore().getId() : null;
                 for (CreditNoteItem item : note.getItems()) {
-                    inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
-                            ReferenceType.CREDIT_NOTE, note.getId(), reason);
+                    if (storeId != null) {
+                        inventoryService.applyMovement(item.getProduct().getId(), storeId, -item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
+                                ReferenceType.CREDIT_NOTE, note.getId(), reason);
+                    } else {
+                        inventoryService.applyMovement(item.getProduct().getId(), -item.getQuantity(), com.storehub.entity.StockMovementType.ADJUSTMENT,
+                                ReferenceType.CREDIT_NOTE, note.getId(), reason);
+                    }
                 }
             }
             ledgerService.reverseCreditNoteEntry(note, reason);
@@ -253,7 +272,8 @@ public class CreditNoteService {
         CreditNote cancelled = creditNoteRepository.save(note);
 
         auditService.log(com.storehub.entity.AuditAction.CANCEL, "SALES", "CreditNote", cancelled.getId(),
-                cancelled.getVoucherNumber(), null, null, reason);
+                cancelled.getVoucherNumber(), null, null, reason,
+                cancelled.getSourceSale().getStore() != null ? cancelled.getSourceSale().getStore().getId() : null);
         return CreditNoteResponse.fromEntity(cancelled);
     }
 

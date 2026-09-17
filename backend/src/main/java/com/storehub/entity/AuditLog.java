@@ -52,6 +52,11 @@ public class AuditLog {
     @Column(name = "entity_id")
     private Long entityId;
 
+    /** The store the audited action was performed in/for, when it has one (Multi-Store spec section 27) — null for a global/system-level action. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "document_number", length = 30)
     private String documentNumber;
 

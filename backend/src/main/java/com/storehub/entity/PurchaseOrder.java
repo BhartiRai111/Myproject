@@ -36,6 +36,11 @@ public class PurchaseOrder {
     @JoinColumn(name = "supplier_id", nullable = false)
     private Supplier supplier;
 
+    /** The receiving store (Multi-Store spec section 22) — fixed at creation. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "supplier_phone", length = 20)
     private String supplierPhone;
 

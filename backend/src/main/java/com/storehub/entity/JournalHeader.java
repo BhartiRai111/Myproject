@@ -49,6 +49,11 @@ public class JournalHeader {
     @Column(name = "voucher_id")
     private Long voucherId;
 
+    /** The store of the source voucher, when it has one (Multi-Store spec section 27) — null for a manual JOURNAL voucher. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "voucher_number", length = 30)
     private String voucherNumber;
 

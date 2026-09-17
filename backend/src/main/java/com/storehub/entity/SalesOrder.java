@@ -36,6 +36,11 @@ public class SalesOrder {
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
+    /** The store this order belongs to (Multi-Store spec section 22) — fixed at creation. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "customer_phone", length = 20)
     private String customerPhone;
 

@@ -15,6 +15,9 @@ public class SalesOrderRequest {
 
     private Long customerId;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     private String customerPhone;
 
     private String customerGstin;

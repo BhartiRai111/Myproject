@@ -20,11 +20,13 @@ public interface StockHistoryRepository extends JpaRepository<StockHistory, Long
 
     @Query("SELECT h FROM StockHistory h WHERE " +
             "(:productId IS NULL OR h.product.id = :productId) " +
+            "AND (:storeId IS NULL OR h.store.id = :storeId) " +
             "AND (:movementType IS NULL OR h.movementType = :movementType) " +
             "AND (:referenceType IS NULL OR h.referenceType = :referenceType) " +
             "AND (:fromDateTime IS NULL OR h.createdAt >= :fromDateTime) " +
             "AND (:toDateTime IS NULL OR h.createdAt < :toDateTime)")
     Page<StockHistory> search(@Param("productId") Long productId,
+                               @Param("storeId") Long storeId,
                                @Param("movementType") StockMovementType movementType,
                                @Param("referenceType") ReferenceType referenceType,
                                @Param("fromDateTime") LocalDateTime fromDateTime,

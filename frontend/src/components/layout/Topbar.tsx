@@ -20,6 +20,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { getPageTitle } from './page-title';
 import GlobalSearch from './GlobalSearch';
+import StoreSwitcher from './StoreSwitcher';
 
 const ALERT_POLL_MS = 60000;
 
@@ -90,6 +91,8 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
       </div>
 
       <div className="flex items-center gap-1.5 sm:gap-2">
+        <StoreSwitcher />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">

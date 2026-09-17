@@ -23,6 +23,9 @@ public class ExpenseResponse {
     private LocalDate expenseDate;
     private String category;
     private Long categoryId;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private String vendorName;
     private Long supplierId;
     private String supplierGstin;
@@ -58,6 +61,9 @@ public class ExpenseResponse {
                 .expenseDate(e.getExpenseDate())
                 .category(e.getCategory())
                 .categoryId(e.getExpenseCategory() != null ? e.getExpenseCategory().getId() : null)
+                .storeId(e.getStore() != null ? e.getStore().getId() : null)
+                .storeName(e.getStore() != null ? e.getStore().getStoreName() : null)
+                .storeCode(e.getStore() != null ? e.getStore().getStoreCode() : null)
                 .vendorName(e.getVendorName())
                 .supplierId(e.getSupplier() != null ? e.getSupplier().getId() : null)
                 .supplierGstin(e.getSupplier() != null ? e.getSupplier().getGstNumber() : null)

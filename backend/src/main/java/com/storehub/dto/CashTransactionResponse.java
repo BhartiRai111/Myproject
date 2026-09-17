@@ -20,6 +20,9 @@ public class CashTransactionResponse {
     private Long id;
     private String transactionNumber;
     private LocalDate transactionDate;
+    private Long storeId;
+    private String storeName;
+    private String storeCode;
     private CashTransactionType transactionType;
     private PaymentMode paymentMode;
     private BigDecimal amount;
@@ -37,6 +40,9 @@ public class CashTransactionResponse {
                 .id(c.getId())
                 .transactionNumber(c.getTransactionNumber())
                 .transactionDate(c.getTransactionDate())
+                .storeId(c.getStore() != null ? c.getStore().getId() : null)
+                .storeName(c.getStore() != null ? c.getStore().getStoreName() : null)
+                .storeCode(c.getStore() != null ? c.getStore().getStoreCode() : null)
                 .transactionType(c.getTransactionType())
                 .paymentMode(c.getPaymentMode())
                 .amount(c.getAmount())

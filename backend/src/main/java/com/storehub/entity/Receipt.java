@@ -36,6 +36,11 @@ public class Receipt {
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
 
+    /** Which store's cash/bank this receipt affects (Multi-Store spec section 24) — fixed at creation. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 

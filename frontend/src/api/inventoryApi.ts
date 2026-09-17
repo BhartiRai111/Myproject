@@ -13,6 +13,7 @@ import {
 export interface InventoryQuery {
   search?: string;
   categoryId?: number | '';
+  storeId?: number | '';
   stockStatus?: StockStatus | '';
   page?: number;
   size?: number;
@@ -22,6 +23,7 @@ export interface InventoryQuery {
 
 export interface StockHistoryQuery {
   productId?: number;
+  storeId?: number | '';
   movementType?: StockMovementType | '';
   referenceType?: ReferenceType | '';
   fromDate?: string;
@@ -36,6 +38,7 @@ export const inventoryApi = {
       params: {
         search: query.search || undefined,
         categoryId: query.categoryId || undefined,
+        storeId: query.storeId || undefined,
         stockStatus: query.stockStatus || undefined,
         page: query.page ?? 0,
         size: query.size ?? 10,
@@ -44,7 +47,7 @@ export const inventoryApi = {
       },
     }),
   getById: (id: number) => api.get<Inventory>(`/inventory/${id}`),
-  getSummary: () => api.get<InventorySummary>('/inventory/summary'),
+  getSummary: (storeId?: number | '') => api.get<InventorySummary>('/inventory/summary', { params: { storeId: storeId || undefined } }),
   adjust: (payload: StockAdjustmentPayload) => api.post<Inventory>('/inventory/adjust', payload),
   getHistoryForInventory: (id: number, page = 0, size = 10) =>
     api.get<PagedResponse<StockHistory>>(`/inventory/${id}/history`, { params: { page, size } }),
@@ -52,6 +55,7 @@ export const inventoryApi = {
     api.get<PagedResponse<StockHistory>>('/inventory/history', {
       params: {
         productId: query.productId || undefined,
+        storeId: query.storeId || undefined,
         movementType: query.movementType || undefined,
         referenceType: query.referenceType || undefined,
         fromDate: query.fromDate || undefined,
@@ -66,6 +70,7 @@ export const inventoryApi = {
       params: {
         search: query.search || undefined,
         categoryId: query.categoryId || undefined,
+        storeId: query.storeId || undefined,
         stockStatus: query.stockStatus || undefined,
       },
     }),

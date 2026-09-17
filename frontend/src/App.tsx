@@ -8,6 +8,9 @@ import ComingSoon from './pages/ComingSoon';
 import Dashboard from './pages/Dashboard';
 import AlertsCenter from './pages/AlertsCenter';
 import InventoryPage from './pages/Inventory';
+import StockTransfers from './pages/inventory/StockTransfers';
+import StockTransferForm from './pages/inventory/StockTransferForm';
+import StockTransferDetail from './pages/inventory/StockTransferDetail';
 import Login from './pages/Login';
 import ProductForm from './pages/ProductForm';
 import Products from './pages/Products';
@@ -56,6 +59,7 @@ import EmployeeMaster from './pages/masters/EmployeeMaster';
 import PartyMaster from './pages/masters/PartyMaster';
 import BusinessGstConfigMaster from './pages/masters/BusinessGstConfigMaster';
 import ExpenseCategoryMaster from './pages/masters/ExpenseCategoryMaster';
+import StoreMaster from './pages/masters/StoreMaster';
 import AccountingHub from './pages/accounting/AccountingHub';
 import Expenses from './pages/accounting/Expenses';
 import ExpenseForm from './pages/accounting/ExpenseForm';
@@ -84,6 +88,7 @@ import ExpenseSummary from './pages/accounting/reports/ExpenseSummary';
 import ExpenseAnalysis from './pages/accounting/reports/ExpenseAnalysis';
 import IncomeSummary from './pages/accounting/reports/IncomeSummary';
 import HealthCheck from './pages/accounting/reports/HealthCheck';
+import StoreComparison from './pages/accounting/reports/StoreComparison';
 import GstReportsHub from './pages/gst/GstReportsHub';
 import Gstr1Report from './pages/gst/Gstr1Report';
 import PurchaseGstReport from './pages/gst/PurchaseGstReport';
@@ -218,6 +223,7 @@ export default function App() {
               <Route path="/accounting/reports/expense-analysis" element={<ExpenseAnalysis />} />
               <Route path="/accounting/reports/income-summary" element={<IncomeSummary />} />
               <Route path="/accounting/reports/health-check" element={<HealthCheck />} />
+              <Route path="/accounting/reports/store-comparison" element={<StoreComparison />} />
             </Route>
 
             <Route element={<ManagerRoute extraRoles={['ACCOUNTANT']} />}>
@@ -240,6 +246,9 @@ export default function App() {
             </Route>
 
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/inventory/stock-transfers" element={<StockTransfers />} />
+            <Route path="/inventory/stock-transfers/new" element={<StockTransferForm />} />
+            <Route path="/inventory/stock-transfers/:id" element={<StockTransferDetail />} />
 
             <Route element={<ManagerRoute />}>
               <Route path="/suppliers" element={<Suppliers />} />
@@ -249,6 +258,7 @@ export default function App() {
 
             <Route element={<ManagerRoute />}>
               <Route path="/masters" element={<MastersDashboard />} />
+              <Route path="/masters/stores" element={<StoreMaster />} />
               <Route path="/masters/currencies" element={<CurrencyMaster />} />
               <Route path="/masters/countries" element={<CountryMaster />} />
               <Route path="/masters/states" element={<StateMaster />} />

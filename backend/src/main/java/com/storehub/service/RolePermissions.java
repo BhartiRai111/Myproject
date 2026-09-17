@@ -55,12 +55,17 @@ public final class RolePermissions {
                 Permission.FY_MANAGE, Permission.AUDIT_VIEW,
                 // GST config and chart-of-accounts/manual-journal are system-level (spec section 16);
                 // pre-existing controllers already restrict these to ADMIN only, so STORE_MANAGER never had them.
-                Permission.GST_CONFIG));
+                Permission.GST_CONFIG,
+                // Creating/editing Store records and assigning users to stores, or bypassing store
+                // scoping entirely, are structural/admin-tier decisions (Multi-Store spec section 16
+                // theme: "system-level config requires higher authorization") — STORE_MANAGER works
+                // within their assigned store(s), never manages the store list itself.
+                Permission.STORE_CREATE, Permission.STORE_EDIT, Permission.STORE_ASSIGN, Permission.STORE_ACCESS_ALL));
         map.put(Role.STORE_MANAGER, storeManager);
 
         map.put(Role.ACCOUNTANT, EnumSet.of(
                 Permission.DASHBOARD_VIEW,
-                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW, Permission.EMPLOYEE_VIEW,
+                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW, Permission.EMPLOYEE_VIEW, Permission.STORE_VIEW,
                 Permission.SALES_VIEW, Permission.RECEIPT_VIEW, Permission.CREDIT_NOTE_VIEW,
                 Permission.PURCHASE_VIEW, Permission.PAYMENT_VIEW, Permission.DEBIT_NOTE_VIEW,
                 Permission.ACCOUNT_VIEW, Permission.JOURNAL_VIEW, Permission.JOURNAL_CREATE, Permission.JOURNAL_POST,
@@ -76,7 +81,7 @@ public final class RolePermissions {
                 Permission.RECEIPT_VIEW, Permission.RECEIPT_CREATE, Permission.RECEIPT_POST,
                 Permission.CREDIT_NOTE_VIEW,
                 Permission.POS_ACCESS,
-                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW
+                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW, Permission.STORE_VIEW
         ));
 
         map.put(Role.PURCHASE_USER, EnumSet.of(
@@ -84,13 +89,15 @@ public final class RolePermissions {
                 Permission.PURCHASE_VIEW, Permission.PURCHASE_CREATE, Permission.PURCHASE_EDIT, Permission.PURCHASE_POST,
                 Permission.PAYMENT_VIEW, Permission.PAYMENT_CREATE, Permission.PAYMENT_POST,
                 Permission.DEBIT_NOTE_VIEW,
-                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW
+                Permission.PARTY_VIEW, Permission.ITEM_VIEW, Permission.MASTER_VIEW, Permission.STORE_VIEW
         ));
 
         map.put(Role.INVENTORY_USER, EnumSet.of(
                 Permission.DASHBOARD_VIEW,
                 Permission.ITEM_VIEW, Permission.INVENTORY_VIEW, Permission.INVENTORY_ADJUST,
-                Permission.MASTER_VIEW
+                Permission.STOCK_TRANSFER_VIEW, Permission.STOCK_TRANSFER_CREATE,
+                Permission.STOCK_TRANSFER_DISPATCH, Permission.STOCK_TRANSFER_RECEIVE,
+                Permission.MASTER_VIEW, Permission.STORE_VIEW
         ));
 
         map.put(Role.STAFF, EnumSet.of(
@@ -100,7 +107,7 @@ public final class RolePermissions {
                 // here rather than left open, so the same access is now backend-enforced, not implicit.
                 Permission.SALES_VIEW, Permission.SALES_CREATE,
                 Permission.RECEIPT_VIEW, Permission.RECEIPT_CREATE,
-                Permission.ITEM_VIEW, Permission.PARTY_VIEW, Permission.MASTER_VIEW
+                Permission.ITEM_VIEW, Permission.PARTY_VIEW, Permission.MASTER_VIEW, Permission.STORE_VIEW
         ));
 
         return Collections.unmodifiableMap(map);

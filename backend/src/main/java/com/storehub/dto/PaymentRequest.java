@@ -18,6 +18,9 @@ public class PaymentRequest {
     @NotNull(message = "Supplier is required")
     private Long supplierId;
 
+    /** Optional — validated against the caller's own store access; falls back to their current store when omitted. */
+    private Long storeId;
+
     @NotNull(message = "Payment date is required")
     private LocalDate paymentDate;
 
