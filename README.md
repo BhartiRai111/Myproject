@@ -2,6 +2,8 @@
 
 A simple full-stack store management application.
 
+![StoreHub Dashboard - Light Mode](docs/assets/dashboard-light.png)
+
 This is the initial foundation: **Authentication, User Management, and a basic Dashboard**.
 Other modules (Products, Inventory, Suppliers, Purchases, Sales, Customers, Payments, Reports)
 are scaffolded as disabled "Coming Soon" navigation items and will be implemented later.
