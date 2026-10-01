@@ -2,11 +2,52 @@
 
 A simple full-stack store management application.
 
-![StoreHub Dashboard - Light Mode](docs/assets/dashboard-light.png)
-
 This is the initial foundation: **Authentication, User Management, and a basic Dashboard**.
 Other modules (Products, Inventory, Suppliers, Purchases, Sales, Customers, Payments, Reports)
 are scaffolded as disabled "Coming Soon" navigation items and will be implemented later.
+
+## Screenshots
+
+All screenshots below are captured directly from the running application (light theme).
+
+<table>
+  <tr>
+    <td width="50%">
+      <b>Login — Home Page</b><br/>
+      <sub>Entry point of the app, where users sign in to their StoreHub account.</sub><br/><br/>
+      <img src="docs/assets/screenshots/login.png" alt="Login page" width="100%" />
+    </td>
+    <td width="50%">
+      <b>Main Dashboard</b><br/>
+      <sub>At-a-glance KPIs, alerts, and sales/purchase trends after logging in.</sub><br/><br/>
+      <img src="docs/assets/screenshots/dashboard.png" alt="Main dashboard" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>POS / Counter Sale</b><br/>
+      <sub>Barcode/SKU-driven billing screen using the same accounting, inventory, and GST engine as regular sales.</sub><br/><br/>
+      <img src="docs/assets/screenshots/pos.png" alt="POS / Counter Sale screen" width="100%" />
+    </td>
+    <td width="50%">
+      <b>Products Catalog</b><br/>
+      <sub>Manage the product catalog, pricing, and stock status with search and filters.</sub><br/><br/>
+      <img src="docs/assets/screenshots/products.png" alt="Products catalog page" width="100%" />
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <b>Inventory</b><br/>
+      <sub>Live stock levels per product with low-stock/out-of-stock indicators and manual stock adjustments.</sub><br/><br/>
+      <img src="docs/assets/screenshots/inventory.png" alt="Inventory page" width="100%" />
+    </td>
+    <td width="50%">
+      <b>Accounting Hub</b><br/>
+      <sub>Double-entry accounting engine — Chart of Accounts, Journals, Trial Balance, Expenses, and Cash Management.</sub><br/><br/>
+      <img src="docs/assets/screenshots/accounting.png" alt="Accounting hub page" width="100%" />
+    </td>
+  </tr>
+</table>
 
 ## Tech Stack
 
